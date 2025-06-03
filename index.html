@@ -657,6 +657,22 @@
                         <p class="text-sm text-gray-600 text-center">上传图片，即可获得平滑、干净的剪切效果</p>
                     </div>
                 </div>
+                
+                <!-- 文生视频 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/text-to-video.html')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/features/text-to-video.jpg" onerror="this.src='https://picsum.photos/400/300?random=8'; console.log('请将图片放置到 /public/images/features/text-to-video.jpg 路径');" class="h-full w-full object-cover" alt="文生视频">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-indigo-100 rounded-lg mr-2">
+                                <i class="ri-movie-2-line text-lg text-indigo-500"></i>
+                            </div>
+                            <h3 class="font-semibold">文生视频</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">输入文本描述，AI自动生成精美视频内容</p>
+                    </div>
+                </div>
             </div>
         </div>
         
