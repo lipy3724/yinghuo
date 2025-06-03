@@ -206,4 +206,43 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('编辑器页面已准备就绪');
         }
     });
+
+    // 检查用户权限并重定向
+    function checkAuthAndRedirect(url) {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            window.location.href = url;
+        } else {
+            window.location.href = '/login.html?redirect=' + encodeURIComponent(url);
+        }
+    }
+
+    // 检查用户登录状态并更新UI
+    function updateLoginStatus() {
+        const token = localStorage.getItem('authToken');
+        const userInfo = localStorage.getItem('user');
+        
+        const loginBtn = document.getElementById('login-btn');
+        const userInfoEl = document.getElementById('user-info');
+        
+        if (token && userInfo && loginBtn && userInfoEl) {
+            try {
+                const user = JSON.parse(userInfo);
+                
+                // 更新UI显示登录状态
+                loginBtn.classList.add('hidden');
+                userInfoEl.classList.remove('hidden');
+                
+                const usernameDisplay = document.getElementById('username-display');
+                if (usernameDisplay) {
+                    usernameDisplay.textContent = user.username || '用户';
+                }
+            } catch (e) {
+                console.error('解析用户信息出错:', e);
+            }
+        }
+    }
+
+    // 页面加载时执行
+    updateLoginStatus();
 }); 
