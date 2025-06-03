@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频去除字幕 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .drop-zone {
+            border: 2px dashed #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        .drop-zone:hover,
+        .drop-zone.active {
+            border-color: #6366f1;
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+        #videoPreview {
+            max-width: 100%;
+            max-height: 500px;
+        }
+        .subtitle-selection-area {
+            position: absolute;
+            background-color: rgba(99, 102, 241, 0.2);
+            border: 2px solid #6366f1;
+            cursor: move;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #6366f1;
+            border-radius: 50%;
+        }
+        .handle-tl { top: -5px; left: -5px; cursor: nw-resize; }
+        .handle-tr { top: -5px; right: -5px; cursor: ne-resize; }
+        .handle-bl { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .handle-br { bottom: -5px; right: -5px; cursor: se-resize; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center">
+            <a href="/" class="flex items-center">
+                <span class="font-bold text-2xl text-indigo-600 mr-1 logo-text">萤火<span class="logo-dot"></span>AI</span>
+                <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
+            </a>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div class="relative">
+                <button class="text-gray-600 hover:text-gray-900 flex items-center" id="credits-menu-btn">
+                    <i class="ri-coin-line mr-1"></i>
+                    <span>积分中心</span>
+                    <i class="ri-arrow-down-s-line ml-1"></i>
+                </button>
+                <div id="credits-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a href="/credits.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分管理</a>
+                    <a href="/credits-usage.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分使用情况</a>
+                </div>
+            </div>
+            <a href="/download-center.html" class="text-gray-600 hover:text-gray-900 flex items-center">
+                <i class="ri-download-2-line mr-1"></i>
+                <span>下载中心</span>
+            </a>
+            <!-- 登录/用户信息区域 -->
+            <a href="/login.html" id="login-btn" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                登录/注册
+            </a>
+            <div id="user-info" class="hidden relative">
+                <button id="user-menu-btn" class="flex items-center text-gray-700 hover:text-gray-900">
+                    <i class="ri-user-3-line mr-1 text-lg"></i>
+                    <span id="username-display">用户名</span>
+                    <i class="ri-arrow-down-s-line ml-1"></i>
+                </button>
+                <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a href="/account.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">我的账户</a>
+                    <a href="/credits.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分管理</a>
+                    <a href="#" id="logout-btn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto py-8 px-4 max-w-5xl">
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">视频去除字幕</h1>
+            <p class="text-gray-600">智能识别并去除视频中的字幕，让视频更加清爽干净。</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <div class="border-b border-gray-200 pb-4 mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">上传视频</h2>
+            </div>
+
+            <div class="drop-zone w-full h-60 rounded-lg flex flex-col items-center justify-center mb-6" id="dropZone">
+                <i class="ri-upload-cloud-line text-4xl text-gray-400 mb-2"></i>
+                <p class="text-gray-600 mb-2">拖放视频文件到这里，或者</p>
+                <label class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer">
+                    选择视频文件
+                    <input type="file" id="videoFileInput" accept="video/*" class="hidden">
+                </label>
+                <p class="text-sm text-gray-500 mt-2">支持MP4, AVI, MOV等格式，最大100MB</p>
+            </div>
+
+            <div id="videoContainer" class="hidden mb-8">
+                <div class="relative">
+                    <video id="videoPreview" controls class="mx-auto rounded-lg shadow">
+                        您的浏览器不支持视频播放
+                    </video>
+                    <div id="subtitleSelectionArea" class="hidden subtitle-selection-area">
+                        <div class="resize-handle handle-tl"></div>
+                        <div class="resize-handle handle-tr"></div>
+                        <div class="resize-handle handle-bl"></div>
+                        <div class="resize-handle handle-br"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="processingControls" class="hidden">
+                <div class="mb-6">
+                    <h3 class="font-medium text-gray-800 mb-2">字幕区域设置</h3>
+                    <p class="text-sm text-gray-600 mb-4">请选择视频中包含字幕的区域，系统将自动识别并去除该区域中的字幕。</p>
+                    
+                    <div class="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
+                        <div class="flex flex-col">
+                            <button id="selectSubtitleAreaBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                                <i class="ri-drag-move-line mr-1"></i> 选择字幕区域
+                            </button>
+                            <span class="text-xs text-gray-500 mt-1">点击此按钮开始选择字幕区域</span>
+                        </div>
+                        
+                        <div class="flex flex-col">
+                            <button id="automaticDetectionBtn" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                                <i class="ri-magic-line mr-1"></i> 自动检测字幕
+                            </button>
+                            <span class="text-xs text-gray-500 mt-1">尝试自动检测视频中的字幕位置</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6" id="removeMethods">
+                    <h3 class="font-medium text-gray-800 mb-2">字幕去除方式</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="border border-gray-200 rounded-lg p-4 hover:border-indigo-500 cursor-pointer">
+                            <input type="radio" name="removeMethod" id="methodBlur" value="blur" class="mr-2" checked>
+                            <label for="methodBlur" class="font-medium">模糊处理</label>
+                            <p class="text-sm text-gray-600 mt-2">对字幕区域进行模糊处理，保留背景信息</p>
+                        </div>
+                        
+                        <div class="border border-gray-200 rounded-lg p-4 hover:border-indigo-500 cursor-pointer">
+                            <input type="radio" name="removeMethod" id="methodInpainting" value="inpainting" class="mr-2">
+                            <label for="methodInpainting" class="font-medium">AI智能修复</label>
+                            <p class="text-sm text-gray-600 mt-2">使用AI技术智能修复字幕区域，效果更自然</p>
+                        </div>
+                        
+                        <div class="border border-gray-200 rounded-lg p-4 hover:border-indigo-500 cursor-pointer">
+                            <input type="radio" name="removeMethod" id="methodCrop" value="crop" class="mr-2">
+                            <label for="methodCrop" class="font-medium">裁剪画面</label>
+                            <p class="text-sm text-gray-600 mt-2">直接裁剪掉包含字幕的部分（适用于底部字幕）</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="font-medium text-gray-800 mb-2">处理设置</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">输出格式</label>
+                            <select id="outputFormat" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="mp4">MP4</option>
+                                <option value="mov">MOV</option>
+                                <option value="avi">AVI</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">输出质量</label>
+                            <select id="outputQuality" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="high">高质量</option>
+                                <option value="medium" selected>中等质量</option>
+                                <option value="low">低质量</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center">
+                    <button id="startProcessingBtn" class="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center">
+                        <i class="ri-magic-line mr-2"></i> 开始去除字幕
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="processingStatus" class="hidden bg-white rounded-lg shadow p-6 mb-8">
+            <div class="border-b border-gray-200 pb-4 mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">处理状态</h2>
+            </div>
+            
+            <div class="text-center py-4">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                <p class="text-lg font-medium text-gray-800">正在处理您的视频...</p>
+                <p class="text-sm text-gray-600 mt-2">根据视频大小和复杂度，可能需要几分钟时间</p>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1"><span id="progressPercent">0</span>% 完成</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultContainer" class="hidden bg-white rounded-lg shadow p-6">
+            <div class="border-b border-gray-200 pb-4 mb-6">
+                <h2 class="text-xl font-semibold text-gray-800">处理结果</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                <div>
+                    <h3 class="font-medium text-gray-800 mb-3">原视频</h3>
+                    <video id="originalVideoPreview" controls class="w-full rounded-lg shadow">
+                        您的浏览器不支持视频播放
+                    </video>
+                </div>
+                <div>
+                    <h3 class="font-medium text-gray-800 mb-3">处理后视频</h3>
+                    <video id="processedVideoPreview" controls class="w-full rounded-lg shadow">
+                        您的浏览器不支持视频播放
+                    </video>
+                </div>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <a id="downloadBtn" href="#" download class="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center">
+                    <i class="ri-download-line mr-2"></i> 下载处理后视频
+                </a>
+                <button id="processNewBtn" class="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                    处理新视频
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查用户登录状态
+        function checkAuthStatus() {
+            const authToken = localStorage.getItem('authToken');
+            const userInfo = localStorage.getItem('user');
+            const loginBtn = document.getElementById('login-btn');
+            const userInfoElement = document.getElementById('user-info');
+            
+            if (authToken && userInfo) {
+                // 用户已登录
+                try {
+                    const user = JSON.parse(userInfo);
+                    document.getElementById('username-display').textContent = user.username;
+                    
+                    // 显示用户信息，隐藏登录按钮
+                    if (loginBtn) loginBtn.classList.add('hidden');
+                    if (userInfoElement) userInfoElement.classList.remove('hidden');
+                } catch (e) {
+                    console.error('解析用户信息出错:', e);
+                    // 清除无效的存储
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('user');
+                }
+            } else {
+                // 用户未登录
+                if (loginBtn) loginBtn.classList.remove('hidden');
+                if (userInfoElement) userInfoElement.classList.add('hidden');
+                
+                // 重定向到登录页面
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
+            }
+        }
+        
+        // 网页加载时检查用户登录状态
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            
+            // UI交互逻辑
+            const dropZone = document.getElementById('dropZone');
+            const videoFileInput = document.getElementById('videoFileInput');
+            const videoContainer = document.getElementById('videoContainer');
+            const videoPreview = document.getElementById('videoPreview');
+            const processingControls = document.getElementById('processingControls');
+            const subtitleSelectionArea = document.getElementById('subtitleSelectionArea');
+            const selectSubtitleAreaBtn = document.getElementById('selectSubtitleAreaBtn');
+            const automaticDetectionBtn = document.getElementById('automaticDetectionBtn');
+            const startProcessingBtn = document.getElementById('startProcessingBtn');
+            const processingStatus = document.getElementById('processingStatus');
+            const resultContainer = document.getElementById('resultContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            const processNewBtn = document.getElementById('processNewBtn');
+            
+            // 拖放上传功能
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+            
+            dropZone.addEventListener('dragleave', function() {
+                dropZone.classList.remove('active');
+            });
+            
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                if (e.dataTransfer.files.length) {
+                    handleVideoFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // 文件选择器
+            videoFileInput.addEventListener('change', function() {
+                if (this.files.length) {
+                    handleVideoFile(this.files[0]);
+                }
+            });
+            
+            // 处理视频文件
+            function handleVideoFile(file) {
+                if (file.type.startsWith('video/')) {
+                    const fileURL = URL.createObjectURL(file);
+                    videoPreview.src = fileURL;
+                    videoPreview.onloadedmetadata = function() {
+                        videoContainer.classList.remove('hidden');
+                        processingControls.classList.remove('hidden');
+                        dropZone.classList.add('hidden');
+                    };
+                } else {
+                    alert('请上传有效的视频文件');
+                }
+            }
+            
+            // 字幕区域选择功能
+            let isSelecting = false;
+            
+            selectSubtitleAreaBtn.addEventListener('click', function() {
+                isSelecting = !isSelecting;
+                
+                if (isSelecting) {
+                    selectSubtitleAreaBtn.textContent = '完成选择';
+                    selectSubtitleAreaBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    selectSubtitleAreaBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    
+                    // 显示选择区域
+                    const videoRect = videoPreview.getBoundingClientRect();
+                    subtitleSelectionArea.style.left = videoRect.width * 0.1 + 'px';
+                    subtitleSelectionArea.style.top = videoRect.height * 0.8 + 'px';
+                    subtitleSelectionArea.style.width = videoRect.width * 0.8 + 'px';
+                    subtitleSelectionArea.style.height = videoRect.height * 0.15 + 'px';
+                    subtitleSelectionArea.classList.remove('hidden');
+                } else {
+                    selectSubtitleAreaBtn.textContent = '选择字幕区域';
+                    selectSubtitleAreaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    selectSubtitleAreaBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+                }
+            });
+            
+            // 模拟处理视频
+            startProcessingBtn.addEventListener('click', function() {
+                processingControls.classList.add('hidden');
+                videoContainer.classList.add('hidden');
+                processingStatus.classList.remove('hidden');
+                
+                // 模拟进度条
+                let progress = 0;
+                const interval = setInterval(function() {
+                    progress += Math.random() * 5;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        
+                        // 显示结果
+                        setTimeout(function() {
+                            processingStatus.classList.add('hidden');
+                            resultContainer.classList.remove('hidden');
+                            
+                            // 填充原始视频和处理后视频预览
+                            document.getElementById('originalVideoPreview').src = videoPreview.src;
+                            document.getElementById('processedVideoPreview').src = videoPreview.src;
+                        }, 1000);
+                    }
+                    
+                    progressBar.style.width = progress + '%';
+                    progressPercent.textContent = Math.round(progress);
+                }, 500);
+            });
+            
+            // 处理新视频按钮
+            processNewBtn.addEventListener('click', function() {
+                resultContainer.classList.add('hidden');
+                dropZone.classList.remove('hidden');
+                
+                // 重置视频预览
+                videoPreview.src = '';
+                document.getElementById('originalVideoPreview').src = '';
+                document.getElementById('processedVideoPreview').src = '';
+            });
+        });
+    </script>
+</body>
+</html> 

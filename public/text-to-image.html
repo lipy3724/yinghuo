@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文生图片 - 萤火AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f9fafb;
+            min-height: 100vh;
+        }
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .content-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        .image-preview {
+            aspect-ratio: 1/1;
+            background-color: #f8fafc;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(99, 102, 241, 0.2);
+            border-radius: 50%;
+            border-top-color: #6366f1;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .size-option.active {
+            background-color: #eef2ff;
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        .style-option.active {
+            background-color: #eef2ff;
+            border-color: #6366f1;
+            color: #6366f1;
+        }
+        .generated-image {
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        .generated-image:hover {
+            transform: scale(1.03);
+        }
+        .prompt-input {
+            resize: none;
+            min-height: 120px;
+        }
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+        .preview-area-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container bg-gray-100">
+        <!-- 导航栏 -->
+        <nav class="bg-white shadow-md px-4 py-2 flex justify-between items-center">
+            <div class="flex items-center">
+                <a href="/" class="flex items-center text-gray-800 hover:text-gray-600">
+                    <i class="ri-arrow-left-line mr-1"></i>
+                    <span>返回首页</span>
+                </a>
+            </div>
+            <div class="flex items-center">
+                <span class="text-lg font-semibold text-indigo-600">文生图片</span>
+            </div>
+        </nav>
+
+        <!-- 主要内容 -->
+        <main class="main-content p-4 md:p-6">
+            <h1 class="text-2xl font-bold mb-6">AI文生图片</h1>
+            <div class="content-grid gap-6">
+                <!-- 左侧控制面板 -->
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <form id="generateForm" class="space-y-4">
+                        <div>
+                            <label for="prompt" class="block text-sm font-medium text-gray-700 mb-1">提示词 (Prompt)</label>
+                            <textarea id="prompt" name="prompt" rows="5" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="输入详细的图像描述，如：一个穿着红色连衣裙的女孩站在海边的沙滩上，微风吹拂着她的头发"></textarea>
+                        </div>
+                        <div>
+                            <label for="negativePrompt" class="block text-sm font-medium text-gray-700 mb-1">负面提示词 (Negative Prompt)</label>
+                            <textarea id="negativePrompt" name="negativePrompt" rows="4" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="输入不希望出现在图像中的元素，如：模糊, 变形, 低质量"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">图像尺寸</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <button type="button" class="size-option w-full px-3 py-2 border rounded-lg text-sm hover:bg-gray-100 bg-blue-50 border-blue-200" data-size="1024*1024">1024×1024</button>
+                                <button type="button" class="size-option w-full px-3 py-2 border rounded-lg text-sm hover:bg-gray-100" data-size="512*1024">512×1024</button>
+                                <button type="button" class="size-option w-full px-3 py-2 border rounded-lg text-sm hover:bg-gray-100" data-size="768*512">768×512</button>
+                                <button type="button" class="size-option w-full px-3 py-2 border rounded-lg text-sm hover:bg-gray-100" data-size="768*1024">768×1024</button>
+                                <button type="button" class="size-option w-full px-3 py-2 border rounded-lg text-sm hover:bg-gray-100" data-size="1024*576">1024×576</button>
+                                <button type="button" class="size-option w-full px-3 py-2 border rounded-lg text-sm hover:bg-gray-100" data-size="576*1024">576×1024</button>
+                            </div>
+                            <input type="hidden" id="size" name="size" value="1024*1024">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">提示词扩展</label>
+                            <div class="flex items-center">
+                                <label class="inline-flex items-center mr-6">
+                                    <input type="radio" name="prompt_extend" value="true" checked class="form-radio h-4 w-4 text-blue-600">
+                                    <span class="ml-2">开启</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="prompt_extend" value="false" class="form-radio h-4 w-4 text-blue-600">
+                                    <span class="ml-2">关闭</span>
+                                </label>
+                                <div class="ml-2 text-xs text-gray-500">开启后AI会自动扩展提示词以生成更好的图像</div>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" id="imageCount" name="n" value="1">
+                        
+                        <div class="pt-5 mt-8">
+                            <button type="submit" id="generateButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center">
+                                <span id="generateText">生成图片</span>
+                                <span id="generatingSpinner" class="hidden ml-2">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            </button>
+                            <p class="text-xs text-gray-500 mt-2 text-center">生成图片可能需要10-20秒</p>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 右侧预览区域 -->
+                <div class="bg-white rounded-lg shadow-md p-4 preview-container">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">图片预览</h2>
+                        <div class="text-sm text-gray-500" id="previewInfo">请先生成图片</div>
+                    </div>
+                    
+                    <!-- 添加下载和保存按钮区域 -->
+                    <div id="previewControlButtons" class="flex justify-end mb-3 space-x-2 hidden">
+                        <button id="previewDownloadBtn" class="flex items-center px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm">
+                            <i class="ri-download-line mr-1"></i>下载图片
+                        </button>
+                        <button id="previewSaveBtn" class="flex items-center px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm">
+                            <i class="ri-save-line mr-1"></i>保存图片
+                        </button>
+                    </div>
+                    
+                    <div class="preview-area-wrapper">
+                        <div id="previewArea" class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 flex items-center justify-center">
+                            <div class="flex flex-col items-center justify-center text-gray-400 col-span-full h-full min-h-[500px]">
+                                <i class="ri-image-add-line text-6xl mb-4"></i>
+                                <p class="text-lg">生成图片后将在此处显示</p>
+                                <p class="text-sm text-gray-500 mt-2">支持多种图片比例和多张图片生成</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 加载遮罩 -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <div class="animate-spin mx-auto mb-4 h-12 w-12 text-blue-500">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold mb-2">正在生成图片</h3>
+            <p class="text-sm text-gray-600">请稍候，图片生成可能需要20-30秒...</p>
+        </div>
+    </div>
+
+    <!-- 图片预览模态框 -->
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-lg font-semibold">图片预览</h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-4">
+                <img id="modalImage" class="max-w-full h-auto mx-auto" src="" alt="预览图片">
+            </div>
+            <div class="flex justify-end p-4 border-t">
+                <button id="downloadImage" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-2 flex items-center">
+                    <i class="ri-download-line mr-1"></i> 下载
+                </button>
+                <button id="saveImage" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center">
+                    <i class="ri-save-line mr-1"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const generateForm = document.getElementById('generateForm');
+        const promptInput = document.getElementById('prompt');
+        const negativePromptInput = document.getElementById('negativePrompt');
+        const sizeInput = document.getElementById('size');
+        const imageCountInput = document.getElementById('imageCount');
+        const generateButton = document.getElementById('generateButton');
+        const generateText = document.getElementById('generateText');
+        const generatingSpinner = document.getElementById('generatingSpinner');
+        const previewArea = document.getElementById('previewArea');
+        const previewInfo = document.getElementById('previewInfo');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const closeModal = document.getElementById('closeModal');
+        const downloadImage = document.getElementById('downloadImage');
+        const saveImage = document.getElementById('saveImage');
+        // 新增的预览区控制按钮
+        const previewControlButtons = document.getElementById('previewControlButtons');
+        const previewDownloadBtn = document.getElementById('previewDownloadBtn');
+        const previewSaveBtn = document.getElementById('previewSaveBtn');
+        const sizeOptions = document.querySelectorAll('.size-option');
+        
+        // 存储当前预览的图片URL
+        let currentImageUrl = '';
+        // 存储用户token和用户信息
+        let userToken = null;
+        let userInfo = null;
+        // 存储生成的图片列表
+        let generatedImages = [];
+
+        // 初始选中第一个尺寸选项
+        sizeOptions[0].classList.add('active');
+        
+        // 初始隐藏预览控制按钮
+        if (previewControlButtons) {
+            previewControlButtons.classList.add('hidden');
+        }
+
+        // 页面加载时设置事件监听器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查令牌
+            checkToken();
+            // 设置事件监听器
+            setupEventListeners();
+        });
+
+        // 检查令牌是否存在
+        function checkToken() {
+            userToken = localStorage.getItem('authToken');
+            userInfo = localStorage.getItem('user');
+            
+            // 如果用户未登录，跳转到登录页面
+            if (!userToken || !userInfo) {
+                console.warn('未找到用户认证信息，即将跳转到登录页面');
+                // 记录当前页面以便登录后返回
+                localStorage.setItem('redirectAfterLogin', '/text-to-image.html');
+                // 延迟跳转，确保警告消息能被用户看到
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 1000);
+            } else {
+                console.log('已获取用户认证信息');
+                
+                // 尝试解析用户信息
+                try {
+                    userInfo = JSON.parse(userInfo);
+                } catch (e) {
+                    console.error('解析用户信息失败:', e);
+                    // 信息格式错误，清除缓存并重定向
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('user');
+                    window.location.href = '/login.html';
+                }
+            }
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 尺寸选择
+            sizeOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    sizeOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    sizeInput.value = this.getAttribute('data-size');
+                });
+            });
+
+            // 表单提交
+            generateForm.addEventListener('submit', handleFormSubmit);
+
+            // 模态框相关
+            closeModal.addEventListener('click', closeImageModal);
+            downloadImage.addEventListener('click', handleImageDownload);
+            saveImage.addEventListener('click', handleImageSave);
+            
+            // 预览区域控制按钮
+            previewDownloadBtn.addEventListener('click', handlePreviewDownload);
+            previewSaveBtn.addEventListener('click', handlePreviewSave);
+        }
+
+        // 表单提交
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            // 检查提示词是否为空
+            if (!promptInput.value.trim()) {
+                alert('请输入提示词');
+                return;
+            }
+
+            // 获取最新的令牌
+            userToken = localStorage.getItem('authToken');
+            userInfo = localStorage.getItem('user');
+            
+            // 再次检查令牌
+            if (!userToken || !userInfo) {
+                alert('无法获取认证信息，请重新登录');
+                // 记录当前页面以便登录后返回
+                localStorage.setItem('redirectAfterLogin', '/text-to-image.html');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            // 显示加载状态
+            showLoading(true);
+
+            // 收集表单数据
+            const formData = {
+                prompt: promptInput.value.trim(),
+                negativePrompt: negativePromptInput.value.trim(),
+                size: sizeInput.value,
+                n: imageCountInput.value,
+                prompt_extend: true, // 开启提示词扩展
+                watermark: false // 不添加水印
+            };
+
+            try {
+                // 步骤1: 发送创建任务请求
+                console.log('正在创建图片生成任务...');
+                const createResponse = await fetch('/api/text-to-image/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                // 检查认证错误
+                if (createResponse.status === 401) {
+                    // 清除缓存
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('user');
+                    throw new Error('认证失败，请重新登录');
+                }
+
+                const createData = await createResponse.json();
+
+                if (!createResponse.ok) {
+                    throw new Error(createData.message || '创建图片生成任务失败');
+                }
+
+                if (!createData.taskId) {
+                    throw new Error('创建任务成功但未返回任务ID');
+                }
+
+                const taskId = createData.taskId;
+                console.log(`任务创建成功，任务ID: ${taskId}, 状态: ${createData.taskStatus}`);
+                
+                // 更新加载提示
+                updateLoadingMessage('任务已创建，正在生成图片，请稍候...');
+
+                // 步骤2: 轮询查询任务状态直到完成
+                const imageUrls = await pollTaskStatus(taskId);
+                
+                // 更新预览区域
+                updatePreview(imageUrls);
+                
+            } catch (error) {
+                console.error('图片生成错误:', error);
+                
+                // 处理认证错误
+                if (error.message.includes('认证失败') || error.message.includes('未授权')) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('user');
+                    alert('登录已过期，请重新登录');
+                    // 记录当前页面以便登录后返回
+                    localStorage.setItem('redirectAfterLogin', '/text-to-image.html');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                alert('生成图片失败: ' + error.message);
+            } finally {
+                // 隐藏加载状态
+                showLoading(false);
+            }
+        }
+
+        // 轮询查询任务状态
+        async function pollTaskStatus(taskId) {
+            // 最大尝试次数和时间间隔（秒）
+            const maxAttempts = 30;
+            const interval = 2000; // 2秒
+            
+            // 获取最新令牌
+            userToken = localStorage.getItem('authToken');
+            userInfo = localStorage.getItem('user');
+            
+            if (!userToken || !userInfo) {
+                throw new Error('认证令牌不存在，请重新登录');
+            }
+            
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                try {
+                    updateLoadingMessage(`正在查询任务状态，第${attempt + 1}次尝试...`);
+                    
+                    // 发送查询请求
+                    const response = await fetch(`/api/text-to-image/task/${taskId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${userToken}`
+                        }
+                    });
+                    
+                    // 检查认证错误
+                    if (response.status === 401) {
+                        throw new Error('认证失败，请重新登录');
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`第${attempt + 1}次查询任务状态:`, data.taskStatus);
+                    
+                    // 如果任务成功完成
+                    if (data.taskStatus === 'SUCCEEDED') {
+                        console.log('任务成功完成，图片URL:', data.images);
+                        updateLoadingMessage('图片生成成功，准备显示...');
+                        return data.images;
+                    }
+                    
+                    // 如果任务失败
+                    if (data.taskStatus === 'FAILED') {
+                        throw new Error(`任务失败: ${data.error || '未知错误'}`);
+                    }
+                    
+                    // 如果任务仍在处理中，等待后再次查询
+                    updateLoadingMessage(`图片生成中，请耐心等待... (${attempt + 1}/${maxAttempts})`);
+                    
+                    // 等待一段时间后再次查询
+                    await new Promise(resolve => setTimeout(resolve, interval));
+                    
+                } catch (error) {
+                    console.error('查询任务状态失败:', error);
+                    
+                    // 处理认证错误
+                    if (error.message.includes('认证失败') || error.message.includes('未授权')) {
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('user');
+                        throw new Error('登录已过期，请重新登录');
+                    }
+                    
+                    throw error;
+                }
+            }
+            
+            // 超过最大尝试次数仍未完成
+            throw new Error('图片生成超时，请稍后再试');
+        }
+
+        // 更新加载提示信息
+        function updateLoadingMessage(message) {
+            const loadingMessage = document.querySelector('#loadingOverlay p');
+            if (loadingMessage) {
+                loadingMessage.textContent = message;
+            }
+        }
+
+        // 更新预览区域
+        function updatePreview(images) {
+            if (!images || images.length === 0) {
+                previewInfo.textContent = '生成图片失败';
+                previewControlButtons.classList.add('hidden'); // 隐藏控制按钮
+                return;
+            }
+
+            // 保存生成的图片
+            generatedImages = images;
+
+            // 清空预览区域
+            previewArea.innerHTML = '';
+
+            // 更新预览信息
+            previewInfo.textContent = `已生成 ${images.length} 张图片`;
+            
+            // 显示控制按钮
+            previewControlButtons.classList.remove('hidden');
+
+            // 添加图片到预览区域
+            if (images.length === 1) {
+                // 单张图片时居中显示
+                const imageCard = document.createElement('div');
+                imageCard.className = 'relative col-span-full';
+                
+                const image = document.createElement('img');
+                image.src = images[0];
+                image.alt = '生成的图片';
+                image.className = 'w-full max-w-2xl mx-auto h-auto rounded-lg cursor-pointer object-cover shadow-sm hover:shadow-md transition';
+                image.loading = 'lazy';
+                
+                // 添加点击事件
+                image.addEventListener('click', () => openImageModal(images[0]));
+                
+                imageCard.appendChild(image);
+                previewArea.appendChild(imageCard);
+            } else {
+                // 多张图片时网格展示
+                images.forEach((imageUrl, index) => {
+                    const imageCard = document.createElement('div');
+                    imageCard.className = 'relative group';
+                    
+                    const image = document.createElement('img');
+                    image.src = imageUrl;
+                    image.alt = `生成的图片 ${index + 1}`;
+                    image.className = 'w-full h-auto rounded-lg cursor-pointer object-cover shadow-sm hover:shadow-md transition';
+                    image.loading = 'lazy';
+                    
+                    // 添加点击事件
+                    image.addEventListener('click', () => openImageModal(imageUrl));
+                    
+                    imageCard.appendChild(image);
+                    previewArea.appendChild(imageCard);
+                });
+            }
+
+            // 确保预览区域有足够的高度
+            previewArea.classList.remove('flex', 'items-center', 'justify-center');
+            previewArea.classList.add('grid');
+        }
+
+        // 打开图片模态框
+        function openImageModal(imageUrl) {
+            currentImageUrl = imageUrl;
+            modalImage.src = imageUrl;
+            imageModal.classList.remove('hidden');
+            // 禁用背景滚动
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 关闭图片模态框
+        function closeImageModal() {
+            imageModal.classList.add('hidden');
+            // 恢复背景滚动
+            document.body.style.overflow = '';
+        }
+
+        // 处理图片下载
+        function handleImageDownload() {
+            if (!currentImageUrl) return;
+            
+            const a = document.createElement('a');
+            a.href = currentImageUrl;
+            a.download = `yinghuo_ai_image_${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // 处理图片保存（保存到下载中心）
+        async function handleImageSave() {
+            if (!currentImageUrl) return;
+            
+            try {
+                // 显示加载状态
+                showLoading(true);
+                updateLoadingMessage('正在保存到下载中心...');
+                
+                // 获取提示文本
+                const promptText = promptInput.value.trim() || '文生图片';
+                
+                console.log('准备保存图片到下载中心:', currentImageUrl.substring(0, 50) + '...');
+                
+                // 调用API保存图片到下载中心
+                const response = await fetch('/api/downloads/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({
+                        imageUrl: currentImageUrl,
+                        title: '文生图片: ' + (promptText.substring(0, 30) + (promptText.length > 30 ? '...' : '')),
+                        description: promptText,
+                        type: 'TEXT_TO_IMAGE'
+                    })
+                });
+                
+                console.log('保存响应状态:', response.status);
+                
+                const data = await response.json();
+                console.log('保存响应数据:', data);
+                
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || '保存失败');
+                }
+                
+                if (data.success) {
+                    alert('图片已成功保存到下载中心！');
+                    closeImageModal();
+                } else {
+                    throw new Error(data.message || '保存失败');
+                }
+            } catch (error) {
+                console.error('保存到下载中心失败:', error);
+                alert('保存到下载中心失败: ' + error.message);
+            } finally {
+                // 隐藏加载状态
+                showLoading(false);
+            }
+        }
+        
+        // 处理预览区域保存按钮
+        async function handlePreviewSave() {
+            if (!generatedImages || generatedImages.length === 0) return;
+            
+            try {
+                // 显示加载状态
+                showLoading(true);
+                updateLoadingMessage('正在保存到下载中心...');
+                
+                // 获取提示文本
+                const promptText = promptInput.value.trim() || '文生图片';
+                
+                // 默认保存第一张图片
+                const imageUrl = generatedImages[0];
+                console.log('准备保存图片到下载中心:', imageUrl.substring(0, 50) + '...');
+                
+                // 调用API保存图片到下载中心
+                const response = await fetch('/api/downloads/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({
+                        imageUrl: imageUrl,
+                        title: '文生图片: ' + (promptText.substring(0, 30) + (promptText.length > 30 ? '...' : '')),
+                        description: promptText,
+                        type: 'TEXT_TO_IMAGE'
+                    })
+                });
+                
+                console.log('保存响应状态:', response.status);
+                
+                const data = await response.json();
+                console.log('保存响应数据:', data);
+                
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || '保存失败');
+                }
+                
+                if (data.success) {
+                    alert('图片已成功保存到下载中心！');
+                } else {
+                    throw new Error(data.message || '保存失败');
+                }
+            } catch (error) {
+                console.error('保存到下载中心失败:', error);
+                alert('保存到下载中心失败: ' + error.message);
+            } finally {
+                // 隐藏加载状态
+                showLoading(false);
+            }
+        }
+
+        // 显示/隐藏加载状态
+        function showLoading(isLoading) {
+            if (isLoading) {
+                generateText.classList.add('hidden');
+                generatingSpinner.classList.remove('hidden');
+                generateButton.disabled = true;
+                loadingOverlay.classList.remove('hidden');
+            } else {
+                generateText.classList.remove('hidden');
+                generatingSpinner.classList.add('hidden');
+                generateButton.disabled = false;
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        // 处理预览区域下载按钮
+        function handlePreviewDownload() {
+            if (generatedImages && generatedImages.length > 0) {
+                const imageUrl = generatedImages[0]; // 默认下载第一张图片
+                downloadImageFromUrl(imageUrl);
+            }
+        }
+        
+        // 通用下载图片函数
+        function downloadImageFromUrl(url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `yinghuo_ai_image_${Date.now()}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>

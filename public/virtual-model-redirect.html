@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>虚拟模特编辑器 - 萤火AI</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .editor-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #loading-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0);
+            z-index: 10;
+        }
+        
+        .loading-spinner {
+            display: none;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #loading-message {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            color: #333;
+            text-align: center;
+            padding: 0 20px;
+            display: none;
+        }
+        
+        .debug-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            font-size: 12px;
+            color: #6c757d;
+            max-width: 80%;
+            text-align: left;
+            max-height: 100px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .retry-button {
+            margin-top: 15px;
+            padding: 8px 16px;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .retry-button:hover {
+            background-color: #3182ce;
+        }
+        
+        .direct-button {
+            margin-top: 15px;
+            padding: 8px 16px;
+            background-color: #38a169;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .direct-button:hover {
+            background-color: #2f855a;
+        }
+        
+        .login-button {
+            margin-top: 15px;
+            padding: 8px 16px;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .login-button:hover {
+            background-color: #4338ca;
+        }
+        
+        #login-message {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            color: #ef4444;
+            text-align: center;
+            padding: 0 20px;
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-title">萤火AI - 虚拟模特编辑器</div>
+        </header>
+        
+        <div class="editor-container">
+            <div id="loading-container">
+                <div class="loading-spinner"></div>
+                <div id="loading-message">正在加载虚拟模特编辑器...</div>
+                <div id="login-message">您尚未登录，请先登录后使用此功能</div>
+                <button id="login-button" class="login-button">前往登录</button>
+                <div id="debug-info" class="debug-info"></div>
+                <button id="retry-button" class="retry-button">重新加载</button>
+                <button id="direct-button" class="direct-button">在新窗口中打开</button>
+            </div>
+            <iframe 
+                id="maneken-iframe" 
+                src="about:blank" 
+                style="width: 100%; height: 100%; border: none;" 
+                allow="clipboard-read; clipboard-write; camera; microphone" 
+                allowfullscreen
+                referrerpolicy="origin">
+            </iframe>
+        </div>
+    </div>
+
+    <script>
+        // 获取元素
+        const editorFrame = document.getElementById('maneken-iframe');
+        const directButton = document.getElementById('direct-button');
+        const loginButton = document.getElementById('login-button');
+        const retryButton = document.getElementById('retry-button');
+        const loadingContainer = document.getElementById('loading-container');
+        const loadingMessage = document.getElementById('loading-message');
+        const loginMessage = document.getElementById('login-message');
+        const debugInfo = document.getElementById('debug-info');
+        
+        // 标记是否已经打开编辑器
+        let editorLoaded = false;
+        
+        // 检查登录状态
+        async function checkLoginStatus() {
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken) {
+                console.log('用户未登录，显示登录提示');
+                loadingContainer.style.display = 'flex';
+                loginMessage.style.display = 'block';
+                loginButton.style.display = 'block';
+                return false;
+            }
+            return true;
+        }
+        
+        // 从当前会话中获取用户信息
+        async function getCurrentUser() {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    const response = await fetch('/api/auth/user', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const userData = await response.json();
+                        console.log('获取到用户数据:', userData);
+                        
+                        if (userData.success && userData.data) {
+                            // 确保返回的是字符串格式的ID
+                            return String(userData.data.id);
+                        }
+                    } else {
+                        console.warn('获取用户信息请求失败:', response.status, response.statusText);
+                        // 尝试从localStorage获取备份的userId
+                        const cachedUserId = localStorage.getItem('userId');
+                        if (cachedUserId) {
+                            console.log('使用缓存的用户ID:', cachedUserId);
+                            return String(cachedUserId);
+                        }
+                    }
+                }
+                
+                // 如果无法获取用户ID，使用固定的测试ID，可能比随机ID更可靠
+                return "test_user_id";
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+                // 使用固定测试ID
+                return "test_user_id";
+            }
+        }
+        
+        // 从后端获取签名
+        async function getSignature() {
+            try {
+                const userId = await getCurrentUser();
+                const timestamp = Math.floor(Date.now() / 1000); // 秒级时间戳
+                
+                console.log('准备获取签名:', { userId, timestamp });
+                
+                const response = await fetch('/api/get-virtual-model-signature', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+                    },
+                    body: JSON.stringify({
+                        userId,
+                        timestamp
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('获取签名响应:', data);
+                
+                if (!data.success) {
+                    throw new Error(data.message || '获取签名失败');
+                }
+                
+                // 如果服务器返回的userId与请求的不同，使用服务器返回的
+                if (data.userId && data.userId !== userId) {
+                    console.log('使用服务器返回的userId:', data.userId);
+                }
+                
+                // 缓存userId以备后用
+                if (data.userId) {
+                    localStorage.setItem('userId', String(data.userId));
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('获取签名失败:', error);
+                showError(`获取签名失败: ${error.message}`);
+                return null;
+            }
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            // 不显示错误信息，直接打开新窗口按钮
+            directButton.style.display = 'block';
+        }
+        
+        // 显示调试信息
+        function showDebugInfo(message) {
+            debugInfo.textContent = message;
+            debugInfo.style.display = 'block';
+        }
+        
+        // 消息处理函数 - 按照官方文档示例处理
+        function handleMessageEvent(event) {
+            // 根据官方示例，首先检查消息来源
+            console.log('收到消息事件:', event.origin, event.data);
+            
+            // 安全检查：放宽域名检查，允许来自www.yinghuo.ai和相关域名的消息
+            if (!event.origin.includes('manekenai-editor.aidc-ai.com') && 
+                !event.origin.includes('manekenai-editor.aidge.com') && 
+                !event.origin.includes('localhost') && 
+                !event.origin.includes('127.0.0.1') &&
+                !event.origin.includes('yinghuo.ai') &&
+                !event.origin.includes('www.yinghuo.ai')) {
+                console.warn('收到来自未知源的消息:', event.origin);
+                return; // 不处理未知来源的消息
+            }
+
+            try {
+                // 解析消息数据
+                let data = event.data;
+                
+                if (typeof data === 'string') {
+                    try {
+                        data = JSON.parse(data);
+                    } catch (e) {
+                        console.log('收到非JSON字符串消息:', data);
+                    }
+                }
+                
+                console.log('处理iframe消息:', data);
+                
+                // 检查action字段，按照官方示例处理不同类型的消息
+                if (data.action) {
+                    switch (data.action) {
+                        case "generateConfirm":
+                            // 处理生成确认事件
+                            console.log("收到生成确认事件:", data);
+                            // 向iframe发送确认消息
+                            editorFrame.contentWindow.postMessage({
+                                action: "generateConfirm",
+                                payload: true, // 校验结果 true通过，false不通过
+                            }, "*");
+                            break;
+                        case "save":
+                            // 处理保存事件
+                            console.log("收到保存事件:", data);
+                            break;
+                        case "ready":
+                            console.log('编辑器初始化完成');
+                            loadingContainer.style.display = 'none';
+                            editorLoaded = true;
+                            
+                            // 编辑器ready时尝试发送登录消息
+                            sendLoginToEditor(data);
+                            break;
+                        case "notLogin":
+                            // 处理未登录消息
+                            console.log("收到未登录消息:", data);
+                            // 如果收到notLogin消息，尝试一次重新登录
+                            retryLogin();
+                            break;
+                        // 登录相关消息处理
+                        case "login":
+                        case "userLogin":
+                        case "loginResult":
+                            console.log("收到登录相关消息:", data);
+                            break;
+                    }
+                }
+                
+                // 检查type字段，处理编辑器初始化等消息
+                if (data.type) {
+                    switch (data.type) {
+                        case 'editorInitialized':
+                        case 'init':
+                        case 'initialized':
+                        case 'ready':
+                        case 'editorLoaded':
+                        case 'loaded':
+                            console.log('编辑器加载完成');
+                            loadingContainer.style.display = 'none';
+                            editorLoaded = true;
+                            clearTimeout(window.editorLoadTimeout);
+                            break;
+                        case 'error':
+                            console.error('编辑器错误:', data.message || data);
+                            // 不显示错误信息
+                            directButton.style.display = 'block';
+                            break;
+                    }
+                }
+                
+                // 如果没有type也没有action，检查其他字段
+                if (!data.type && !data.action && typeof data === 'object') {
+                    if (data.status === 'ready' || data.loaded) {
+                        console.log('检测到编辑器加载完成');
+                        loadingContainer.style.display = 'none';
+                        editorLoaded = true;
+                        clearTimeout(window.editorLoadTimeout);
+                    }
+                }
+            } catch (error) {
+                console.error('处理iframe消息时出错:', error, event.data);
+            }
+        }
+
+        // 封装发送登录消息的函数
+        async function sendLoginToEditor(data) {
+            try {
+                // 重新获取签名数据以确保最新
+                const signData = await getSignature();
+                if (!signData) {
+                    console.error('获取签名失败，无法完成登录');
+                    return;
+                }
+                
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    console.warn('本地无token，将使用签名中的信息');
+                }
+                
+                // 从localStorage获取更多可能用于认证的信息
+                const userInfo = {
+                    userId: String(signData.userId),
+                    token: token || 'auto-login',
+                    username: localStorage.getItem('username') || '',
+                    phone: localStorage.getItem('phone') || '',
+                    tokenInfo: localStorage.getItem('tokenInfo') || ''
+                };
+                
+                console.log('准备发送登录消息，参数:', userInfo);
+                
+                // 只发送一次标准登录消息
+                editorFrame.contentWindow.postMessage({
+                    action: "login",
+                    payload: userInfo
+                }, "*");
+                
+                console.log('已发送登录消息到iframe');
+            } catch (err) {
+                console.error('发送登录消息失败:', err);
+            }
+        }
+        
+        // 重试登录函数
+        async function retryLogin() {
+            try {
+                // 重新获取签名
+                const signData = await getSignature();
+                if (!signData) return;
+                
+                console.log('重试登录，使用新签名:', signData);
+                
+                // 获取可能有用的token信息
+                const token = localStorage.getItem('authToken') || '';
+                
+                // 只发送一次标准登录消息
+                editorFrame.contentWindow.postMessage({
+                    action: "login",
+                    payload: {
+                        userId: String(signData.userId),
+                        token: token
+                    }
+                }, "*");
+                
+                console.log('已重新发送登录消息到iframe');
+            } catch (err) {
+                console.error('重试登录失败:', err);
+            }
+        }
+
+        // 设置iframe超时检查
+        function setupIframeLoadCheck() {
+            window.editorLoadTimeout = setTimeout(() => {
+                if (!editorLoaded) {
+                    console.error('编辑器加载超时');
+                    // 不显示错误消息，仅显示打开按钮
+                    directButton.style.display = 'block';
+                }
+            }, 20000); // 20秒超时
+        }
+        
+        // 在新窗口中打开编辑器
+        async function openInNewWindow() {
+            try {
+                const signData = await getSignature();
+                if (!signData) return;
+                
+                const params = new URLSearchParams();
+                params.append('ak', signData.ak);
+                params.append('sign', signData.sign);
+                params.append('userId', signData.userId);
+                params.append('timeStamp', signData.timeStamp);
+                params.append('lang', 'cn');
+                params.append('_t', Date.now());
+                
+                // 直接使用官方域名
+                const editorUrl = `https://manekenai-editor.aidc-ai.com/?${params.toString()}`;
+                console.log('在新窗口打开编辑器:', editorUrl);
+                
+                window.open(editorUrl, '_blank');
+            } catch (error) {
+                console.error('在新窗口打开编辑器失败:', error);
+                alert(`打开编辑器失败: ${error.message}`);
+            }
+        }
+        
+        // 加载编辑器 - 直接加载，按照官方示例
+        async function loadEditor() {
+            try {
+                // 再次检查登录状态
+                if (!await checkLoginStatus()) {
+                    return;
+                }
+                
+                // 获取签名和参数
+                const signData = await getSignature();
+                if (!signData) return;
+                
+                // 构建编辑器URL
+                const params = new URLSearchParams();
+                params.append('ak', signData.ak);
+                params.append('sign', signData.sign);
+                params.append('userId', signData.userId);
+                params.append('timeStamp', signData.timeStamp);
+                params.append('lang', 'cn');
+                
+                // 使用demo参数，尝试解决登录问题
+                params.append('demo', 'true');
+                
+                // 添加时间戳防止缓存
+                params.append('_t', Date.now());
+                
+                // 记录参数供调试使用
+                console.log('编辑器参数:', {
+                    ak: signData.ak,
+                    sign: signData.sign,
+                    userId: signData.userId,
+                    timeStamp: signData.timeStamp
+                });
+                
+                // 构建直接URL - 不使用代理
+                const editorUrl = `https://manekenai-editor.aidc-ai.com/?${params.toString()}`;
+                console.log('编辑器URL:', editorUrl);
+                
+                // 设置超时，防止永久加载
+                let loadTimeout = setTimeout(() => {
+                    if (!editorLoaded) {
+                        console.warn('加载超时，显示超时信息');
+                        // 不显示错误消息，仅显示打开按钮
+                        directButton.style.display = 'block';
+                    }
+                }, 30000);
+                
+                // 添加iframe加载事件
+                editorFrame.onload = function() {
+                    console.log('[INFO] iframe onload 事件触发');
+                    
+                    // 发送登录状态消息到iframe，等待2秒确保iframe完全加载
+                    setTimeout(() => {
+                        sendLoginToEditor({userId: signData.userId});
+                    }, 2000);
+                };
+                
+                // 设置iframe src直接加载
+                editorFrame.src = editorUrl;
+                
+                // 添加错误处理
+                editorFrame.onerror = function(error) {
+                    console.error('iframe加载错误:', error);
+                    directButton.style.display = 'block';
+                    clearTimeout(loadTimeout);
+                };
+                
+            } catch (error) {
+                console.error('加载编辑器失败:', error);
+                directButton.style.display = 'block';
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 默认隐藏加载界面
+            loadingContainer.style.display = 'none';
+            
+            // 登录按钮点击事件
+            loginButton.addEventListener('click', () => {
+                // 记录当前页面URL，登录后可以返回
+                const currentUrl = window.location.href;
+                localStorage.setItem('redirectAfterLogin', currentUrl);
+                // 跳转到登录页面
+                window.location.href = '/login.html';
+            });
+            
+            // 重试按钮事件
+            retryButton.addEventListener('click', () => {
+                loadingMessage.textContent = '正在重新加载编辑器...';
+                loadingMessage.style.color = '#333';
+                debugInfo.style.display = 'none';
+                retryButton.style.display = 'none';
+                directButton.style.display = 'none';
+                editorLoaded = false;
+                loadEditor();
+            });
+            
+            // 直接打开按钮事件
+            directButton.addEventListener('click', openInNewWindow);
+            
+            // 设置消息监听器
+            window.addEventListener('message', handleMessageEvent);
+            
+            // 设置iframe加载检查
+            setupIframeLoadCheck();
+            
+            // 检查登录状态，如果已登录则加载编辑器
+            const isLoggedIn = await checkLoginStatus();
+            if (isLoggedIn) {
+                loadEditor();
+            }
+        });
+    </script>
+</body>
+</html> 

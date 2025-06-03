@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多图转视频 - 萤火.AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #6366f1;
+            background-color: #eef2ff;
+        }
+        .upload-area.highlight {
+            border-color: #6366f1;
+            background-color: #eef2ff;
+        }
+        
+        /* 缩略图样式 */
+        .thumbnail-item {
+            position: relative;
+            width: 120px;
+            cursor: move;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .thumbnail-item.dragging {
+            opacity: 0.5;
+        }
+        .thumbnail-item.over {
+            border-color: #6366f1;
+            background-color: #eef2ff;
+        }
+        .thumbnail {
+            width: 100%;
+            height: 90px;
+            position: relative;
+        }
+        .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .order-badge {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            border: none;
+        }
+        
+        .main-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .left-panel {
+            width: 25%;
+            min-width: 300px;
+            height: 100%;
+            overflow-y: auto;
+            border-right: 1px solid #e5e7eb;
+            padding-bottom: 60px; /* 为底部按钮留出空间 */
+        }
+        
+        .right-panel {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 左侧面板：可独立滚动 -->
+        <div class="left-panel">
+            <div class="p-3">
+                <h2 class="text-lg font-bold mb-2">上传多张图片</h2>
+                
+                <div id="upload-area" class="upload-area h-36 flex flex-col items-center justify-center mb-2 bg-gray-50 border border-dashed border-gray-300 rounded-md hover:border-indigo-500 hover:bg-gray-100 transition-colors">
+                    <i class="ri-upload-cloud-line text-2xl text-gray-400 mb-1"></i>
+                    <p class="text-gray-500 text-center text-sm px-2">点击或者拖动多张图片到这区域来上传</p>
+                    <input type="file" id="image-upload" class="hidden" accept="image/*" multiple>
+                </div>
+                <p class="text-xs text-gray-500 mb-4">单张图片不超过10M，最少2张，最多20张</p>
+                
+                <!-- 已上传图片的缩略图容器 -->
+                <div id="thumbnail-container" class="flex flex-wrap gap-2 border border-gray-200 rounded-md p-2 mb-4 min-h-[100px] hidden">
+                    <!-- 缩略图将通过JavaScript动态添加到这里 -->
+                </div>
+                
+                <div class="mb-2 lg:flex-grow flex flex-col">
+                    <div class="flex justify-between items-center mb-1">
+                        <h2 class="text-base font-medium">视频设置</h2>
+                    </div>
+                    
+                    <!-- 场景类型设置 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">生成视频场景类型</label>
+                        <select id="scene-type" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="costume">服饰场景 (默认)</option>
+                            <option value="general">通用场景</option>
+                            <option value="keeporder">强制按输入素材顺序合成视频场景</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 视频分辨率设置 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">输出视频分辨率</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-xs text-gray-500">宽度</label>
+                                <input type="number" id="video-width" value="1280" min="32" max="2160" step="16" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">高度</label>
+                                <input type="number" id="video-height" value="720" min="32" max="2160" step="16" class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">取值范围在32-2160之间。如未设置，按照750×750输出。</p>
+                    </div>
+                    
+                    <!-- 视频节奏设置 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">视频节奏</label>
+                        <select id="video-style" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="normal" selected>普通</option>
+                            <option value="fast">快速</option>
+                            <option value="slow">慢速</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 视频转场效果选择 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">镜头转场风格</label>
+                        <select id="transition-style" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="normal" selected>自然</option>
+                            <option value="basic">无</option>
+                            <option value="slow">舒缓</option>
+                            <option value="fast">动感</option>
+                            <option value="ink">水墨</option>
+                            <option value="glitch">机械故障</option>
+                            <option value="shift">切换</option>
+                            <option value="mosaic">马赛克</option>
+                            <option value="shutter">百叶窗</option>
+                            <option value="zoom">缩放</option>
+                            <option value="mask">遮罩</option>
+                            <option value="brush">笔刷</option>
+                            <option value="wind">风吹</option>
+                            <option value="smog">烟雾</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 持续时间设置 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">视频时长 (秒)</label>
+                        <input type="number" id="duration-input" value="10" min="5" max="60" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <p class="text-xs text-gray-500 mt-1">视频输出最短为5秒，最长为60秒。</p>
+                    </div>
+                    
+                    <!-- 时长自适应设置 -->
+                    <div class="mb-4">
+                        <div class="flex items-center">
+                            <input id="duration-adaption" type="checkbox" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="duration-adaption" class="ml-2 block text-sm text-gray-700">时长自适应</label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">开启后会根据音乐和素材自动调整时长</p>
+                    </div>
+                    
+                    <!-- 智能特效设置 -->
+                    <div class="mb-4">
+                        <div class="flex items-center">
+                            <input id="smart-effect" type="checkbox" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="smart-effect" class="ml-2 block text-sm text-gray-700">智能特效</label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">开启后支持智能增强画面转场效果</p>
+                    </div>
+                    
+                    <!-- 拼图特效设置 -->
+                    <div class="mb-4">
+                        <div class="flex items-center">
+                            <input id="puzzle-effect" type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="puzzle-effect" class="ml-2 block text-sm text-gray-700">动态拼图效果</label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">支持在单镜头中通过拼图展示多个视频图像元素</p>
+                    </div>
+                    
+                    <!-- 背景音乐选择 -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">背景音乐</label>
+                        <select id="background-music" class="w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="none">无背景音乐</option>
+                            <option value="custom">自定义上传</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 自定义音乐上传（初始隐藏） -->
+                    <div id="custom-music-upload" class="mb-4 hidden">
+                        <div class="upload-area h-20 flex flex-col items-center justify-center bg-gray-50 border border-dashed border-gray-300 rounded-md hover:border-indigo-500 hover:bg-gray-100 transition-colors">
+                            <i class="ri-music-line text-xl text-gray-400 mb-1"></i>
+                            <p class="text-gray-500 text-center text-xs px-2">点击上传音乐文件</p>
+                            <input type="file" id="music-file" class="hidden" accept="audio/*">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">支持MP3、WAV格式，不超过10MB</p>
+                    </div>
+                    
+                    <!-- 静音设置 -->
+                    <div class="mb-4">
+                        <div class="flex items-center">
+                            <input id="mute-video" type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="mute-video" class="ml-2 block text-sm text-gray-700">生成视频时静音</label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">如果没有音乐素材视频则默认无声</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧面板 -->
+        <div class="right-panel">
+            <div class="p-6">
+                <h2 class="text-2xl font-bold mb-6 text-center">效果展示</h2>
+                
+                <!-- 使用更简单直接的下载按钮 -->
+                <button id="download-btn" class="hidden fixed top-[120px] right-4 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md text-sm flex items-center shadow-md transition-colors z-10">
+                    <i class="ri-download-line mr-1"></i> 下载视频
+                </button>
+                
+                <p class="text-gray-700 mb-6 text-center">将多张图片合成为流畅的视频，添加转场效果与背景音乐</p>
+                
+                <div class="grid grid-cols-1 gap-6">
+                    <div>
+                        <h3 class="text-lg font-medium mb-3">预览与输出：</h3>
+                        <div id="output-video-container" class="h-64 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                            <div id="video-wrapper" class="video-wrapper hidden w-full h-full relative">
+                                <video id="output-video" class="w-full h-full object-contain" controls></video>
+                            </div>
+                            <p id="output-video-placeholder" class="text-gray-500 text-center px-4">视频生成后将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 填充剩余空间的内容 -->
+                <div class="mt-8 bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-medium mb-3">使用说明</h3>
+                    <div class="text-gray-600 text-sm">
+                        <p class="mb-2">1. 上传至少2张清晰的图片（支持JPG、PNG等常见格式）</p>
+                        <p class="mb-2">2. 拖拽调整图片顺序以确定在视频中的播放顺序</p>
+                        <p class="mb-2">3. 选择合适的转场效果和图片停留时间</p>
+                        <p class="mb-2">4. 可选择添加背景音乐，增强视频效果</p>
+                        <p class="mb-2">5. 点击"立即生成"按钮，等待视频生成（约1-3分钟）</p>
+                        <p class="mb-4">6. 生成完成后，您可以直接观看或下载视频</p>
+                        
+                        <p class="font-medium">注意事项：</p>
+                        <p class="mb-1">- 每次生成视频将消耗您账户中的积分</p>
+                        <p class="mb-1">- 建议上传相似风格、大小的图片，以获得更好的视频效果</p>
+                        <p class="mb-1">- 推荐图片数量为5-10张，以便生成适当长度的视频</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加固定在底部的按钮 -->
+    <div class="fixed bottom-0 left-0 w-1/4 min-w-[300px] p-3 bg-white border-t border-gray-200">
+        <button id="generate-btn" class="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 flex items-center justify-center text-sm">
+            <i class="ri-movie-2-line mr-1"></i>
+            立即生成
+        </button>
+    </div>
+    
+    <!-- 加载中遮罩 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl flex flex-col items-center">
+            <div class="spinner rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
+            <p id="loading-message" class="text-lg font-medium">视频生成中，请耐心等待...</p>
+            <p class="text-sm text-gray-500 mt-2">视频合成需要1-3分钟</p>
+        </div>
+    </div>
+
+    <!-- 引用外部Javascript文件 -->
+    <script src="/js/multi-image-to-video.js"></script>
+</body>
+</html> 

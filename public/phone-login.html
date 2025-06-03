@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机验证码登录 - 萤火AI</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --input-bg: #f9fafb;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .auth-container {
+            max-width: 420px;
+            width: 90%;
+            padding: 30px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+        
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .auth-title {
+            text-align: center;
+            margin-bottom: 5px;
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 24px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 24px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px 0;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-light);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            color: var(--primary-color);
+        }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--primary-color);
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes slideIn {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        
+        .form-row {
+            display: flex;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .form-label {
+            width: 55px;
+            padding-top: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .form-input-container {
+            flex: 1;
+            display: flex;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: var(--input-bg);
+        }
+        
+        .code-container {
+            display: flex;
+            width: 100%;
+            gap: 10px;
+        }
+        
+        .code-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: var(--input-bg);
+        }
+        
+        .code-btn {
+            width: 90px;
+            padding: 0 5px;
+            font-size: 14px;
+            color: white;
+            font-weight: 600;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .code-btn:disabled {
+            background-color: #c7d2fe;
+            cursor: not-allowed;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-btn i {
+            margin-right: 8px;
+        }
+        
+        .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+        
+        .auth-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            margin-bottom: 16px;
+            text-align: center;
+            font-weight: 500;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: rgba(239, 68, 68, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .error-message i {
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo-container">
+            <div class="logo">
+                <i class="fas fa-fire"></i>
+            </div>
+            <h2 class="auth-title">萤火AI</h2>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab" onclick="window.location.href='/login.html'">密码登录</div>
+            <div class="tab active">验证码登录</div>
+        </div>
+        
+        <div id="error-message" class="error-message" style="display: none;">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="error-text"></span>
+        </div>
+        
+        <form id="phone-login-form">
+            <div class="form-row">
+                <div class="form-label">手机号</div>
+                <div class="form-input-container">
+                    <div class="code-container">
+                        <input type="text" id="phone" name="phone" class="code-input" 
+                               placeholder="请输入手机号" required pattern="^1[3-9]\d{9}$">
+                        <button type="button" id="send-code-btn" class="code-btn">获取验证码</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-label">验证码</div>
+                <div class="form-input-container">
+                    <input type="text" id="code" name="code" class="form-input" 
+                           placeholder="请输入验证码" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="login-btn">
+                <i class="fas fa-sign-in-alt"></i> 登录
+            </button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>没有账号？ <a href="/register.html">立即注册</a></p>
+            <p><a href="/forgot-password.html">忘记密码？</a></p>
+        </div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const phoneForm = document.getElementById('phone-login-form');
+        const phoneInput = document.getElementById('phone');
+        const codeInput = document.getElementById('code');
+        const sendCodeBtn = document.getElementById('send-code-btn');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        
+        // 验证手机号格式
+        function isValidPhone(phone) {
+            return /^1[3-9]\d{9}$/.test(phone);
+        }
+        
+        // 显示消息
+        function showMessage(message, isError = true) {
+            errorText.textContent = message;
+            errorMessage.style.display = 'flex';
+            
+            if (isError) {
+                // 显示为错误消息（红色）
+                errorMessage.style.color = 'var(--error-color)';
+                errorMessage.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+            // 添加抖动动画
+            errorMessage.style.animation = 'none';
+            setTimeout(() => {
+                errorMessage.style.animation = 'shake 0.5s';
+            }, 10);
+            } else {
+                // 显示为成功消息（绿色）
+                errorMessage.style.color = 'var(--success-color)';
+                errorMessage.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
+                // 移除抖动动画
+                errorMessage.style.animation = 'none';
+            }
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 显示错误消息的快捷方法
+        function showError(message) {
+            showMessage(message, true);
+        }
+        
+        // 处理发送验证码
+        let countdown = 0;
+        let countdownTimer = null;
+        
+        sendCodeBtn.addEventListener('click', async function() {
+            // 防止重复点击
+            if (countdown > 0) return;
+            
+            const phone = phoneInput.value.trim();
+            
+            // 验证手机号
+            if (!isValidPhone(phone)) {
+                showError('请输入有效的手机号');
+                return;
+            }
+            
+            try {
+                // 发送获取验证码请求
+                const response = await fetch('/api/auth/phone/login-send-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ phone })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 开始倒计时
+                    countdown = 60;
+                    sendCodeBtn.disabled = true;
+                    
+                    countdownTimer = setInterval(() => {
+                        countdown--;
+                        sendCodeBtn.textContent = `${countdown}秒后重试`;
+                        
+                        if (countdown <= 0) {
+                            clearInterval(countdownTimer);
+                            sendCodeBtn.disabled = false;
+                            sendCodeBtn.textContent = '获取验证码';
+                        }
+                    }, 1000);
+                    
+                    // 显示成功消息（绿色）
+                    showMessage('验证码已发送到您的手机', false);
+                } else {
+                    // 显示错误消息
+                    showError(data.message || '发送验证码失败，请重试');
+                }
+            } catch (error) {
+                console.error('发送验证码出错:', error);
+                showError('发送验证码时发生错误，请稍后重试');
+            }
+        });
+        
+        // 提交登录表单
+        phoneForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 获取表单数据
+            const phone = phoneInput.value.trim();
+            const code = codeInput.value.trim();
+            
+            // 验证表单
+            if (!isValidPhone(phone)) {
+                showError('请输入有效的手机号');
+                return;
+            }
+            
+            if (!code) {
+                showError('请输入验证码');
+                return;
+            }
+            
+            // 显示加载动画
+            const button = document.querySelector('.login-btn');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登录中...';
+            button.disabled = true;
+            
+            try {
+                // 发送登录请求
+                const response = await fetch('/api/auth/phone/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ phone, code })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 登录成功，保存令牌到localStorage
+                    localStorage.setItem('authToken', data.data.token);
+                    localStorage.setItem('user', JSON.stringify({
+                        id: data.data.id,
+                        username: data.data.username,
+                        phone: data.data.phone
+                    }));
+                    
+                    // 始终跳转到首页，忽略redirectAfterLogin
+                    setTimeout(() => {
+                        // 清除可能存在的重定向URL
+                            localStorage.removeItem('redirectAfterLogin');
+                            // 登录成功后跳转到首页
+                            window.location.href = '/';
+                    }, 800);
+                } else {
+                    // 显示错误消息
+                    showError(data.message || '登录失败，请重试');
+                    // 恢复按钮状态
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-sign-in-alt"></i> 登录';
+                }
+            } catch (error) {
+                console.error('登录出错:', error);
+                showError('登录时发生错误，请稍后重试');
+                // 恢复按钮状态
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-sign-in-alt"></i> 登录';
+            }
+        });
+        
+        // 页面加载时清除倒计时
+        window.addEventListener('load', function() {
+            clearInterval(countdownTimer);
+            countdown = 0;
+            sendCodeBtn.disabled = false;
+            sendCodeBtn.textContent = '获取验证码';
+        });
+    </script>
+</body>
+</html> 

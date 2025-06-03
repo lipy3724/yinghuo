@@ -1,0 +1,10 @@
+# OSS配置 (从环境变量获取)
+bucket: ${OSS_BUCKET}
+区域: ${OSS_REGION}
+accessKeyId: ${ALIYUN_ACCESS_KEY_ID}
+accessKeySecret: ${ALIYUN_ACCESS_KEY_SECRET}
+
+# API配置 (从环境变量获取)
+api:
+app_key: ${API_APP_KEY}
+secret_key: ${API_SECRET_KEY}

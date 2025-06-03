@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>积分使用情况 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .sidebar-item.active {
+            background-color: #f3f0ff;
+            color: #6366f1;
+        }
+        .sidebar-item:hover:not(.active) {
+            background-color: #f9fafb;
+        }
+        .sidebar-item.active i {
+            color: #6366f1;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center">
+            <a href="/" class="flex items-center">
+                <span class="font-bold text-2xl text-indigo-600 mr-1 logo-text">萤火<span class="logo-dot"></span>AI</span>
+                <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
+            </a>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div class="relative">
+                <button class="text-gray-600 hover:text-gray-900 flex items-center" id="credits-menu-btn">
+                    <i class="ri-coin-line mr-1"></i>
+                    <span>积分中心</span>
+                    <i class="ri-arrow-down-s-line ml-1"></i>
+                </button>
+                <div id="credits-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a href="/credits.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分管理</a>
+                    <a href="/credits-usage.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分使用情况</a>
+                </div>
+            </div>
+            <a href="#" class="text-gray-600 hover:text-gray-900 flex items-center">
+                <i class="ri-download-2-line mr-1"></i>
+                <span>下载中心</span>
+            </a>
+            <a href="#" class="text-gray-600 hover:text-gray-900 flex items-center">
+                <i class="ri-team-line mr-1"></i>
+                <span>商家AI交流群</span>
+            </a>
+            <div class="relative">
+                <button class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <span>简体中文</span>
+                    <i class="ri-arrow-down-s-line ml-1"></i>
+                </button>
+            </div>
+            <!-- 用户未登录时显示登录注册按钮 -->
+            <a href="/login.html" id="login-btn" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                登录注册
+            </a>
+            <!-- 用户已登录时显示用户信息 -->
+            <div id="user-info" class="hidden relative">
+                <button id="user-menu-btn" class="flex items-center text-gray-700 hover:text-gray-900">
+                    <i class="ri-user-3-line mr-1 text-lg"></i>
+                    <span id="username-display">用户名</span>
+                    <i class="ri-arrow-down-s-line ml-1"></i>
+                </button>
+                <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a href="/account.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">我的账户</a>
+                    <a href="/credits.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分管理</a>
+                    <a href="#" id="logout-btn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-2xl font-bold mb-6">积分使用情况</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-medium text-lg">积分概览</h3>
+                <div class="text-sm text-gray-500">
+                    <select id="time-filter" class="border rounded px-2 py-1">
+                        <option value="7">最近7天</option>
+                        <option value="30" selected>最近30天</option>
+                        <option value="90">最近90天</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-indigo-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">累计消费积分</p>
+                    <p class="text-2xl font-bold text-indigo-600" id="total-credits-used">0</p>
+                </div>
+                <div class="bg-green-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">使用次数</p>
+                    <p class="text-2xl font-bold text-green-600" id="total-usage-count">0</p>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">使用功能数量</p>
+                    <p class="text-2xl font-bold text-blue-600" id="feature-count">0</p>
+                </div>
+            </div>
+            
+            <div>
+                <canvas id="usage-chart" height="200"></canvas>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 class="font-medium text-lg mb-4">功能使用次数占比</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-1">
+                    <canvas id="feature-pie-chart" height="220"></canvas>
+                </div>
+                <div class="md:col-span-2 overflow-y-auto max-h-64">
+                    <ul class="space-y-3" id="feature-list">
+                        <!-- 功能列表将通过JS动态生成 -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="font-medium text-lg mb-4">积分使用明细</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">功能</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">消费积分</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="usage-list">
+                        <!-- 使用记录将通过JS动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 flex justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">显示 <span id="current-page-start">1</span>-<span id="current-page-end">10</span> 条，共 <span id="total-records">0</span> 条</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prev-page" class="px-3 py-1 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">&lt; 上一页</button>
+                    <div class="px-3 py-1 bg-white border border-gray-200 rounded text-gray-700">
+                        <span id="current-page">1</span>/<span id="total-pages">1</span>
+                    </div>
+                    <button id="next-page" class="px-3 py-1 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">下一页 &gt;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 积分中心菜单切换
+        const creditsMenuBtn = document.getElementById('credits-menu-btn');
+        const creditsDropdown = document.getElementById('credits-dropdown');
+        
+        if (creditsMenuBtn) {
+            creditsMenuBtn.addEventListener('click', () => {
+                creditsDropdown.classList.toggle('hidden');
+            });
+        
+            // 点击菜单外区域关闭下拉菜单
+            document.addEventListener('click', (event) => {
+                if (!creditsMenuBtn.contains(event.target) && !creditsDropdown.contains(event.target)) {
+                    creditsDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // 用户菜单切换
+        const userMenuBtn = document.getElementById('user-menu-btn');
+        const userDropdown = document.getElementById('user-dropdown');
+        
+        if (userMenuBtn) {
+            userMenuBtn.addEventListener('click', () => {
+                userDropdown.classList.toggle('hidden');
+            });
+        
+            // 点击菜单外区域关闭下拉菜单
+            document.addEventListener('click', (event) => {
+                if (!userMenuBtn.contains(event.target) && !userDropdown.contains(event.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // 检查用户登录状态
+        function checkAuthStatus() {
+            const authToken = localStorage.getItem('authToken');
+            const userInfo = localStorage.getItem('user');
+            const loginBtn = document.getElementById('login-btn');
+            const userInfoElement = document.getElementById('user-info');
+            
+            if (authToken && userInfo) {
+                // 用户已登录
+                try {
+                    const user = JSON.parse(userInfo);
+                    document.getElementById('username-display').textContent = user.username;
+                    
+                    // 显示用户信息，隐藏登录按钮
+                    if (loginBtn) loginBtn.classList.add('hidden');
+                    if (userInfoElement) userInfoElement.classList.remove('hidden');
+                    
+                    // 加载积分使用数据
+                    loadUsageData();
+                } catch (e) {
+                    console.error('解析用户信息出错:', e);
+                    // 清除无效的存储
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('user');
+                    // 重定向到登录页面
+                    window.location.href = '/login.html';
+                }
+            } else {
+                // 用户未登录，重定向到登录页面
+                window.location.href = '/login.html';
+            }
+        }
+        
+        // 处理退出登录
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // 清除认证信息
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('user');
+                // 重定向到登录页面
+                window.location.href = '/login.html';
+            });
+        }
+        
+        // 从服务器获取用户积分使用数据的函数
+        async function fetchUserCreditsUsage(days = 30) {
+            try {
+                // 获取认证令牌
+                const authToken = localStorage.getItem('authToken');
+                if (!authToken) {
+                    throw new Error('用户未登录');
+                }
+                
+                // 调用API获取积分使用数据
+                const response = await fetch(`/api/credits/usage?days=${days}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取数据失败');
+                }
+                
+                const result = await response.json();
+                if (result.success && result.data) {
+                    return result.data;
+                } else {
+                    throw new Error(result.message || '获取数据失败');
+                }
+            } catch (error) {
+                console.error('获取积分使用数据失败:', error);
+                // 出错时返回空数据
+                return {
+                    summary: {
+                        totalCreditsUsed: 0,
+                        totalUsageCount: 0,
+                        featureCount: 0
+                    },
+                    chartData: {
+                        labels: Array(10).fill('').map((_, i) => `${i + 1}`),
+                        data: Array(10).fill(0)
+                    },
+                    featureUsage: [],
+                    usageRecords: [],
+                    totalRecords: 0
+                };
+            }
+        }
+        
+        // 当前分页状态
+        let currentPage = 1;
+        const pageSize = 10;
+        
+        // 设置全局数据变量
+        let usageData = {
+            summary: {
+                totalCreditsUsed: 0,
+                totalUsageCount: 0,
+                featureCount: 0
+            },
+            chartData: {
+                labels: [],
+                data: []
+            },
+            featureUsage: [],
+            usageRecords: [],
+            totalRecords: 0
+        };
+        
+        // 加载积分使用数据
+        async function loadUsageData() {
+            // 从服务器获取数据
+            const data = await fetchUserCreditsUsage(
+                document.getElementById('time-filter').value
+            );
+            
+            // 更新本地数据
+            usageData = data;
+            
+            // 更新概览数据
+            document.getElementById('total-credits-used').textContent = usageData.summary?.totalCreditsUsed || 0;
+            document.getElementById('total-usage-count').textContent = usageData.summary?.totalUsageCount || 0;
+            document.getElementById('feature-count').textContent = usageData.summary?.featureCount || 0;
+            
+            // 渲染使用趋势图表
+            renderUsageChart();
+            
+            // 渲染功能使用占比
+            renderFeaturePieChart();
+            
+            // 渲染功能列表
+            renderFeatureList();
+            
+            // 渲染使用明细
+            renderUsageList();
+            
+            // 设置总记录数
+            usageData.totalRecords = usageData.usageRecords?.length || 0;
+            
+            // 更新分页信息
+            updatePagination();
+            
+            // 绑定分页按钮事件
+            document.getElementById('prev-page').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderUsageList();
+                    updatePagination();
+                }
+            });
+            
+            document.getElementById('next-page').addEventListener('click', () => {
+                const totalPages = Math.ceil(usageData.totalRecords / pageSize);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderUsageList();
+                    updatePagination();
+                }
+            });
+        }
+        
+        // 绑定时间筛选事件
+        document.getElementById('time-filter').addEventListener('change', (e) => {
+            // 重置分页
+            currentPage = 1;
+            // 重新加载数据
+            loadUsageData();
+        });
+        
+        // 渲染使用趋势图表
+        function renderUsageChart() {
+            const ctx = document.getElementById('usage-chart').getContext('2d');
+            
+            // 检查是否有数据
+            const hasData = usageData.chartData?.data?.some(value => value > 0);
+            
+            if (!hasData) {
+                // 显示无数据状态
+                ctx.canvas.style.height = '200px';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#6B7280';
+                ctx.fillText('暂无积分使用记录', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            // 有数据时正常绘制图表
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: usageData.chartData.labels,
+                    datasets: [{
+                        label: '积分使用量',
+                        data: usageData.chartData.data,
+                        borderColor: 'rgb(99, 102, 241)',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 渲染功能使用占比饼图
+        function renderFeaturePieChart() {
+            const ctx = document.getElementById('feature-pie-chart').getContext('2d');
+            
+            // 检查是否有数据
+            if (!usageData.featureUsage || usageData.featureUsage.length === 0) {
+                // 显示无数据状态
+                ctx.canvas.style.height = '220px';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#6B7280';
+                ctx.fillText('暂无功能使用记录', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            // 确保每个功能项都有使用次数数据，如果没有就从其他属性计算或使用默认值
+            const processedData = usageData.featureUsage.map(item => {
+                // 如果没有usageCount字段，尝试根据其他数据推断
+                if (item.usageCount === undefined) {
+                    // 1. 尝试从credits推断 - 假设每次使用消耗固定积分
+                    if (item.credits !== undefined && item.creditsPerUse !== undefined && item.creditsPerUse > 0) {
+                        item.usageCount = Math.round(item.credits / item.creditsPerUse);
+                    } 
+                    // 2. 如果没有creditsPerUse信息，使用通用估算或默认值1
+                    else if (item.credits !== undefined) {
+                        item.usageCount = Math.max(1, Math.round(item.credits / 10)); // 假设平均每次使用10积分
+                    } else {
+                        item.usageCount = 1; // 默认值
+                    }
+                }
+                return item;
+            });
+            
+            // 过滤掉使用次数为0的项目，防止图表显示空白
+            const validData = processedData.filter(item => item.usageCount > 0);
+            
+            // 如果过滤后没有有效数据，显示无数据状态
+            if (validData.length === 0) {
+                ctx.canvas.style.height = '220px';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#6B7280';
+                ctx.fillText('暂无功能使用记录', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
+            // 有数据时正常绘制图表 - 使用使用次数而非积分
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: validData.map(item => item.name),
+                    datasets: [{
+                        data: validData.map(item => item.usageCount),
+                        backgroundColor: validData.map(item => item.color || getRandomColor(item.name)),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} 次 (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+            
+            // 更新全局数据，确保后续功能列表渲染正确
+            usageData.featureUsage = processedData;
+        }
+        
+        // 生成随机颜色函数（确保图表颜色不缺失）
+        function getRandomColor(seed) {
+            // 使用固定的颜色列表
+            const colors = [
+                '#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444',
+                '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16', '#F97316'
+            ];
+            
+            // 使用字符串的哈希值来选择颜色，确保同名功能颜色一致
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) {
+                hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            
+            return colors[Math.abs(hash) % colors.length];
+        }
+        
+        // 渲染功能列表
+        function renderFeatureList() {
+            const featureListEl = document.getElementById('feature-list');
+            featureListEl.innerHTML = '';
+            
+            // 检查是否有数据
+            if (!usageData.featureUsage || usageData.featureUsage.length === 0) {
+                const emptyItem = document.createElement('li');
+                emptyItem.className = 'text-center text-gray-500 py-4';
+                emptyItem.textContent = '暂无功能使用记录';
+                featureListEl.appendChild(emptyItem);
+                return;
+            }
+            
+            // 过滤掉使用次数为0的项目
+            const validData = usageData.featureUsage.filter(item => item.usageCount > 0);
+            
+            // 如果过滤后没有有效数据，显示无数据消息
+            if (validData.length === 0) {
+                const emptyItem = document.createElement('li');
+                emptyItem.className = 'text-center text-gray-500 py-4';
+                emptyItem.textContent = '暂无功能使用记录';
+                featureListEl.appendChild(emptyItem);
+                return;
+            }
+            
+            // 计算使用次数的百分比
+            const totalUsageCount = validData.reduce((sum, feature) => sum + feature.usageCount, 0);
+            
+            // 按使用次数排序，从多到少
+            validData
+                .sort((a, b) => b.usageCount - a.usageCount)
+                .forEach(feature => {
+                    // 计算使用次数百分比
+                    const usagePercentage = totalUsageCount > 0 ? 
+                        ((feature.usageCount / totalUsageCount) * 100).toFixed(2) : '0.00';
+                    
+                    const listItem = document.createElement('li');
+                    listItem.className = 'flex items-center justify-between';
+                    listItem.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full mr-2" style="background-color: ${feature.color || getRandomColor(feature.name)}"></div>
+                            <span class="text-sm">${feature.name}</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-medium">${feature.usageCount} 次</div>
+                            <div class="text-xs text-gray-500">${usagePercentage}%</div>
+                        </div>
+                    `;
+                    featureListEl.appendChild(listItem);
+                });
+        }
+        
+        // 渲染使用明细
+        function renderUsageList() {
+            const usageListEl = document.getElementById('usage-list');
+            usageListEl.innerHTML = '';
+            
+            // 检查是否有记录
+            if (!usageData.usageRecords || usageData.usageRecords.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                        <div class="flex flex-col items-center justify-center">
+                            <i class="ri-file-list-3-line text-4xl mb-2 text-gray-300"></i>
+                            <p>您尚未使用任何功能</p>
+                            <p class="text-sm mt-1">使用功能后，消费的积分将在此处显示</p>
+                        </div>
+                    </td>
+                `;
+                usageListEl.appendChild(emptyRow);
+                
+                // 隐藏分页
+                document.querySelector('.mt-4.flex.justify-between').classList.add('hidden');
+                return;
+            } else {
+                // 显示分页
+                document.querySelector('.mt-4.flex.justify-between').classList.remove('hidden');
+            }
+            
+            // 计算当前页的记录
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, usageData.usageRecords.length);
+            const currentRecords = usageData.usageRecords.slice(startIndex, endIndex);
+            
+            currentRecords.forEach((record, index) => {
+                const row = document.createElement('tr');
+                row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${record.feature}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.description}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">${record.credits}</td>
+                `;
+                usageListEl.appendChild(row);
+            });
+        }
+        
+        // 更新分页信息
+        function updatePagination() {
+            const totalRecords = usageData.totalRecords;
+            
+            // 如果没有记录，直接返回
+            if (totalRecords === 0) return;
+            
+            const totalPages = Math.ceil(totalRecords / pageSize);
+            const startIndex = (currentPage - 1) * pageSize + 1;
+            const endIndex = Math.min(currentPage * pageSize, totalRecords);
+            
+            document.getElementById('current-page-start').textContent = startIndex;
+            document.getElementById('current-page-end').textContent = endIndex;
+            document.getElementById('total-records').textContent = totalRecords;
+            
+            // 更新当前页码和总页数
+            document.getElementById('current-page').textContent = currentPage;
+            document.getElementById('total-pages').textContent = totalPages;
+            
+            // 禁用/启用分页按钮
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+        }
+        
+        // 页面加载时检查登录状态
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html> 

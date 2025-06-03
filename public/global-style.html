@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全局风格化 - 萤火AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #6366f1;
+            background-color: #f9fafb;
+        }
+        .result-section {
+            border-left: 1px solid #e5e7eb;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        .prompt-input {
+            resize: none;
+            min-height: 120px;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            width: 100%;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .prompt-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 1px #4f46e5;
+        }
+        .instructions {
+            font-size: 0.875rem;
+            color: #4b5563;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+        .preview-area {
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            min-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* 图片拖动禁用 */
+        img {
+            -webkit-user-drag: none;
+            user-select: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+        /* 图像容器 */
+        .canvas-container {
+            position: relative;
+            margin: 0 auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: #f9fafb;
+        }
+        
+        /* 滑动控件样式 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border: none;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.1);
+        }
+        
+        input[type="range"]::-moz-range-thumb:hover {
+            box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.1);
+        }
+        
+        /* 滑块下方标签样式 */
+        .strength-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        
+        @media (max-width: 640px) {
+            .strength-container {
+                padding: 0 0.5rem;
+            }
+            
+            input[type="range"]::-webkit-slider-thumb {
+                width: 22px;
+                height: 22px;
+            }
+            
+            input[type="range"]::-moz-range-thumb {
+                width: 22px;
+                height: 22px;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-white">
+    <!-- 导航栏 -->
+    <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center">
+            <a href="/" class="flex items-center">
+                <span class="font-bold text-2xl text-indigo-600 mr-1">萤火<span class="inline-block w-2 h-2 bg-indigo-600 rounded-full"></span>AI</span>
+                <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
+            </a>
+        </div>
+        <div class="flex items-center">
+            <a href="/" class="text-gray-600 hover:text-gray-900">
+                <i class="ri-home-line mr-1"></i>
+                <span>返回首页</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <div class="w-full h-[calc(100vh-60px)] flex">
+        <div class="flex flex-col lg:flex-row bg-white h-full w-full">
+            <!-- 左侧：上传图片和风格控制 -->
+            <div class="w-full lg:w-1/3 border-r border-gray-200 p-5 flex flex-col h-full overflow-auto">
+                <h2 class="text-xl font-bold mb-3">全局风格化</h2>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">使用提示:</p>
+                    <div class="instructions bg-gray-50 p-3 rounded-md">
+                        <p class="mb-2">此功能可以为整个图像应用艺术风格，创造出全新的视觉效果。</p>
+                        <p class="mb-2">上传图像后，描述所需的风格，系统将自动为整张图片应用该风格。</p>
+                        <p class="mb-2">您可以在输入框中描述自定义风格，例如："油画风格"、"卡通效果"或"赛博朋克风格"。</p>
+                        <p>图片尺寸要求：最小512×512像素，最大不超过4000×4000像素。</p>
+                    </div>
+                </div>
+
+                <div id="upload-area" class="upload-area h-36 flex flex-col items-center justify-center mb-4 bg-gray-50 border border-dashed border-gray-300 rounded-md hover:border-indigo-500 hover:bg-gray-100 transition-colors">
+                    <i class="ri-upload-cloud-line text-2xl text-gray-400 mb-1"></i>
+                    <p class="text-gray-500 text-center text-xs px-2">点击或者拖动文件到这区域来上传</p>
+                    <input type="file" id="image-upload" class="hidden" accept="image/*">
+                </div>
+                <p class="text-xs text-gray-500 mb-4">上传图像</p>
+                
+                <div class="flex-grow mb-4">
+                    <div class="mb-2">
+                        <label for="prompt-input" class="block text-sm font-medium text-gray-700 mb-1">风格描述:</label>
+                    </div>
+                    <textarea id="prompt-input" class="prompt-input" placeholder="请描述您想要的风格，例如：油画风格，水彩画风格，卡通风格，素描风格，赛博朋克，霓虹灯效果，浮世绘风格，金属质感，梵高星空风格，毕加索立体派风格等"></textarea>
+                </div>
+                
+                <!-- 修改强度滑动控件 -->
+                <div class="mb-4 strength-container">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="strength-slider" class="block text-sm font-medium text-gray-700">修改强度:</label>
+                        <span id="strength-value" class="text-sm font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">0.5</span>
+                    </div>
+                    <input type="range" id="strength-slider" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" 
+                           min="0" max="1" step="0.01" value="0.5">
+                    <div class="strength-labels">
+                        <span>轻微修改</span>
+                        <span>中度修改</span>
+                        <span>强烈修改</span>
+                    </div>
+                </div>
+                
+                <button id="generate-btn" class="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 flex items-center justify-center">
+                    <i class="ri-magic-line mr-2"></i>
+                    立即生成
+                </button>
+            </div>
+            
+            <!-- 右侧：效果展示 -->
+            <div class="w-full lg:w-2/3 p-6 flex flex-col h-full overflow-auto">
+                <h2 class="text-xl font-bold mb-4 text-center">效果展示</h2>
+                
+                <div class="flex flex-col md:flex-row gap-6 flex-grow">
+                    <div class="w-full md:w-1/2">
+                        <h3 class="text-base font-medium mb-3 text-center">原始图像:</h3>
+                        <div class="canvas-container relative mx-auto" style="width: 512px; height: 512px;">
+                            <img id="original-image" class="w-full h-full object-contain hidden" alt="上传的图片">
+                            <p id="image-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500">请先上传图片</p>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full md:w-1/2">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-base font-medium text-center">风格化结果:</h3>
+                            <button id="save-to-downloads-btn" class="hidden bg-indigo-600 text-white py-1 px-2 rounded-md hover:bg-indigo-700 text-sm flex items-center">
+                                <i class="ri-save-line mr-1"></i>
+                                保存到下载中心
+                            </button>
+                        </div>
+                        <div id="result-image-container" class="canvas-container relative mx-auto" style="width: 512px; height: 512px;">
+                            <img id="result-image" class="w-full h-full object-contain hidden" alt="生成的图片">
+                            <p id="result-image-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500">风格化结果将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-center space-x-4">
+                    <button id="download-btn" class="hidden bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center justify-center">
+                        <i class="ri-download-line mr-2"></i>
+                        下载结果
+                    </button>
+                    <button id="retry-btn" class="hidden bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center justify-center">
+                        <i class="ri-refresh-line mr-2"></i>
+                        重新调整
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载中遮罩 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl flex flex-col items-center">
+            <div class="spinner rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
+            <p id="loading-message" class="text-lg font-medium">图像处理中，请耐心等待...</p>
+            <p class="text-sm text-gray-500 mt-2">处理时间约为10-15秒</p>
+        </div>
+    </div>
+
+    <!-- 引用外部Javascript文件 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM元素
+            const uploadArea = document.getElementById('upload-area');
+            const imageUpload = document.getElementById('image-upload');
+            const originalImage = document.getElementById('original-image');
+            const imagePlaceholder = document.getElementById('image-placeholder');
+            const resultImage = document.getElementById('result-image');
+            const resultImagePlaceholder = document.getElementById('result-image-placeholder');
+            const generateBtn = document.getElementById('generate-btn');
+            const promptInput = document.getElementById('prompt-input');
+            const strengthSlider = document.getElementById('strength-slider');
+            const strengthValue = document.getElementById('strength-value');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingMessage = document.getElementById('loading-message');
+            const downloadBtn = document.getElementById('download-btn');
+            const retryBtn = document.getElementById('retry-btn');
+            const saveToDownloadsBtn = document.getElementById('save-to-downloads-btn');
+            
+            // 图片上传处理
+            uploadArea.addEventListener('click', () => {
+                imageUpload.click();
+            });
+            
+            imageUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleImageFile(file);
+                }
+            });
+            
+            // 拖放上传
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                
+                if (file && file.type.startsWith('image/')) {
+                    handleImageFile(file);
+                } else {
+                    alert('请上传图片文件！');
+                }
+            });
+            
+            // 修改强度滑动控件事件
+            strengthSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value).toFixed(2);
+                strengthValue.textContent = value;
+                
+                // 根据值动态调整滑动控件和显示值的样式
+                updateStrengthStyles(value);
+            });
+            
+            // 初始化修改强度样式
+            updateStrengthStyles(0.5);
+            
+            // 更新修改强度相关的样式
+            function updateStrengthStyles(value) {
+                // 将0-1的值转换为百分比
+                const percent = parseFloat(value) * 100;
+                
+                // 调整滑动条背景为渐变色，反映当前值
+                strengthSlider.style.background = `linear-gradient(to right, #4f46e5 0%, #4f46e5 ${percent}%, #e5e7eb ${percent}%, #e5e7eb 100%)`;
+                
+                // 根据不同的值范围应用不同的颜色
+                if (value <= 0.33) {
+                    // 轻微修改 - 蓝色
+                    strengthValue.style.backgroundColor = 'rgba(224, 231, 255, 0.8)';
+                    strengthValue.style.color = '#4338ca';
+                } else if (value <= 0.66) {
+                    // 中度修改 - 紫色
+                    strengthValue.style.backgroundColor = 'rgba(237, 233, 254, 0.8)';
+                    strengthValue.style.color = '#5b21b6';
+                } else {
+                    // 强烈修改 - 深紫色
+                    strengthValue.style.backgroundColor = 'rgba(243, 232, 255, 0.8)';
+                    strengthValue.style.color = '#7c3aed';
+                }
+            }
+            
+            // 生成按钮点击
+            generateBtn.addEventListener('click', async () => {
+                const prompt = promptInput.value.trim();
+                
+                if (!originalImage.src || originalImage.classList.contains('hidden')) {
+                    alert('请先上传图片！');
+                    return;
+                }
+                
+                if (!prompt) {
+                    alert('请输入风格描述！');
+                    return;
+                }
+                
+                try {
+                    // 显示加载中
+                    loadingOverlay.classList.remove('hidden');
+                    loadingMessage.textContent = '正在处理图像，请稍候...';
+                    
+                    // 1. 准备数据
+                    // 获取原始图像数据
+                    const originalImageDataUrl = await getImageDataUrl(originalImage);
+                    
+                    // 2. 上传图像
+                    loadingMessage.textContent = '正在上传图像...';
+                    
+                    // 上传原始图像
+                    const originalImageUrl = await uploadImageToServer(originalImageDataUrl);
+                    
+                    // 3. 调用全局风格化API - 创建任务获取task_id
+                    loadingMessage.textContent = '正在创建风格化任务...';
+                    
+                    const createTaskResponse = await fetch('/api/global-style/create-task', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify({
+                            imageUrl: originalImageUrl,
+                            prompt: prompt,
+                            strength: parseFloat(strengthSlider.value)
+                        })
+                    });
+                    
+                    if (!createTaskResponse.ok) {
+                        let errorMessage = '创建任务失败';
+                        try {
+                            const errorData = await createTaskResponse.json();
+                            errorMessage = errorData.message || errorMessage;
+                        } catch (jsonError) {
+                            console.error('解析错误响应失败:', jsonError);
+                        }
+                        throw new Error(errorMessage);
+                    }
+                    
+                    let createTaskResult;
+                    try {
+                        createTaskResult = await createTaskResponse.json();
+                    } catch (jsonError) {
+                        console.error('解析创建任务响应失败:', jsonError);
+                        throw new Error('服务器返回了无效的数据格式');
+                    }
+                    
+                    const taskId = createTaskResult.output?.task_id;
+                    
+                    if (!taskId) {
+                        throw new Error('未能获取任务ID');
+                    }
+                    
+                    // 4. 轮询任务状态
+                    loadingMessage.textContent = '正在应用风格，这可能需要10-15秒...';
+                    
+                    let resultImageUrl = null;
+                    let maxRetries = 30; // 最多轮询30次，约15秒
+                    let retryCount = 0;
+                    
+                    while (retryCount < maxRetries) {
+                        // 等待500毫秒再次查询
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        // 查询任务状态
+                        const taskStatusResponse = await fetch(`/api/global-style/task-status?taskId=${taskId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                            }
+                        });
+                        
+                        if (!taskStatusResponse.ok) {
+                            retryCount++;
+                            continue;
+                        }
+                        
+                        let taskStatusResult;
+                        try {
+                            taskStatusResult = await taskStatusResponse.json();
+                        } catch (jsonError) {
+                            console.error('解析任务状态响应失败:', jsonError);
+                            retryCount++;
+                            continue;
+                        }
+                        
+                        // 任务完成
+                        if (taskStatusResult.status === 'SUCCEEDED') {
+                            resultImageUrl = taskStatusResult.imageUrl;
+                            break;
+                        }
+                        
+                        // 任务失败
+                        if (taskStatusResult.status === 'FAILED') {
+                            throw new Error(taskStatusResult.message || '风格化任务失败');
+                        }
+                        
+                        // 继续轮询
+                        retryCount++;
+                    }
+                    
+                    if (!resultImageUrl) {
+                        throw new Error('任务处理超时，请稍后再试');
+                    }
+                    
+                    // 5. 显示结果
+                    loadingMessage.textContent = '获取结果图像...';
+                    
+                    resultImage.onload = () => {
+                        resultImage.classList.remove('hidden');
+                        resultImagePlaceholder.classList.add('hidden');
+                        downloadBtn.classList.remove('hidden');
+                        retryBtn.classList.remove('hidden');
+                        saveToDownloadsBtn.classList.remove('hidden');
+                        loadingOverlay.classList.add('hidden');
+                    };
+                    
+                    resultImage.src = resultImageUrl;
+                } catch (error) {
+                    console.error('处理失败:', error);
+                    alert('处理失败: ' + error.message);
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+            
+            // 下载按钮点击事件
+            downloadBtn.addEventListener('click', () => {
+                if (resultImage.src) {
+                    const link = document.createElement('a');
+                    link.href = resultImage.src;
+                    link.download = '全局风格化结果_' + new Date().getTime() + '.png';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            });
+            
+            // 重试按钮点击事件
+            retryBtn.addEventListener('click', () => {
+                // 隐藏结果，回到编辑状态
+                resultImage.classList.add('hidden');
+                resultImagePlaceholder.classList.remove('hidden');
+                downloadBtn.classList.add('hidden');
+                retryBtn.classList.add('hidden');
+                saveToDownloadsBtn.classList.add('hidden');
+            });
+            
+            // 保存到下载中心按钮点击事件
+            saveToDownloadsBtn.addEventListener('click', async () => {
+                if (!resultImage.src || resultImage.classList.contains('hidden')) {
+                    alert('没有可保存的结果图像！');
+                    return;
+                }
+                
+                try {
+                    loadingOverlay.classList.remove('hidden');
+                    loadingMessage.textContent = '正在保存到下载中心...';
+                    
+                    const response = await fetch('/api/downloads/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify({
+                            imageUrl: resultImage.src,
+                            title: '全局风格化结果',
+                            type: 'global-style'
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        alert('已成功保存到下载中心！');
+                    } else {
+                        throw new Error(result.message || '保存失败');
+                    }
+                } catch (error) {
+                    console.error('保存到下载中心失败:', error);
+                    alert('保存到下载中心失败: ' + error.message);
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+            
+            // 辅助函数
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            function highlight() {
+                uploadArea.classList.add('border-indigo-500');
+                uploadArea.classList.add('bg-gray-100');
+            }
+            
+            function unhighlight() {
+                uploadArea.classList.remove('border-indigo-500');
+                uploadArea.classList.remove('bg-gray-100');
+            }
+            
+            // 处理上传的图片文件
+            function handleImageFile(file) {
+                if (!file.type.match('image.*')) {
+                    alert('请上传图片文件！');
+                    return;
+                }
+                
+                // 验证图片大小
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('图片大小不能超过10MB！');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    // 验证图片尺寸
+                    const img = new Image();
+                    img.onload = function() {
+                        if (img.width < 512 || img.height < 512) {
+                            alert('图片尺寸太小，最小需要512×512像素！');
+                            return;
+                        }
+                        
+                        if (img.width > 4000 || img.height > 4000) {
+                            alert('图片尺寸太大，最大不超过4000×4000像素！');
+                            return;
+                        }
+                        
+                        // 显示原图
+                        originalImage.src = e.target.result;
+                        originalImage.classList.remove('hidden');
+                        imagePlaceholder.classList.add('hidden');
+                        
+                        // 清除结果区域
+                        resultImage.classList.add('hidden');
+                        resultImagePlaceholder.classList.remove('hidden');
+                        downloadBtn.classList.add('hidden');
+                        retryBtn.classList.add('hidden');
+                        saveToDownloadsBtn.classList.add('hidden');
+                    };
+                    
+                    img.src = e.target.result;
+                };
+                
+                reader.readAsDataURL(file);
+            }
+            
+            // 获取图像DataURL
+            function getImageDataUrl(imgElement) {
+                return new Promise((resolve) => {
+                    // 如果图像已加载完成，直接创建canvas并返回dataURL
+                    if (imgElement.complete) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = imgElement.naturalWidth;
+                        canvas.height = imgElement.naturalHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(imgElement, 0, 0);
+                        resolve(canvas.toDataURL('image/png'));
+                    } else {
+                        // 图像尚未加载完成，添加onload处理
+                        imgElement.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = imgElement.naturalWidth;
+                            canvas.height = imgElement.naturalHeight;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(imgElement, 0, 0);
+                            resolve(canvas.toDataURL('image/png'));
+                        };
+                    }
+                });
+            }
+            
+            // 上传图片到服务器
+            async function uploadImageToServer(imageData) {
+                try {
+                    // 将base64转换为Blob
+                    const blob = dataURLtoBlob(imageData);
+                    
+                    // 创建FormData
+                    const formData = new FormData();
+                    formData.append('image', blob, 'image.png');
+                    
+                    // 发送请求
+                    const response = await fetch('/api/upload-image', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('图片上传失败');
+                    }
+                    
+                    const data = await response.json();
+                    return data.imageUrl;
+                } catch (error) {
+                    console.error('图片上传错误:', error);
+                    throw error;
+                }
+            }
+            
+            // 将DataURL转换为Blob对象
+            function dataURLtoBlob(dataURL) {
+                const arr = dataURL.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                
+                return new Blob([u8arr], { type: mime });
+            }
+        });
+    </script>
+</body>
+</html> 

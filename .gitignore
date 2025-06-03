@@ -1,0 +1,57 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.npm/
+
+# 环境变量配置
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+logs/
+*.log
+server.log
+
+# 编辑器文件
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# 构建目录
+/dist
+/build
+/out
+
+# 临时文件
+.tmp/
+.temp/
+
+# 上传的文件和结果
+uploads/
+results/
+temp/
+
+# 大型二进制文件
+ngrok
+ngrok.zip
+*.mp4
+*.zip
+*.gz
+*.tar
+*.rar
+
+# 备份文件
+*.bak
+*.backup
+server.js.bak
+server.js.backup 

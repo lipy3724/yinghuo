@@ -1,0 +1,40 @@
+{
+  "name": "custom-image-translator",
+  "version": "1.0.0",
+  "description": "自定义域名图片翻译工具",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@alicloud/credentials": "^2.4.3",
+    "@alicloud/dysmsapi20170525": "^4.1.0",
+    "@alicloud/openapi-client": "^0.4.14",
+    "@alicloud/pop-core": "^1.8.0",
+    "@alicloud/tea-typescript": "^1.8.0",
+    "@alicloud/tea-util": "^1.4.10",
+    "@alicloud/videoenhan20200320": "^3.0.20",
+    "ali-oss": "^6.22.0",
+    "alipay-api": "^1.0.1",
+    "alipay-sdk": "^3.2.0",
+    "axios": "^1.9.0",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "form-data": "^4.0.2",
+    "http-proxy-middleware": "^2.0.9",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.14.1",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.14.0",
+    "sequelize": "^6.37.7",
+    "uuid": "^11.1.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

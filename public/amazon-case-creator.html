@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊客服case内容 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="/feature-tracker.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+        .card {
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card {
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        .tab-button.active {
+            color: #6366f1;
+            border-bottom-color: #6366f1;
+        }
+        
+        /* 页面布局样式 */
+        .page-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            margin-top: 60px;
+        }
+        
+        .left-panel {
+            width: 30%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 1.5rem;
+            border-right: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+        }
+        
+        .right-panel {
+            width: 70%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+        }
+        
+        /* 导航栏样式 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            z-index: 50;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 动画效果 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.5s ease-in-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* 美化表单元素 */
+        .form-input {
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .form-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        
+        .btn-primary {
+            background-color: #6366f1;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #4f46e5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(99, 102, 241, 0.2);
+        }
+        
+        /* 结果卡片样式 */
+        .result-card {
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .result-card:hover {
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        /* case卡片样式 */
+        .case-card {
+            border-left: 4px solid #6366f1;
+            background-color: #f9fafb;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 加载动画 */
+        .loading-spinner {
+            display: none;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #6366f1;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 响应式布局 */
+        @media (max-width: 768px) {
+            .page-container {
+                flex-direction: column;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100% !important;
+                height: auto;
+                max-height: none;
+            }
+            
+            .left-panel {
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            
+            .navbar {
+                padding: 0 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <div class="navbar">
+        <h1 class="text-xl font-bold text-indigo-600">
+            <i class="ri-customer-service-line mr-2"></i>亚马逊客服case内容
+        </h1>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="page-container">
+        <!-- 左侧表单面板 -->
+        <div class="left-panel">
+            <div class="bg-white p-6 rounded-lg shadow-md mb-4 fade-in">
+                <div id="case-creator" class="tab-content">
+                    <p class="text-gray-600 mb-4">输入问题描述和相关信息，AI将帮您生成专业有效的亚马逊客服case内容。</p>
+                    
+                    <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-md mb-6">
+                        <div class="flex items-start">
+                            <div class="mr-3 mt-1 text-indigo-500">
+                                <i class="ri-information-line text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-indigo-700">
+                                    以卖家身份，使用最有效的语气编写客服case内容，可提高问题解决率。请描述您需要解决的具体问题。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="caseForm" class="space-y-5">
+                        <div>
+                            <label for="issueDescription" class="block text-gray-700 font-medium mb-2">问题描述 <span class="text-red-500">*</span></label>
+                            <textarea id="issueDescription" name="issueDescription" rows="5" class="form-input w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required placeholder="请详细描述您需要亚马逊客服协助解决的问题"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label for="orderNumber" class="block text-gray-700 font-medium mb-2">订单号 (可选)</label>
+                            <input type="text" id="orderNumber" name="orderNumber" class="form-input w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="如适用，请输入相关订单号">
+                        </div>
+                        
+                        <div>
+                            <label for="accountInfo" class="block text-gray-700 font-medium mb-2">账户信息 (可选)</label>
+                            <input type="text" id="accountInfo" name="accountInfo" class="form-input w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="如需要，请提供相关账户信息">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">输出语言</label>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="outputLanguage" value="zh" class="form-radio text-indigo-600" checked>
+                                    <span class="ml-2">中文</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="outputLanguage" value="en" class="form-radio text-indigo-600">
+                                    <span class="ml-2">英文</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="generateBtn" class="w-full btn-primary py-2 px-4 rounded-md transition duration-300 flex items-center justify-center">
+                            <span>生成case内容</span>
+                            <div id="loadingSpinner" class="loading-spinner ml-2"></div>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧结果面板 -->
+        <div class="right-panel">
+            <div class="bg-white p-6 rounded-lg shadow-md slide-in">
+                <div id="resultContainer" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">生成的case内容</h2>
+                        <button id="copyAllBtn" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-md transition duration-300 flex items-center">
+                            <i class="ri-file-copy-line mr-1"></i>
+                            <span>复制全部</span>
+                        </button>
+                    </div>
+                    
+                    <div class="result-card p-4 mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-medium text-indigo-600">case标题</h3>
+                            <button class="copy-btn text-gray-400 hover:text-indigo-600" data-target="caseTitle">
+                                <i class="ri-file-copy-line"></i>
+                            </button>
+                        </div>
+                        <p id="caseTitle" class="text-gray-700 p-2 bg-gray-50 rounded-md"></p>
+                    </div>
+                    
+                    <div class="result-card p-4 mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-medium text-indigo-600">case内容</h3>
+                            <button class="copy-btn text-gray-400 hover:text-indigo-600" data-target="caseContent">
+                                <i class="ri-file-copy-line"></i>
+                            </button>
+                        </div>
+                        <pre id="caseContent" class="text-gray-700 p-3 bg-gray-50 rounded-md whitespace-pre-wrap break-words font-sans text-sm"></pre>
+                    </div>
+                    
+                    <div class="case-card">
+                        <h3 class="font-medium text-indigo-600 mb-2">提示与建议</h3>
+                        <p id="caseTips" class="text-gray-700"></p>
+                    </div>
+                </div>
+                
+                <div id="placeholderContainer" class="flex flex-col items-center justify-center py-10">
+                    <i class="ri-customer-service-2-line text-gray-300 text-8xl mb-4"></i>
+                    <p class="text-gray-400 text-center">请在左侧填写问题描述，<br>生成专业的亚马逊客服case内容</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 复制成功提示 -->
+    <div id="copySuccess" class="fixed top-5 right-5 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg hidden">
+        复制成功！
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const caseForm = document.getElementById('caseForm');
+            const generateBtn = document.getElementById('generateBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const resultContainer = document.getElementById('resultContainer');
+            const placeholderContainer = document.getElementById('placeholderContainer');
+            const copyAllBtn = document.getElementById('copyAllBtn');
+            const caseTitle = document.getElementById('caseTitle');
+            const caseContent = document.getElementById('caseContent');
+            const caseTips = document.getElementById('caseTips');
+            const copySuccess = document.getElementById('copySuccess');
+            
+            // 表单提交事件
+            caseForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                generateCase();
+            });
+            
+            // 复制按钮事件
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const targetElement = document.getElementById(targetId);
+                    copyToClipboard(targetElement.textContent);
+                });
+            });
+            
+            // 复制全部按钮事件
+            copyAllBtn.addEventListener('click', function() {
+                const allContent = `${caseTitle.textContent}\n\n${caseContent.textContent}`;
+                copyToClipboard(allContent);
+            });
+            
+            // 生成case内容函数
+            async function generateCase() {
+                const issueDescription = document.getElementById('issueDescription').value.trim();
+                const orderNumber = document.getElementById('orderNumber').value.trim();
+                const accountInfo = document.getElementById('accountInfo').value.trim();
+                const outputLanguage = document.querySelector('input[name="outputLanguage"]:checked').value;
+                
+                if (!issueDescription) {
+                    alert('请输入问题描述');
+                    return;
+                }
+                
+                // 显示加载状态
+                loadingSpinner.style.display = 'block';
+                generateBtn.disabled = true;
+                
+                try {
+                    // 记录功能使用并检查积分
+                    const canProceed = await trackFeatureUsage('amazon_case_creator');
+                    if (!canProceed) {
+                        loadingSpinner.style.display = 'none';
+                        generateBtn.disabled = false;
+                        return;
+                    }
+                
+                    // 调用API
+                    const response = await fetch('/api/amazon-listing/case-creator', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        },
+                        body: JSON.stringify({
+                            issueDescription,
+                            orderNumber,
+                            accountInfo,
+                            outputLanguage
+                        })
+                    });
+                
+                    if (!response.ok) {
+                        throw new Error('请求失败');
+                    }
+                    const data = await response.json();
+                
+                    if (data.success) {
+                        displayResult(data.data);
+                    } else {
+                        alert('生成失败: ' + (data.error || '未知错误'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('请求出错: ' + error.message);
+                } finally {
+                    // 隐藏加载状态
+                    loadingSpinner.style.display = 'none';
+                    generateBtn.disabled = false;
+                }
+            }
+            
+            // 显示结果函数
+            function displayResult(data) {
+                if (data) {
+                    caseTitle.textContent = data.caseTitle || '无标题';
+                    caseContent.textContent = data.caseContent || '无内容';
+                    caseTips.textContent = data.tips || '无提示';
+                    
+                    resultContainer.classList.remove('hidden');
+                    placeholderContainer.classList.add('hidden');
+                } else {
+                    alert('生成结果为空，请重试');
+                }
+            }
+            
+            // 复制到剪贴板函数
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动复制');
+                });
+            }
+            
+            // 显示复制成功提示
+            function showCopySuccess() {
+                copySuccess.classList.remove('hidden');
+                setTimeout(() => {
+                    copySuccess.classList.add('hidden');
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html> 

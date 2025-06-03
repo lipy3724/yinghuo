@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能抠图 - 商品换背景</title>
+    <script src="/feature-tracker.js"></script>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #myiframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+    <script>
+        // open sdk 扩展配置
+        window.INTL_OP_FRAME_SDK_CONFIG = {
+            apiMap: {
+                signature: '/open/api/signature' // 签名接口路径
+            },
+            appKey: '502592', // 正确的appKey
+            secretKey: 'dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t' // 正确的secretKey
+        };
+    </script>
+    <script src="https://g.alicdn.com/code/npm/@ali/intl-op-frame-sdk/0.1.10/main.min.js"></script>
+</head>
+<body>
+    <iframe id="myiframe" class="aidc-open-frame" src="" frameborder="0"></iframe>
+
+    <script>
+        // 必要的变量设置
+        let iframeEle = document.getElementById("myiframe");
+        let receiveBiz = ""; // 保存业务标识，用于postMessage回应
+        
+        // 构建编辑器URL并加载
+        async function initializeEditor() {
+            // 不再记录功能使用 - 移除初始化时扣除次数
+            // const canProceed = await trackFeatureUsage('cutout');
+            // if (!canProceed) {
+            //     return; // 如果不能继续（如积分不足），则不加载编辑器
+            // }
+            
+            // 构建基本参数
+            const params = {
+                apiHost: 'aibcn',
+                appKey: "502592",
+                trial: true,
+                lang: 'zh-cn',
+                // 以下是抠图专用参数
+                bizMode: 'cutout', // 使用抠图模式
+                backGroundType: 'TRANSPARENT', // 透明背景
+                charge: true // 开启生产拦截
+            };
+            
+            // 使用payload方式构建URL
+            const payloadString = encodeURIComponent(JSON.stringify(params));
+            // 使用抠图路由
+            const url = `https://editor.d.design/editor/index.html/#/cutout?payload=${payloadString}`;
+            
+            // 更新iframe的src
+            iframeEle.src = url;
+            console.log("加载智能抠图编辑器，已开启生产拦截");
+        }
+        
+        // 保存图片到服务器
+        async function saveImageResult(data) {
+            try {
+                console.log("开始保存图片，完整数据:", JSON.stringify(data));
+                
+                // 获取原始图片和处理后的图片URL
+                let originalImageUrl = null;
+                let processedImageUrl = null;
+                
+                // 重点：处理各种可能的数据结构
+                if (typeof data === 'object') {
+                    console.log("处理对象数据格式");
+                    
+                    // 情况1: 包含imageUrl属性
+                    if (data.imageUrl) {
+                        processedImageUrl = data.imageUrl;
+                        originalImageUrl = data.originalImageUrl || null;
+                        console.log("从data.imageUrl获取结果URL:", processedImageUrl);
+                    }
+                    // 情况2: 包含url属性
+                    else if (data.url) {
+                        processedImageUrl = data.url;
+                        originalImageUrl = data.originalUrl || data.sourceUrl || null;
+                        console.log("从data.url获取结果URL:", processedImageUrl);
+                    }
+                    // 情况3: 包含imgUrl属性
+                    else if (data.imgUrl) {
+                        processedImageUrl = data.imgUrl;
+                        originalImageUrl = data.originImgUrl || null;
+                        console.log("从data.imgUrl获取结果URL:", processedImageUrl);
+                    }
+                    // 情况4: 包含downloadUrl属性
+                    else if (data.downloadUrl) {
+                        processedImageUrl = data.downloadUrl;
+                        console.log("从data.downloadUrl获取结果URL:", processedImageUrl);
+                    }
+                    // 情况5: 检查data.data可能包含的URL
+                    else if (data.data) {
+                        console.log("检测到data.data字段");
+                        const subData = data.data;
+                        
+                        if (typeof subData === 'object') {
+                            if (subData.imageUrl) {
+                                processedImageUrl = subData.imageUrl;
+                                console.log("从data.data.imageUrl获取结果URL:", processedImageUrl);
+                            } else if (subData.url) {
+                                processedImageUrl = subData.url;
+                                console.log("从data.data.url获取结果URL:", processedImageUrl);
+                            }
+                        } else if (typeof subData === 'string' && subData.startsWith('http')) {
+                            processedImageUrl = subData;
+                            console.log("从data.data字符串获取结果URL:", processedImageUrl);
+                        }
+                    }
+                    // 情况6: 检查result属性
+                    else if (data.result) {
+                        console.log("检测到data.result字段");
+                        if (typeof data.result === 'object') {
+                            if (data.result.url) {
+                                processedImageUrl = data.result.url;
+                                originalImageUrl = data.result.originalUrl || null;
+                                console.log("从data.result.url获取结果URL:", processedImageUrl);
+                            } else if (data.result.imageUrl) {
+                                processedImageUrl = data.result.imageUrl;
+                                console.log("从data.result.imageUrl获取结果URL:", processedImageUrl);
+                            }
+                        }
+                    }
+                }
+                
+                // 处理数组格式
+                if (!processedImageUrl && Array.isArray(data)) {
+                    console.log("处理数组数据格式");
+                    for (const item of data) {
+                        if (typeof item === 'string' && item.startsWith('http')) {
+                            processedImageUrl = item;
+                            console.log("从数组中获取URL字符串:", processedImageUrl);
+                            break;
+                        } else if (item && typeof item === 'object') {
+                            if (item.url) {
+                                processedImageUrl = item.url;
+                                originalImageUrl = item.originalUrl || null;
+                                console.log("从数组对象的url字段获取URL:", processedImageUrl);
+                                break;
+                            } else if (item.imageUrl) {
+                                processedImageUrl = item.imageUrl;
+                                originalImageUrl = item.originalImageUrl || null;
+                                console.log("从数组对象的imageUrl字段获取URL:", processedImageUrl);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // 检查直接是URL字符串的情况
+                if (!processedImageUrl && typeof data === 'string' && data.startsWith('http')) {
+                    processedImageUrl = data;
+                    console.log("从字符串直接获取结果URL:", processedImageUrl);
+                }
+                
+                // 检查从HTML中提取的特定URL信息
+                if (!processedImageUrl) {
+                    const imageUrl = getURLFromConsole();
+                    if (imageUrl) {
+                        console.log("从控制台日志中获取到URL:", imageUrl);
+                        processedImageUrl = imageUrl;
+                    }
+                }
+                
+                if (!processedImageUrl) {
+                    console.error("提取URL失败，未找到有效的图片URL。数据结构:", JSON.stringify(data));
+                    alert('保存失败：未能提取有效的图片URL');
+                    return false;
+                }
+                
+                console.log("最终提取的处理后图片URL:", processedImageUrl);
+                console.log("提取的原始图片URL:", originalImageUrl);
+                
+                // 准备要发送的数据
+                const resultData = {
+                    originalImageUrl: originalImageUrl,
+                    processedImageUrl: processedImageUrl,
+                    processTime: new Date().toISOString(),
+                    processType: '商品换背景', // 功能类型
+                    description: '商品换背景处理结果'
+                };
+                
+                console.log("准备发送到服务器的数据:", JSON.stringify(resultData));
+                
+                // 发送到服务器API
+                const response = await fetch('/api/save-result', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': localStorage.getItem('authToken') ? `Bearer ${localStorage.getItem('authToken')}` : ''
+                    },
+                    body: JSON.stringify(resultData)
+                });
+                
+                if (!response.ok) {
+                    console.error('服务器响应错误:', response.status, response.statusText);
+                    const errorText = await response.text();
+                    console.error('错误详情:', errorText);
+                    alert('保存失败：服务器响应错误 ' + response.status);
+                    return false;
+                }
+                
+                const result = await response.json();
+                console.log('服务器返回结果:', result);
+                
+                if (result.success) {
+                    console.log('图片结果已保存到下载中心:', result);
+                    return true;
+                } else {
+                    console.error('保存到下载中心失败:', result.error);
+                    alert('保存失败：' + (result.message || '未知错误'));
+                    return false;
+                }
+            } catch (error) {
+                console.error('保存到下载中心出错:', error);
+                alert('保存出错：' + error.message);
+                return false;
+            }
+        }
+        
+        // 尝试从控制台日志中捕获URL
+        function getURLFromConsole() {
+            try {
+                // 此函数作为后备方案，通过检查控制台输出尝试提取URL
+                // 在实际环境中，这不是可靠的方法，但可以帮助排查问题
+                const consoleElements = document.querySelectorAll('console-message');
+                for (const consoleElem of consoleElements) {
+                    const text = consoleElem.textContent;
+                    if (text && text.includes('http') && (text.includes('编辑器消息') || text.includes('imagerl'))) {
+                        const urlMatch = text.match(/(https?:\/\/[^\s"']+)/g);
+                        if (urlMatch && urlMatch.length > 0) {
+                            return urlMatch[0];
+                        }
+                    }
+                }
+                return null;
+            } catch (e) {
+                console.error("尝试从控制台获取URL失败:", e);
+                return null;
+            }
+        }
+        
+        // 监听编辑器消息
+        window.addEventListener("message", (ev) => {
+            try {
+                console.log("收到编辑器消息:", JSON.stringify(ev.data));
+                
+                // 确保数据存在
+                if (!ev.data) {
+                    console.error("收到空消息");
+                    return;
+                }
+                
+                const { data, action, biz, errMessage, code } = ev.data;
+                
+                // 保存业务标识用于后续回复
+                if (biz) {
+                    receiveBiz = biz;
+                }
+                
+                // 标志变量，用于防止重复保存和重复提示
+                let saveInProgress = false;
+                
+                // 当前选中的图片索引，默认为0
+                let selectedIndex = 0;
+                if (ev.data.selectedIndex !== undefined) {
+                    selectedIndex = ev.data.selectedIndex;
+                }
+                
+                // 生产拦截逻辑
+                if (action === 'generate') {
+                    // 获取图片数量
+                    const { imageNum } = data || { imageNum: 1 };
+                    console.log("用户请求生成图片，数量:", imageNum);
+                    
+                    // 记录功能使用并检查是否可以继续
+                    trackFeatureUsage('cutout').then(canProceed => {
+                        // 响应编辑器请求
+                        iframeEle.contentWindow.postMessage({
+                            biz: receiveBiz,
+                            action: 'respond',
+                            success: canProceed // 根据是否可以继续返回成功或失败
+                        }, '*');
+                        
+                        if (!canProceed) {
+                            console.log("用户积分不足，已阻止生产");
+                            alert("积分不足，无法继续生成图片");
+                        } else {
+                            console.log("已允许继续生产流程");
+                        }
+                    });
+                    return;
+                }
+                
+                // 统一的图片保存处理函数
+                const handleImageSave = async (imageData) => {
+                    // 避免重复保存
+                    if (saveInProgress) {
+                        console.log("保存操作已在进行中，避免重复");
+                        return;
+                    }
+                    
+                    saveInProgress = true;
+                    console.log("开始处理图片保存:", JSON.stringify(imageData));
+                    
+                    try {
+                        // 如果是数组，选择当前选中的图片
+                        let dataToSave = imageData;
+                        if (Array.isArray(imageData) && imageData.length > 0) {
+                            // 确保索引在有效范围内
+                            if (selectedIndex >= 0 && selectedIndex < imageData.length) {
+                                dataToSave = imageData[selectedIndex];
+                            } else {
+                                dataToSave = imageData[0]; // 默认第一张
+                            }
+                            console.log("从数组中选择了索引", selectedIndex, "的图片进行保存");
+                        }
+                        
+                        const success = await saveImageResult(dataToSave);
+                        if (success) {
+                            console.log('图片已成功保存到下载中心');
+                            alert('图片已保存到下载中心!');
+                        } else {
+                            console.error('保存到下载中心失败');
+                            alert('保存失败，请重试');
+                        }
+                    } catch (error) {
+                        console.error('保存过程出错:', error);
+                        alert('保存出错: ' + error.message);
+                    } finally {
+                        saveInProgress = false;
+                    }
+                };
+                
+                // 特殊处理 - 检测抠图编辑器特有的消息格式
+                if (ev.data && ev.data.imagerl) {
+                    console.log("检测到特殊的imagerl字段:", ev.data.imagerl);
+                    handleImageSave(ev.data.imagerl);
+                    return;
+                }
+                
+                if (action === "pageReady") {
+                    console.log("编辑器页面已准备就绪");
+                } else if (action === "taskSuccess") {
+                    console.log(`业务[${biz}]处理任务完成:`, data);
+                    
+                    // 不在任务成功时自动保存，等待用户明确的保存操作
+                    console.log("图片处理完成，等待用户选择保存");
+                } else if (action === "submit") {
+                    console.log("用户点击了保存按钮:", data);
+                    
+                    // 保存结果到下载中心 - 只保存当前选中的图片
+                    handleImageSave(data);
+                } else if (action === "download") {
+                    console.log("用户点击了下载按钮:", data);
+                    
+                    // 下载时只静默保存，不显示提示
+                    try {
+                        // 处理可能的数组数据，只保存当前选中的图片
+                        let dataToSave = data;
+                        if (Array.isArray(data) && data.length > 0) {
+                            if (selectedIndex >= 0 && selectedIndex < data.length) {
+                                dataToSave = data[selectedIndex];
+                            } else {
+                                dataToSave = data[0]; // 默认第一张
+                            }
+                        }
+                        
+                        saveImageResult(dataToSave).then(success => {
+                            if (success) {
+                                console.log('图片已静默保存到下载中心');
+                            }
+                        });
+                    } catch (error) {
+                        console.error('下载时保存失败:', error);
+                    }
+                } else if (action === "selectImage" || action === "select") {
+                    // 处理图片选择事件
+                    console.log("用户选择了新的图片:", data);
+                    if (data && data.index !== undefined) {
+                        selectedIndex = data.index;
+                        console.log("更新选中图片索引为:", selectedIndex);
+                    }
+                } else if (action === "error") {
+                    // 错误处理
+                    console.error("编辑器错误:", data);
+                    if (errMessage) {
+                        console.error(`编辑器错误 [${code}]: ${errMessage}`);
+                        alert(`操作出错: ${errMessage || '未知错误'}`);
+                    }
+                    if (data && data.errCode) {
+                        console.error("错误代码:", data.errCode);
+                    }
+                } else {
+                    // 处理未知的消息类型 - 不自动保存，避免意外的多次保存
+                    console.log("收到未知类型的消息:", action);
+                }
+            } catch (error) {
+                console.error("处理编辑器消息时出错:", error);
+            }
+        });
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEditor();
+        });
+    </script>
+</body>
+</html> 

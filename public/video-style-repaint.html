@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频风格重绘 - 萤火AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #6366f1;
+            background-color: #f9fafb;
+        }
+        .result-section {
+            border-left: 1px solid #e5e7eb;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        .prompt-input {
+            resize: none;
+            min-height: 120px;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            width: 100%;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .prompt-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 1px #4f46e5;
+        }
+        .instructions {
+            font-size: 0.875rem;
+            color: #4b5563;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+        .preview-area {
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            min-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* 视频拖动禁用 */
+        video {
+            -webkit-user-drag: none;
+            user-select: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+        /* 视频容器 */
+        .video-container {
+            position: relative;
+            margin: 0 auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-white">
+    <!-- 导航栏 -->
+    <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center">
+            <a href="/" class="flex items-center">
+                <span class="font-bold text-2xl text-indigo-600 mr-1">萤火<span class="inline-block w-2 h-2 bg-indigo-600 rounded-full"></span>AI</span>
+                <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
+            </a>
+        </div>
+        <div class="flex items-center">
+            <a href="/" class="text-gray-600 hover:text-gray-900">
+                <i class="ri-home-line mr-1"></i>
+                <span>返回首页</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <div class="w-full h-[calc(100vh-60px)] flex">
+        <div class="flex flex-col lg:flex-row bg-white h-full w-full">
+            <!-- 左侧：上传视频和风格控制 -->
+            <div class="w-full lg:w-1/3 border-r border-gray-200 p-5 flex flex-col h-full overflow-auto">
+                <h2 class="text-xl font-bold mb-3">视频风格重绘</h2>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">输入限制:</p>
+                    <div class="instructions bg-gray-50 p-3 rounded-md">
+                        <p class="mb-2">视频分辨率：可支持输入分辨率范围：单边不小于256且不超过4096，且长边比短边不超过1.8。</p>
+                        <p class="mb-2">视频格式：MP4，AVI，MKV，MOV， FLV，TS，MPG，MXF。</p>
+                        <p class="mb-2">视频时长：不超过30秒。</p>
+                        <p class="mb-2">视频大小：不超过100M。</p>
+                        <p>URL地址中不能包含中文字符。</p>
+                    </div>
+                </div>
+
+                <div id="upload-area" class="upload-area h-36 flex flex-col items-center justify-center mb-4 bg-gray-50 border border-dashed border-gray-300 rounded-md hover:border-indigo-500 hover:bg-gray-100 transition-colors">
+                    <i class="ri-upload-cloud-line text-2xl text-gray-400 mb-1"></i>
+                    <p class="text-gray-500 text-center text-xs px-2">点击或者拖动文件到这区域来上传</p>
+                    <input type="file" id="video-upload" class="hidden" accept="video/*">
+                </div>
+                <p class="text-xs text-gray-500 mb-4">上传视频</p>
+                
+                <div class="flex-grow mb-4">
+                    <div class="mb-2">
+                        <label for="style-select" class="block text-sm font-medium text-gray-700 mb-1">风格选择:</label>
+                    </div>
+                    <div class="relative">
+                        <select id="style-select" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="0">日式漫画，默认值</option>
+                            <option value="1">美式漫画</option>
+                            <option value="2">清新漫画</option>
+                            <option value="3">3D卡通</option>
+                            <option value="4">国风卡通</option>
+                            <option value="5">纸艺风格</option>
+                            <option value="6">简易插画</option>
+                            <option value="7">国风水墨</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-4 mb-2">
+                        <span class="block text-sm font-medium text-gray-700 mb-1">分辨率选择:</span>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="resolution" value="540" class="form-radio text-indigo-600" checked>
+                                <span class="ml-2">540P</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="resolution" value="720" class="form-radio text-indigo-600">
+                                <span class="ml-2">720P</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mt-2 bg-gray-50 p-3 rounded-md">
+                        <p class="text-xs text-gray-600">选择一种预设风格应用于您的视频。每种风格会产生不同的视觉效果。</p>
+                    </div>
+                </div>
+                
+                <button id="generate-btn" class="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 flex items-center justify-center">
+                    <i class="ri-magic-line mr-2"></i>
+                    立即生成
+                </button>
+            </div>
+            
+            <!-- 右侧：效果展示 -->
+            <div class="w-full lg:w-2/3 p-6 flex flex-col h-full overflow-auto">
+                <h2 class="text-xl font-bold mb-4 text-center">效果展示</h2>
+                
+                <div class="flex flex-col md:flex-row gap-6 flex-grow">
+                    <div class="w-full md:w-1/2">
+                        <h3 class="text-base font-medium mb-3 text-center">原始视频:</h3>
+                        <div class="video-container relative mx-auto" style="width: 512px; max-height: 512px;">
+                            <video id="original-video" class="w-full h-full object-contain hidden" controls></video>
+                            <p id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500">请先上传视频</p>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full md:w-1/2">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-base font-medium text-center">风格化结果:</h3>
+                            <button id="save-to-downloads-btn" class="hidden bg-indigo-600 text-white py-1 px-2 rounded-md hover:bg-indigo-700 text-sm flex items-center">
+                                <i class="ri-save-line mr-1"></i>
+                                保存到下载中心
+                            </button>
+                        </div>
+                        <div id="result-video-container" class="video-container relative mx-auto" style="width: 512px; max-height: 512px;">
+                            <video id="result-video" class="w-full h-full object-contain hidden" controls></video>
+                            <p id="result-video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500">风格化结果将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-center space-x-4">
+                    <button id="download-btn" class="hidden bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center justify-center">
+                        <i class="ri-download-line mr-2"></i>
+                        下载结果
+                    </button>
+                    <button id="retry-btn" class="hidden bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 flex items-center justify-center">
+                        <i class="ri-refresh-line mr-2"></i>
+                        重新调整
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载中遮罩 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl flex flex-col items-center">
+            <div class="spinner rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
+            <p id="loading-message" class="text-lg font-medium">视频处理中，请耐心等待...</p>
+            <p class="text-sm text-gray-500 mt-2">处理时间取决于视频长度，可能需要几分钟</p>
+        </div>
+    </div>
+
+    <!-- 引用外部Javascript文件 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM元素
+            const uploadArea = document.getElementById('upload-area');
+            const videoUpload = document.getElementById('video-upload');
+            const originalVideo = document.getElementById('original-video');
+            const videoPlaceholder = document.getElementById('video-placeholder');
+            const resultVideo = document.getElementById('result-video');
+            const resultVideoPlaceholder = document.getElementById('result-video-placeholder');
+            const generateBtn = document.getElementById('generate-btn');
+            const styleSelect = document.getElementById('style-select');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingMessage = document.getElementById('loading-message');
+            const downloadBtn = document.getElementById('download-btn');
+            const retryBtn = document.getElementById('retry-btn');
+            const saveToDownloadsBtn = document.getElementById('save-to-downloads-btn');
+            
+            // 视频上传处理
+            uploadArea.addEventListener('click', () => {
+                videoUpload.click();
+            });
+            
+            videoUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleVideoFile(file);
+                }
+            });
+            
+            // 拖放上传
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                
+                if (file && file.type.startsWith('video/')) {
+                    handleVideoFile(file);
+                } else {
+                    alert('请上传视频文件！');
+                }
+            });
+            
+            // 生成按钮点击
+            generateBtn.addEventListener('click', async () => {
+                const styleValue = styleSelect.value;
+                
+                if (!originalVideo.src || originalVideo.classList.contains('hidden')) {
+                    alert('请先上传视频！');
+                    return;
+                }
+                
+                try {
+                    // 显示加载中
+                    loadingOverlay.classList.remove('hidden');
+                    loadingMessage.textContent = '正在处理视频，请稍候...';
+                    
+                    // 1. 准备数据并上传视频
+                    loadingMessage.textContent = '正在上传视频...';
+                    
+                    // 获取原始视频文件
+                    const videoFile = originalVideo.fileRef;
+                    if (!videoFile) {
+                        throw new Error('无法获取视频文件');
+                    }
+                    
+                    // 上传原始视频
+                    const formData = new FormData();
+                    formData.append('video', videoFile, videoFile.name);
+                    
+                    console.log('准备上传视频文件:', {
+                        fileName: videoFile.name,
+                        fileSize: (videoFile.size / (1024 * 1024)).toFixed(2) + 'MB',
+                        fileType: videoFile.type
+                    });
+                    
+                    try {
+                        const uploadResponse = await fetch('/api/video-style-repaint/upload', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                            },
+                            body: formData
+                        });
+                        
+                        console.log('上传响应状态:', uploadResponse.status);
+                        
+                        if (!uploadResponse.ok) {
+                            const errorText = await uploadResponse.text();
+                            console.error('上传失败响应:', errorText);
+                            throw new Error(`视频上传失败: ${uploadResponse.status} ${errorText}`);
+                        }
+                        
+                        const uploadResult = await uploadResponse.json();
+                        console.log('上传成功, 获取到视频URL:', uploadResult.videoUrl);
+                        const videoUrl = uploadResult.videoUrl;
+                        
+                        // 2. 调用视频风格重绘API
+                        loadingMessage.textContent = '正在创建风格重绘任务...';
+                        
+                        // 获取风格名称用于显示
+                        const styleText = styleSelect.options[styleSelect.selectedIndex].text;
+                        
+                        // 获取分辨率参数
+                        const resolutionRadios = document.getElementsByName('resolution');
+                        let minLen = 540;
+                        for (const radio of resolutionRadios) {
+                            if (radio.checked) {
+                                minLen = parseInt(radio.value);
+                                break;
+                            }
+                        }
+                        
+                        const createTaskResponse = await fetch('/api/video-style-repaint/create-task', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                            },
+                            body: JSON.stringify({
+                                videoUrl: videoUrl,
+                                prompt: styleText, // 发送风格名称作为提示词
+                                style: parseInt(styleValue),
+                                min_len: minLen
+                            })
+                        });
+                        
+                        if (!createTaskResponse.ok) {
+                            let errorMessage = '创建任务失败';
+                            try {
+                                const errorData = await createTaskResponse.json();
+                                errorMessage = errorData.message || errorMessage;
+                            } catch (jsonError) {
+                                console.error('解析错误响应失败:', jsonError);
+                            }
+                            throw new Error(errorMessage);
+                        }
+                        
+                        const createTaskResult = await createTaskResponse.json();
+                        const taskId = createTaskResult.output?.task_id;
+                        
+                        if (!taskId) {
+                            throw new Error('未能获取任务ID');
+                        }
+                        
+                        // 3. 轮询任务状态
+                        loadingMessage.textContent = '正在应用风格，这可能需要几分钟...';
+                        
+                        let resultVideoUrl = null;
+                        let maxRetries = 60; // 轮询60次
+                        let retryCount = 0;
+                        
+                        while (retryCount < maxRetries) {
+                            // 等待5秒再次查询
+                            await new Promise(resolve => setTimeout(resolve, 5000));
+                            
+                            // 查询任务状态
+                            const taskStatusResponse = await fetch(`/api/video-style-repaint/task-status?taskId=${taskId}`, {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                                }
+                            });
+                            
+                            if (!taskStatusResponse.ok) {
+                                retryCount++;
+                                continue;
+                            }
+                            
+                            let taskStatusResult;
+                            try {
+                                taskStatusResult = await taskStatusResponse.json();
+                                console.log('任务状态响应:', taskStatusResult);
+                            } catch (jsonError) {
+                                console.error('解析任务状态响应失败:', jsonError);
+                                retryCount++;
+                                continue;
+                            }
+                            
+                            // 检查任务状态 - 使用阿里云API原始响应结构
+                            const taskStatus = taskStatusResult.output?.task_status;
+                            
+                            // 任务完成
+                            if (taskStatus === 'SUCCEEDED') {
+                                // 从阿里云API原始响应中获取视频URL
+                                resultVideoUrl = taskStatusResult.output?.output_video_url;
+                                if (!resultVideoUrl) {
+                                    console.error('找不到结果视频URL，完整响应:', taskStatusResult);
+                                    throw new Error('处理成功但未返回视频URL');
+                                }
+                                break;
+                            }
+                            
+                            // 任务失败
+                            if (taskStatus === 'FAILED') {
+                                const errorMessage = taskStatusResult.output?.message || '风格重绘任务失败';
+                                console.error('任务失败:', errorMessage, taskStatusResult);
+                                throw new Error(errorMessage);
+                            }
+                            
+                            // 继续轮询
+                            retryCount++;
+                            
+                            // 每10秒更新一次加载信息
+                            if (retryCount % 10 === 0) {
+                                loadingMessage.textContent = `正在应用风格，已等待${retryCount}秒...`;
+                            }
+                        }
+                        
+                        if (!resultVideoUrl) {
+                            throw new Error('任务处理超时，请稍后再试');
+                        }
+                        
+                        // 4. 获取并显示结果
+                        loadingMessage.textContent = '获取结果视频...';
+                        
+                        resultVideo.onloadeddata = () => {
+                            resultVideo.classList.remove('hidden');
+                            resultVideoPlaceholder.classList.add('hidden');
+                            downloadBtn.classList.remove('hidden');
+                            retryBtn.classList.remove('hidden');
+                            saveToDownloadsBtn.classList.remove('hidden');
+                            loadingOverlay.classList.add('hidden');
+                        };
+                        
+                        resultVideo.onerror = () => {
+                            throw new Error('视频加载失败');
+                        };
+                        
+                        resultVideo.src = resultVideoUrl;
+                        
+                    } catch (error) {
+                        console.error('上传视频失败:', error);
+                        alert('上传视频失败: ' + error.message);
+                        loadingOverlay.classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('处理失败:', error);
+                    alert('处理失败: ' + error.message);
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+            
+            // 下载按钮点击事件
+            downloadBtn.addEventListener('click', () => {
+                if (resultVideo.src) {
+                    const link = document.createElement('a');
+                    link.href = resultVideo.src;
+                    link.download = '视频风格重绘结果_' + new Date().getTime() + '.mp4';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            });
+            
+            // 重试按钮点击事件
+            retryBtn.addEventListener('click', () => {
+                // 隐藏结果，回到编辑状态
+                resultVideo.classList.add('hidden');
+                resultVideoPlaceholder.classList.remove('hidden');
+                downloadBtn.classList.add('hidden');
+                retryBtn.classList.add('hidden');
+                saveToDownloadsBtn.classList.add('hidden');
+            });
+            
+            // 保存到下载中心按钮点击事件
+            saveToDownloadsBtn.addEventListener('click', async () => {
+                if (!resultVideo.src || resultVideo.classList.contains('hidden')) {
+                    alert('没有可保存的结果视频！');
+                    return;
+                }
+                
+                try {
+                    loadingOverlay.classList.remove('hidden');
+                    loadingMessage.textContent = '正在保存到下载中心...';
+                    
+                    const response = await fetch('/api/downloads/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify({
+                            videoUrl: resultVideo.src,
+                            title: '视频风格重绘结果',
+                            type: 'video-style-repaint'
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        alert('已成功保存到下载中心！');
+                    } else {
+                        throw new Error(result.message || '保存失败');
+                    }
+                } catch (error) {
+                    console.error('保存到下载中心失败:', error);
+                    alert('保存到下载中心失败: ' + error.message);
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+            
+            // 辅助函数
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            function highlight() {
+                uploadArea.classList.add('border-indigo-500');
+                uploadArea.classList.add('bg-gray-100');
+            }
+            
+            function unhighlight() {
+                uploadArea.classList.remove('border-indigo-500');
+                uploadArea.classList.remove('bg-gray-100');
+            }
+            
+            // 处理上传的视频文件
+            function handleVideoFile(file) {
+                if (!file.type.startsWith('video/')) {
+                    alert('请上传视频文件！');
+                    return;
+                }
+                
+                // 验证视频大小
+                if (file.size > 50 * 1024 * 1024) {
+                    alert('视频大小不能超过50MB！');
+                    return;
+                }
+                
+                // 创建URL并设置到视频元素
+                const videoURL = URL.createObjectURL(file);
+                originalVideo.src = videoURL;
+                
+                // 保存文件引用以便后续上传
+                originalVideo.fileRef = file;
+                
+                // 监听视频元数据加载完成事件
+                originalVideo.onloadedmetadata = function() {
+                    // 检查视频时长
+                    if (originalVideo.duration > 30) {
+                        alert('视频时长不能超过30秒！');
+                        URL.revokeObjectURL(videoURL);
+                        originalVideo.src = '';
+                        originalVideo.fileRef = null;
+                        return;
+                    }
+                    
+                    // 显示原视频
+                    originalVideo.classList.remove('hidden');
+                    videoPlaceholder.classList.add('hidden');
+                    
+                    // 清除结果区域
+                    resultVideo.classList.add('hidden');
+                    resultVideoPlaceholder.classList.remove('hidden');
+                    downloadBtn.classList.add('hidden');
+                    retryBtn.classList.add('hidden');
+                    saveToDownloadsBtn.classList.add('hidden');
+                };
+                
+                // 处理加载错误
+                originalVideo.onerror = function() {
+                    alert('视频加载失败，请尝试其他格式或较小的文件！');
+                    URL.revokeObjectURL(videoURL);
+                    originalVideo.fileRef = null;
+                };
+            }
+        });
+    </script>
+</body>
+</html> 

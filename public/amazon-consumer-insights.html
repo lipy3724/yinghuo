@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>亚马逊消费者洞察专家 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="/feature-tracker.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+        .card {
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card {
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        .tab-button.active {
+            color: #6366f1;
+            border-bottom-color: #6366f1;
+        }
+        
+        /* 页面布局样式 */
+        .page-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            margin-top: 60px;
+        }
+        
+        .left-panel {
+            width: 30%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 0.75rem;
+            border-right: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+        }
+        
+        .right-panel {
+            width: 70%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 0.75rem;
+            background-color: #ffffff;
+        }
+        
+        /* 导航栏样式 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+            z-index: 50;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 动画效果 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.5s ease-in-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* 美化表单元素 */
+        .form-input {
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .form-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+        
+        .btn-primary {
+            background-color: #6366f1;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #4f46e5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(99, 102, 241, 0.2);
+        }
+        
+        /* 结果卡片样式 */
+        .result-card {
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+        }
+        
+        .result-card:hover {
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 响应式布局 */
+        @media (max-width: 768px) {
+            .page-container {
+                flex-direction: column;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100% !important;
+                height: auto;
+                max-height: none;
+            }
+            
+            .left-panel {
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            
+            .navbar {
+                padding: 0 1rem;
+            }
+        }
+        
+        /* 分析结果样式 */
+        .insight-item {
+            margin-bottom: 0;
+            padding: 0.1rem 0.25rem;
+            border-left: 2px solid #e5e7eb;
+            transition: all 0.2s ease;
+            line-height: 1.4;
+        }
+        
+        .insight-item:hover {
+            border-left-color: #6366f1;
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+        
+        .insight-label {
+            font-weight: 600;
+            color: #4f46e5;
+            margin-right: 0.25rem;
+        }
+        
+        .insight-content {
+            color: #374151;
+        }
+        
+        .insight-section-title {
+            font-weight: 600;
+            color: #4338ca;
+            margin: 0.3rem 0 0.1rem 0;
+            padding: 0.15rem 0.25rem;
+            background-color: rgba(99, 102, 241, 0.1);
+            border-radius: 0.25rem;
+        }
+        
+        .insight-number {
+            display: inline-block;
+            min-width: 1.5rem;
+            font-weight: 600;
+            color: #4f46e5;
+        }
+        
+        .insight-highlight {
+            font-weight: 600;
+            color: #4f46e5;
+        }
+        
+        /* 右侧面板内容调整 */
+        .right-panel .mb-4 {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <div class="navbar">
+        <h1 class="text-xl font-bold text-indigo-600">
+            <i class="ri-user-search-line mr-2"></i>亚马逊消费者洞察专家
+        </h1>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="page-container">
+        <!-- 左侧表单面板 -->
+        <div class="left-panel">
+            <div class="bg-white p-6 rounded-lg shadow-md mb-4 fade-in">
+                <div id="consumer-insights" class="tab-content">
+                    <p class="text-gray-600 mb-4">输入商品类目和销售市场/人群，AI将为您提供深入的消费者洞察，包括用户画像、使用场景、痛点、购买动机和未被满足的需求。</p>
+                    
+                    <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-md mb-6">
+                        <div class="flex items-start">
+                            <div class="mr-3 mt-1 text-indigo-500">
+                                <i class="ri-information-line text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-indigo-700">使用提示</h3>
+                                <ul class="list-disc ml-5 mt-2 text-sm text-indigo-700">
+                                    <li>输入商品类目，例如：电子产品、厨房用具、户外装备等</li>
+                                    <li>输入目标销售市场或人群，例如：美国、欧洲、年轻父母、健身爱好者等</li>
+                                    <li>分析结果可用于产品创新、Listing创建与优化、营销策略制定等</li>
+                                    <li>洞察基于市场数据、消费者评论和行为分析，提供针对性的见解</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="consumerInsightsForm">
+                        <div class="mb-5">
+                            <label for="productCategory" class="block text-gray-700 font-medium mb-2">商品类目 <span class="text-red-500">*</span></label>
+                            <input type="text" id="productCategory" name="productCategory" class="form-input w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="请输入商品类目，例如：智能手表、婴儿玩具、瑜伽垫..." required>
+                        </div>
+                        
+                        <div class="mb-5">
+                            <label for="targetMarket" class="block text-gray-700 font-medium mb-2">销售市场/目标人群 <span class="text-red-500">*</span></label>
+                            <input type="text" id="targetMarket" name="targetMarket" class="form-input w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="请输入销售市场或目标人群，例如：美国、日本、运动爱好者、职场人士..." required>
+                        </div>
+                        
+                        <div class="mb-5">
+                            <label class="block text-gray-700 font-medium mb-2">输出语言</label>
+                            <div class="flex gap-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="outputLanguage" value="zh" class="text-indigo-600 focus:ring-indigo-500" checked>
+                                    <span class="ml-2">中文</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="outputLanguage" value="en" class="text-indigo-600 focus:ring-indigo-500">
+                                    <span class="ml-2">英文</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button type="submit" id="generateInsightsButton" class="btn-primary inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                <i class="ri-search-line mr-2"></i>
+                                生成消费者洞察
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧结果面板 -->
+        <div class="right-panel">
+            <div id="resultContainer" class="hidden bg-white p-3 rounded-lg shadow-md slide-in">
+                <h2 class="text-lg font-semibold mb-2 text-indigo-700 border-b pb-1">洞察分析结果</h2>
+                
+                <div class="mb-3">
+                    <h3 class="font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="ri-user-line mr-1 text-indigo-500"></i>用户画像
+                    </h3>
+                    <div class="result-card border border-gray-200 rounded-lg bg-gray-50 hover:bg-white">
+                        <div id="userPersonaResult" class="text-gray-800"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h3 class="font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="ri-slideshow-line mr-1 text-indigo-500"></i>产品使用场景
+                    </h3>
+                    <div class="result-card border border-gray-200 rounded-lg bg-gray-50 hover:bg-white">
+                        <div id="usageScenariosResult" class="text-gray-800"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h3 class="font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="ri-error-warning-line mr-1 text-indigo-500"></i>用户痛点
+                    </h3>
+                    <div class="result-card border border-gray-200 rounded-lg bg-gray-50 hover:bg-white">
+                        <div id="painPointsResult" class="text-gray-800"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h3 class="font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="ri-shopping-cart-line mr-1 text-indigo-500"></i>购买动机
+                    </h3>
+                    <div class="result-card border border-gray-200 rounded-lg bg-gray-50 hover:bg-white">
+                        <div id="purchaseMotivationsResult" class="text-gray-800"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h3 class="font-medium text-gray-700 mb-1 flex items-center">
+                        <i class="ri-lightbulb-line mr-1 text-indigo-500"></i>未被满足的需求
+                    </h3>
+                    <div class="result-card border border-gray-200 rounded-lg bg-gray-50 hover:bg-white">
+                        <div id="unmetNeedsResult" class="text-gray-800"></div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-2 mt-2">
+                    <button type="button" id="copyButton" class="inline-flex items-center px-2 py-1 border border-indigo-600 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all duration-300 text-sm">
+                        <i class="ri-file-copy-line mr-1"></i>
+                        复制全部内容
+                    </button>
+                    <button type="button" id="newAnalysisButton" class="inline-flex items-center px-2 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all duration-300 text-sm">
+                        <i class="ri-refresh-line mr-1"></i>
+                        重新分析
+                    </button>
+                </div>
+                
+                <!-- 调试区域 -->
+                <div class="mt-3 pt-2 border-t border-gray-200">
+                    <details class="text-sm">
+                        <summary class="text-gray-500 cursor-pointer hover:text-indigo-600">显示调试信息</summary>
+                        <div class="mt-1 bg-gray-100 p-2 rounded-md">
+                            <h4 class="font-medium mb-1 text-xs">原始API响应：</h4>
+                            <div id="debugApiResponse" class="whitespace-pre-wrap text-xs font-mono overflow-auto max-h-96"></div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            
+            <div id="emptyResultState" class="h-full flex items-center justify-center">
+                <div class="text-center p-8">
+                    <div class="text-indigo-400 text-6xl mb-4">
+                        <i class="ri-user-search-line"></i>
+                    </div>
+                    <h3 class="text-xl font-medium text-gray-700 mb-2">您的消费者洞察结果将显示在这里</h3>
+                    <p class="text-gray-500">填写左侧表单并点击"生成消费者洞察"按钮开始分析</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-5 rounded-lg shadow-lg w-80 flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                <p class="text-gray-700" id="processingText">正在分析中，请稍候...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 消费者洞察表单提交
+            const consumerInsightsForm = document.getElementById('consumerInsightsForm');
+            const generateInsightsButton = document.getElementById('generateInsightsButton');
+            const resultContainer = document.getElementById('resultContainer');
+            const emptyResultState = document.getElementById('emptyResultState');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const processingText = document.getElementById('processingText');
+            
+            // 初始化：确保显示空结果状态
+            resultContainer.classList.add('hidden');
+            emptyResultState.classList.remove('hidden');
+            
+            // 移除字符串中的所有星号
+            function removeAllAsterisks(text) {
+                if (!text) return '';
+                return text.replace(/\*+/g, '');
+            }
+            
+            // 格式化分析结果，美化显示
+            function formatInsightContent(content) {
+                if (!content) return '';
+                
+                // 确保移除所有星号
+                content = removeAllAsterisks(content);
+                
+                // 预处理：清理多余的空格和换行
+                content = content.replace(/\n{3,}/g, '\n\n');
+                content = content.replace(/\s{2,}/g, ' ');
+                
+                // 处理数字编号的段落（如：1. "年龄分布:"）
+                content = content.replace(/(\d+\.)\s*"([^"]+)"[：:]/g, function(match, number, label) {
+                    return `<div class="insight-section-title">${number} ${label}</div>`;
+                });
+                
+                // 处理没有引号的数字编号段落（如：1. 年龄分布:）
+                content = content.replace(/(\d+\.)\s*([^"\n<]{2,})[：:]/g, function(match, number, label) {
+                    if (!match.includes('<div')) {
+                        return `<div class="insight-section-title">${number} ${label}</div>`;
+                    }
+                    return match;
+                });
+                
+                // 处理带引号的标签项（如："职业背景:"）
+                content = content.replace(/"([^"]+)"[：:]\s*([^\n]+)/g, function(match, label, text) {
+                    return `<div class="insight-item">
+                        <span class="insight-highlight">${label}：</span>
+                        <span class="insight-content">${text.trim()}</span>
+                    </div>`;
+                });
+                
+                // 处理不带引号的标签项（如：职业背景:）
+                content = content.replace(/([^"<>\n]{2,})[：:]\s*([^\n]+)/g, function(match, label, text) {
+                    if (!match.includes('<div') && !match.includes('insight-')) {
+                        return `<div class="insight-item">
+                            <span class="insight-highlight">${label}：</span>
+                            <span class="insight-content">${text.trim()}</span>
+                        </div>`;
+                    }
+                    return match;
+                });
+                
+                // 处理列表项
+                content = content.replace(/[•·-]\s+(.+?)(?=(\n|$))/g, '<div class="insight-item" style="margin-left: 5px;">• $1</div>');
+                
+                // 处理剩余的普通文本行
+                const lines = content.split('\n');
+                let result = '';
+                let lastWasSection = false;
+                
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine) continue;
+                    if (trimmedLine.startsWith('<div')) {
+                        result += line + '\n';
+                        lastWasSection = trimmedLine.includes('insight-section-title');
+                        continue;
+                    }
+                    
+                    // 处理可能的数字编号项（如：1. 内容）
+                    const numMatch = trimmedLine.match(/^(\d+\.)\s+(.+)/);
+                    if (numMatch) {
+                        const marginClass = lastWasSection ? '' : 'style="margin-top: 0.1rem;"';
+                        result += `<div class="insight-item" ${marginClass}>
+                            <span class="insight-number">${numMatch[1]}</span>
+                            <span class="insight-content">${numMatch[2]}</span>
+                        </div>\n`;
+                        continue;
+                    }
+                    
+                    // 处理可能的中文数字编号项（如：一、内容）
+                    const chineseNumMatch = trimmedLine.match(/^([一二三四五六七八九十]+[、\.])\s*(.+)/);
+                    if (chineseNumMatch) {
+                        result += `<div class="insight-item">
+                            <span class="insight-number">${chineseNumMatch[1]}</span>
+                            <span class="insight-content">${chineseNumMatch[2]}</span>
+                        </div>\n`;
+                        continue;
+                    }
+                    
+                    result += `<div class="insight-item"><span class="insight-content">${trimmedLine}</span></div>\n`;
+                }
+                
+                return result;
+            }
+            
+            consumerInsightsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                // 显示加载中
+                loadingOverlay.classList.remove('hidden');
+                processingText.textContent = '正在生成消费者洞察，请稍候...';
+                
+                try {
+                    // 记录功能使用并检查积分
+                    const canProceed = await trackFeatureUsage('amazon_consumer_insights');
+                    if (!canProceed) {
+                        loadingOverlay.classList.add('hidden');
+                        return;
+                    }
+                    
+                    // 获取表单数据
+                    const formData = {
+                        productCategory: document.getElementById('productCategory').value,
+                        targetMarket: document.getElementById('targetMarket').value,
+                        outputLanguage: document.querySelector('input[name="outputLanguage"]:checked').value
+                    };
+                    
+                    // 调用API
+                    const response = await fetch('/api/amazon-listing/consumer-insights', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.error || '生成消费者洞察失败');
+                    }
+                    
+                    // 预处理API返回的数据，移除所有星号
+                    if (result.data) {
+                        for (const key in result.data) {
+                            if (typeof result.data[key] === 'string') {
+                                // 移除所有星号
+                                result.data[key] = removeAllAsterisks(result.data[key]);
+                            }
+                        }
+                    }
+                    
+                    // 更新结果
+                    document.getElementById('userPersonaResult').innerHTML = formatInsightContent(result.data.userPersona);
+                    document.getElementById('usageScenariosResult').innerHTML = formatInsightContent(result.data.usageScenarios);
+                    document.getElementById('painPointsResult').innerHTML = formatInsightContent(result.data.painPoints);
+                    document.getElementById('purchaseMotivationsResult').innerHTML = formatInsightContent(result.data.purchaseMotivations);
+                    document.getElementById('unmetNeedsResult').innerHTML = formatInsightContent(result.data.unmetNeeds);
+                    
+                    // 显示调试信息（移除星号后的数据）
+                    const cleanedResult = JSON.parse(JSON.stringify(result));
+                    document.getElementById('debugApiResponse').textContent = JSON.stringify(cleanedResult, null, 2);
+                    
+                    // 隐藏加载中，显示结果
+                    loadingOverlay.classList.add('hidden');
+                    resultContainer.classList.remove('hidden');
+                    emptyResultState.classList.add('hidden');
+                    
+                    // 在小屏幕设备上，自动滚动到结果区域
+                    if (window.innerWidth < 768) {
+                        resultContainer.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    
+                } catch (error) {
+                    console.error('生成消费者洞察出错:', error);
+                    alert(`生成失败: ${error.message}`);
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+            
+            // 复制按钮功能
+            const copyButton = document.getElementById('copyButton');
+            copyButton.addEventListener('click', () => {
+                // 收集所有结果文本（获取纯文本，不包含HTML标签）
+                const userPersona = document.getElementById('userPersonaResult').innerText;
+                const usageScenarios = document.getElementById('usageScenariosResult').innerText;
+                const painPoints = document.getElementById('painPointsResult').innerText;
+                const purchaseMotivations = document.getElementById('purchaseMotivationsResult').innerText;
+                const unmetNeeds = document.getElementById('unmetNeedsResult').innerText;
+                
+                const fullText = `用户画像：\n${userPersona}\n\n产品使用场景：\n${usageScenarios}\n\n用户痛点：\n${painPoints}\n\n购买动机：\n${purchaseMotivations}\n\n未被满足的需求：\n${unmetNeeds}`;
+                
+                navigator.clipboard.writeText(fullText).then(() => {
+                    // 显示复制成功提示
+                    const originalText = copyButton.innerHTML;
+                    copyButton.innerHTML = '<i class="ri-check-line mr-1"></i>已复制';
+                    copyButton.classList.add('bg-green-500', 'text-white');
+                    copyButton.classList.remove('text-indigo-600', 'bg-white');
+                    
+                    setTimeout(() => {
+                        copyButton.innerHTML = originalText;
+                        copyButton.classList.remove('bg-green-500', 'text-white');
+                        copyButton.classList.add('text-indigo-600', 'bg-white');
+                    }, 2000);
+                });
+            });
+            
+            // 重新分析按钮功能
+            const newAnalysisButton = document.getElementById('newAnalysisButton');
+            newAnalysisButton.addEventListener('click', () => {
+                // 隐藏结果，显示空状态
+                resultContainer.classList.add('hidden');
+                emptyResultState.classList.remove('hidden');
+                
+                // 在小屏幕设备上，滚动到表单区域
+                if (window.innerWidth < 768) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                
+                // 聚焦到第一个输入框
+                document.getElementById('productCategory').focus();
+            });
+            
+            // 响应式布局调整
+            function handleResponsiveLayout() {
+                const leftPanel = document.querySelector('.left-panel');
+                const rightPanel = document.querySelector('.right-panel');
+                
+                if (window.innerWidth < 768) {
+                    // 小屏幕设备：堆叠布局
+                    leftPanel.style.width = '100%';
+                    rightPanel.style.width = '100%';
+                } else {
+                    // 大屏幕设备：左右布局
+                    leftPanel.style.width = '30%';
+                    rightPanel.style.width = '70%';
+                }
+            }
+            
+            // 初始化时调用一次
+            handleResponsiveLayout();
+            
+            // 窗口大小改变时调整布局
+            window.addEventListener('resize', handleResponsiveLayout);
+        });
+    </script>
+</body>
+</html> 

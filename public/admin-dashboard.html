@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员仪表盘 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f9fafb;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        .sidebar {
+            transition: transform 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-100">
+    <!-- 移动端导航栏 -->
+    <div class="md:hidden bg-white shadow-sm py-3 px-4 flex items-center justify-between">
+        <button id="mobile-menu-button" class="text-gray-600 focus:outline-none">
+            <i class="ri-menu-line text-2xl"></i>
+        </button>
+        <h1 class="text-xl font-bold text-indigo-600">萤火AI 管理系统</h1>
+        <div class="w-8"></div> <!-- 占位元素，保持两端对齐 -->
+    </div>
+    
+    <div class="flex min-h-screen">
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="sidebar bg-white shadow-lg w-64 fixed h-full z-10 md:relative md:translate-x-0">
+            <div class="p-4 border-b">
+                <div class="flex items-center justify-center">
+                    <h1 class="text-xl font-bold text-indigo-600">
+                        <span class="logo-text">萤火<span class="logo-dot"></span>AI</span>
+                    </h1>
+                    <span class="ml-2 text-gray-700">管理系统</span>
+                </div>
+            </div>
+            
+            <nav class="mt-4">
+                <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wider">主菜单</div>
+                
+                <a href="/admin-dashboard.html" class="flex items-center px-4 py-3 text-gray-700 bg-indigo-50 border-r-4 border-indigo-600">
+                    <i class="ri-dashboard-line mr-3 text-indigo-600"></i>
+                    <span>仪表盘</span>
+                </a>
+                
+                <a href="/admin-users.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-user-line mr-3"></i>
+                    <span>用户管理</span>
+                </a>
+                
+                <a href="/admin-payments.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-money-cny-circle-line mr-3"></i>
+                    <span>充值记录</span>
+                </a>
+                
+                <a href="/admin-features.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-function-line mr-3"></i>
+                    <span>功能使用统计</span>
+                </a>
+                
+                <a href="/admin-credits.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-coins-line mr-3"></i>
+                    <span>积分管理</span>
+                </a>
+                
+                <a href="/admin-login.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-home-line mr-3"></i>
+                    <span>返回首页</span>
+                </a>
+                
+                <div class="px-4 py-2 mt-4 text-xs text-gray-500 uppercase tracking-wider">系统</div>
+                
+                <a href="#" id="logout-btn" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-logout-box-line mr-3"></i>
+                    <span>退出登录</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="flex-1 p-4 md:p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">仪表盘</h2>
+                <p class="text-gray-600">系统概览和关键指标</p>
+            </div>
+            
+            <!-- 数据卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-gray-500 text-sm font-medium">用户总数</h3>
+                        <div class="bg-blue-100 p-2 rounded-md">
+                            <i class="ri-user-line text-blue-500"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p id="user-count" class="text-2xl font-semibold text-gray-800">--</p>
+                        <p class="ml-2 text-sm text-gray-600">用户</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-gray-500 text-sm font-medium">总积分消费</h3>
+                        <div class="bg-green-100 p-2 rounded-md">
+                            <i class="ri-coins-line text-green-500"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p id="total-credits-used" class="text-2xl font-semibold text-gray-800">--</p>
+                        <p class="ml-2 text-sm text-gray-600">积分</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-gray-500 text-sm font-medium">功能使用次数</h3>
+                        <div class="bg-purple-100 p-2 rounded-md">
+                            <i class="ri-apps-line text-purple-500"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p id="total-usage-count" class="text-2xl font-semibold text-gray-800">--</p>
+                        <p class="ml-2 text-sm text-gray-600">次</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-gray-500 text-sm font-medium">功能数量</h3>
+                        <div class="bg-yellow-100 p-2 rounded-md">
+                            <i class="ri-function-line text-yellow-500"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p id="feature-count" class="text-2xl font-semibold text-gray-800">--</p>
+                        <p class="ml-2 text-sm text-gray-600">个</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 图表区域 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-medium text-gray-800 mb-4">每日充值金额</h3>
+                    <div class="h-64">
+                        <canvas id="daily-payment-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-lg font-medium text-gray-800 mb-4">最近注册用户</h3>
+                    <div class="mb-4 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <label for="date-picker" class="text-sm text-gray-600 mr-2">选择日期：</label>
+                            <input type="date" id="date-picker" class="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <button id="view-users-btn" class="bg-indigo-600 text-white text-sm px-3 py-1 rounded hover:bg-indigo-700 transition-colors">
+                            查看
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户名</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">积分</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">注册时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-users" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-4 py-3 text-sm text-gray-500" colspan="3">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-users-message" class="hidden text-center py-4 text-gray-500">
+                        该日期没有用户注册
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查管理员登录状态
+            checkAdminAuth();
+            
+            // 移动端菜单切换
+            document.getElementById('mobile-menu-button').addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('open');
+            });
+            
+            // 退出登录
+            document.getElementById('logout-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
+            
+            // 设置日期选择器默认为今天
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('date-picker').value = formattedDate;
+            
+            // 添加查看按钮点击事件
+            document.getElementById('view-users-btn').addEventListener('click', function() {
+                const selectedDate = document.getElementById('date-picker').value;
+                if (selectedDate) {
+                    loadUsersByDate(selectedDate);
+                }
+            });
+            
+            // 加载仪表盘数据
+            loadDashboardData();
+        });
+        
+        // 检查管理员登录状态
+        function checkAdminAuth() {
+            const adminToken = localStorage.getItem('adminAuthToken');
+            const adminInfo = localStorage.getItem('adminUser');
+            
+            if (!adminToken || !adminInfo) {
+                // 未登录，重定向到登录页
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(adminInfo);
+                if (!user.isAdmin) {
+                    // 不是管理员，重定向到登录页
+                    window.location.href = '/admin-login.html';
+                }
+            } catch (e) {
+                console.error('解析用户信息出错:', e);
+                // 清除无效的存储
+                localStorage.removeItem('adminAuthToken');
+                localStorage.removeItem('adminUser');
+                window.location.href = '/admin-login.html';
+            }
+        }
+        
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('adminAuthToken');
+            localStorage.removeItem('adminUser');
+            window.location.href = '/admin-login.html';
+        }
+        
+        // 加载仪表盘数据
+        async function loadDashboardData() {
+            const token = localStorage.getItem('adminAuthToken');
+            
+            if (!token) {
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            try {
+                // 获取统计数据
+                const statsResponse = await fetch('/api/admin/statistics', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!statsResponse.ok) {
+                    throw new Error('获取统计数据失败');
+                }
+                
+                const statsData = await statsResponse.json();
+                
+                if (statsData.success) {
+                    // 更新统计卡片
+                    document.getElementById('user-count').textContent = statsData.data.userCount || 0;
+                    document.getElementById('total-credits-used').textContent = statsData.data.totalCreditsUsed || 0;
+                    document.getElementById('total-usage-count').textContent = statsData.data.totalUsageCount || 0;
+                    document.getElementById('feature-count').textContent = statsData.data.featureCount || 0;
+                }
+                
+                // 获取每日充值数据
+                const paymentsResponse = await fetch('/api/admin/daily-payments?days=30', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!paymentsResponse.ok) {
+                    throw new Error('获取充值数据失败');
+                }
+                
+                const paymentsData = await paymentsResponse.json();
+                
+                if (paymentsData.success) {
+                    // 渲染每日充值图表
+                    renderDailyPaymentsChart(paymentsData.data);
+                }
+                
+                // 获取最近注册用户
+                const usersResponse = await fetch('/api/admin/users?limit=5', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!usersResponse.ok) {
+                    throw new Error('获取用户数据失败');
+                }
+                
+                const usersData = await usersResponse.json();
+                
+                if (usersData.success) {
+                    // 渲染最近用户表格
+                    renderRecentUsers(usersData.data.users);
+                }
+            } catch (error) {
+                console.error('加载仪表盘数据出错:', error);
+                alert('加载数据失败，请刷新页面重试');
+            }
+        }
+        
+        // 渲染每日充值金额图表
+        function renderDailyPaymentsChart(dailyPayments) {
+            if (!dailyPayments || dailyPayments.length === 0) {
+                return;
+            }
+            
+            const ctx = document.getElementById('daily-payment-chart').getContext('2d');
+            
+            // 如果已经有图表实例，先销毁
+            if (window.dailyPaymentChart) {
+                window.dailyPaymentChart.destroy();
+            }
+            
+            // 准备数据
+            const dates = dailyPayments.map(item => {
+                // 格式化日期为 MM-DD 格式
+                const date = new Date(item.date);
+                return `${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+            });
+            
+            const amounts = dailyPayments.map(item => parseFloat(item.total_amount));
+            const orderCounts = dailyPayments.map(item => parseInt(item.order_count));
+            
+            // 创建图表
+            window.dailyPaymentChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: '充值金额 (元)',
+                            data: amounts,
+                            backgroundColor: 'rgba(99, 102, 241, 0.7)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '订单数量',
+                            data: orderCounts,
+                            type: 'line',
+                            fill: false,
+                            borderColor: 'rgba(220, 38, 38, 1)',
+                            backgroundColor: 'rgba(220, 38, 38, 0.5)',
+                            pointBackgroundColor: 'rgba(220, 38, 38, 1)',
+                            pointRadius: 3,
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '充值金额 (元)'
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            title: {
+                                display: true,
+                                text: '订单数量'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    const index = tooltipItems[0].dataIndex;
+                                    return dailyPayments[index].date;
+                                }
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 渲染最近用户表格
+        function renderRecentUsers(users) {
+            const tableBody = document.getElementById('recent-users');
+            const noUsersMessage = document.getElementById('no-users-message');
+            
+            if (!users || users.length === 0) {
+                tableBody.innerHTML = '';
+                noUsersMessage.classList.remove('hidden');
+                return;
+            }
+            
+            noUsersMessage.classList.add('hidden');
+            tableBody.innerHTML = users.map(user => `
+                <tr>
+                    <td class="px-4 py-3 text-sm text-gray-900">${user.username}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${user.credits}</td>
+                    <td class="px-4 py-3 text-sm text-gray-500">${formatDate(user.createdAt)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // 加载指定日期的用户
+        async function loadUsersByDate(date) {
+            const token = localStorage.getItem('adminAuthToken');
+            
+            if (!token) {
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/users-by-date?date=${date}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取用户数据失败');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 渲染用户表格
+                    renderRecentUsers(data.data.users);
+                }
+            } catch (error) {
+                console.error('加载用户数据出错:', error);
+                alert('加载用户数据失败，请重试');
+            }
+        }
+        
+        // 生成随机颜色
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = 'rgb(';
+            color += Math.floor(Math.random() * 200) + ',';
+            color += Math.floor(Math.random() * 200) + ',';
+            color += Math.floor(Math.random() * 200) + ')';
+            return color;
+        }
+    </script>
+</body>
+</html>

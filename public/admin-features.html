@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功能使用统计 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f9fafb;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        .sidebar {
+            transition: transform 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-100">
+    <!-- 移动端导航栏 -->
+    <div class="md:hidden bg-white shadow-sm py-3 px-4 flex items-center justify-between">
+        <button id="mobile-menu-button" class="text-gray-600 focus:outline-none">
+            <i class="ri-menu-line text-2xl"></i>
+        </button>
+        <h1 class="text-xl font-bold text-indigo-600">萤火AI 管理系统</h1>
+        <div class="w-8"></div> <!-- 占位元素，保持两端对齐 -->
+    </div>
+    
+    <div class="flex min-h-screen">
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="sidebar bg-white shadow-lg w-64 fixed h-full z-10 md:relative md:translate-x-0">
+            <div class="p-4 border-b">
+                <div class="flex items-center justify-center">
+                    <h1 class="text-xl font-bold text-indigo-600">
+                        <span class="logo-text">萤火<span class="logo-dot"></span>AI</span>
+                    </h1>
+                    <span class="ml-2 text-gray-700">管理系统</span>
+                </div>
+            </div>
+            
+            <nav class="mt-4">
+                <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wider">主菜单</div>
+                
+                <a href="/admin-dashboard.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-dashboard-line mr-3"></i>
+                    <span>仪表盘</span>
+                </a>
+                
+                <a href="/admin-users.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-user-line mr-3"></i>
+                    <span>用户管理</span>
+                </a>
+                
+                <a href="/admin-payments.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-money-cny-circle-line mr-3"></i>
+                    <span>充值记录</span>
+                </a>
+                
+                <a href="/admin-features.html" class="flex items-center px-4 py-3 text-gray-700 bg-indigo-50 border-r-4 border-indigo-600">
+                    <i class="ri-function-line mr-3 text-indigo-600"></i>
+                    <span>功能使用统计</span>
+                </a>
+                
+                <a href="/admin-login.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-home-line mr-3"></i>
+                    <span>返回首页</span>
+                </a>
+                
+                <div class="px-4 py-2 mt-4 text-xs text-gray-500 uppercase tracking-wider">系统</div>
+                
+                <a href="#" id="logout-btn" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-logout-box-line mr-3"></i>
+                    <span>退出登录</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="flex-1 p-4 md:p-6">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">功能使用统计</h2>
+                <p class="text-gray-600">查看各功能的使用情况和统计数据</p>
+            </div>
+            
+            <!-- 统计卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-gray-500 text-sm font-medium">总使用次数</h3>
+                        <div class="bg-purple-100 p-2 rounded-md">
+                            <i class="ri-apps-line text-purple-500"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p id="total-usage" class="text-2xl font-semibold text-gray-800">0</p>
+                        <p class="ml-2 text-sm text-gray-600">次</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-gray-500 text-sm font-medium">功能数量</h3>
+                        <div class="bg-blue-100 p-2 rounded-md">
+                            <i class="ri-function-line text-blue-500"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p id="feature-count" class="text-2xl font-semibold text-gray-800">0</p>
+                        <p class="ml-2 text-sm text-gray-600">个</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-gray-500 text-sm font-medium">最受欢迎功能</h3>
+                        <div class="bg-yellow-100 p-2 rounded-md">
+                            <i class="ri-star-line text-yellow-500"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline">
+                        <p id="popular-feature" class="text-xl font-semibold text-gray-800">--</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 图表区域 -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-4">功能使用占比</h3>
+                <div class="h-80">
+                    <canvas id="feature-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- 搜索和过滤 -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0 mb-4 md:mb-0">
+                        <div class="relative w-full md:w-64">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                <i class="ri-search-line text-gray-400"></i>
+                            </span>
+                            <input id="search-input" type="text" placeholder="搜索用户ID" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <select id="feature-filter" class="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">全部功能</option>
+                            <!-- 功能选项将由JavaScript动态生成 -->
+                        </select>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="search-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
+                            搜索
+                        </button>
+                        <button id="reset-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md">
+                            重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 功能使用记录列表 -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    用户
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    功能名称
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    使用次数
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    最后使用时间
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="usage-list" class="bg-white divide-y divide-gray-200">
+                            <!-- 功能使用记录内容将由JavaScript生成 -->
+                            <tr>
+                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                    加载中...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 分页控件 -->
+                <div id="pagination" class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p id="pagination-info" class="text-sm text-gray-700">
+                                显示第 <span class="font-medium">1</span> 到 <span class="font-medium">10</span> 条，共 <span class="font-medium">0</span> 条记录
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="分页">
+                                <button id="prev-page" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">上一页</span>
+                                    <i class="ri-arrow-left-s-line"></i>
+                                </button>
+                                <div id="page-numbers" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                    <!-- 页码将由JavaScript生成 -->
+                                </div>
+                                <button id="next-page" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">下一页</span>
+                                    <i class="ri-arrow-right-s-line"></i>
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查管理员登录状态
+            checkAdminAuth();
+            
+            // 移动端菜单切换
+            document.getElementById('mobile-menu-button').addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('open');
+            });
+            
+            // 退出登录
+            document.getElementById('logout-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
+            
+            // 加载功能使用数据
+            loadFeatureUsage();
+            
+            // 搜索和重置按钮
+            document.getElementById('search-btn').addEventListener('click', function() {
+                loadFeatureUsage(1);
+            });
+            
+            document.getElementById('reset-btn').addEventListener('click', function() {
+                document.getElementById('search-input').value = '';
+                document.getElementById('feature-filter').value = '';
+                loadFeatureUsage(1);
+            });
+            
+            // 功能过滤器变化时重新加载数据
+            document.getElementById('feature-filter').addEventListener('change', function() {
+                loadFeatureUsage(1);
+            });
+        });
+        
+        // 检查管理员登录状态
+        function checkAdminAuth() {
+            const token = localStorage.getItem('adminAuthToken') || localStorage.getItem('token');
+            
+            if (!token) {
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            fetch('/api/auth/verify', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success || !data.user || !data.user.isAdmin) {
+                    alert('您没有管理员权限');
+                    window.location.href = '/admin-login.html';
+                }
+            })
+            .catch(error => {
+                console.error('验证失败:', error);
+                window.location.href = '/admin-login.html';
+            });
+        }
+        
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('adminAuthToken');
+            localStorage.removeItem('token');
+            window.location.href = '/admin-login.html';
+        }
+        
+        // 加载功能使用统计
+        function loadFeatureUsage(page = 1) {
+            const token = localStorage.getItem('adminAuthToken') || localStorage.getItem('token');
+            const searchInput = document.getElementById('search-input').value.trim();
+            const featureFilter = document.getElementById('feature-filter').value;
+            
+            // 显示加载状态
+            document.getElementById('usage-list').innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                        <i class="ri-loader-4-line animate-spin inline-block mr-2"></i> 加载中...
+                    </td>
+                </tr>
+            `;
+            
+            // 构建查询参数
+            let queryParams = `page=${page}&limit=10`;
+            if (searchInput) {
+                queryParams += `&userId=${searchInput}`;
+            }
+            if (featureFilter) {
+                queryParams += `&featureName=${featureFilter}`;
+            }
+            
+            // 请求API
+            fetch(`/api/admin/feature-usage?${queryParams}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayFeatureUsage(data.data);
+                    updatePagination(data.data.pagination);
+                    updateStats(data.data.stats);
+                    
+                    // 如果是第一页，更新图表和功能过滤器
+                    if (page === 1) {
+                        updateFeatureChart(data.data.stats.features);
+                        updateFeatureFilter(data.data.stats.features);
+                    }
+                } else {
+                    document.getElementById('usage-list').innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-red-500">
+                                ${data.message || '获取功能使用统计失败'}
+                            </td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('获取功能使用统计失败:', error);
+                document.getElementById('usage-list').innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-red-500">
+                            获取功能使用统计失败，请稍后再试
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        
+        // 显示功能使用记录
+        function displayFeatureUsage(data) {
+            const usageList = document.getElementById('usage-list');
+            const usages = data.usages;
+            
+            if (usages.length === 0) {
+                usageList.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                            暂无功能使用记录
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            usages.forEach(usage => {
+                const lastUsedAt = usage.lastUsedAt ? new Date(usage.lastUsedAt).toLocaleString() : '未知';
+                
+                html += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${usage.user ? usage.user.username : '未知用户'} (ID: ${usage.userId})
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${usage.featureNameCN || usage.featureName}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${usage.usageCount}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${lastUsedAt}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            usageList.innerHTML = html;
+        }
+        
+        // 更新分页信息
+        function updatePagination(pagination) {
+            const { total, page, limit, totalPages } = pagination;
+            
+            // 更新分页信息文本
+            const start = (page - 1) * limit + 1;
+            const end = Math.min(page * limit, total);
+            
+            document.getElementById('pagination-info').innerHTML = `
+                显示第 <span class="font-medium">${start}</span> 到 <span class="font-medium">${end}</span> 条，
+                共 <span class="font-medium">${total}</span> 条记录
+            `;
+            
+            // 更新页码
+            const pageNumbers = document.getElementById('page-numbers');
+            pageNumbers.innerHTML = `${page} / ${totalPages}`;
+            
+            // 设置上一页/下一页按钮状态
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            
+            prevBtn.disabled = page <= 1;
+            nextBtn.disabled = page >= totalPages;
+            
+            prevBtn.classList.toggle('opacity-50', page <= 1);
+            nextBtn.classList.toggle('opacity-50', page >= totalPages);
+            
+            // 添加事件监听器
+            prevBtn.onclick = page > 1 ? () => loadFeatureUsage(page - 1) : null;
+            nextBtn.onclick = page < totalPages ? () => loadFeatureUsage(page + 1) : null;
+        }
+        
+        // 更新统计信息
+        function updateStats(stats) {
+            document.getElementById('total-usage').textContent = stats.totalUsage || '0';
+            document.getElementById('feature-count').textContent = stats.features ? stats.features.length : '0';
+            
+            // 更新最受欢迎功能
+            if (stats.features && stats.features.length > 0) {
+                // 按使用次数排序
+                const sortedFeatures = [...stats.features].sort((a, b) => b.usage - a.usage);
+                document.getElementById('popular-feature').textContent = sortedFeatures[0].name;
+            } else {
+                document.getElementById('popular-feature').textContent = '--';
+            }
+        }
+        
+        // 更新功能使用图表
+        function updateFeatureChart(features) {
+            if (!features || features.length === 0) return;
+            
+            const ctx = document.getElementById('feature-chart').getContext('2d');
+            
+            // 如果已经有图表实例，先销毁
+            if (window.featureChart) {
+                window.featureChart.destroy();
+            }
+            
+            // 准备数据
+            const labels = features.map(f => f.name);
+            const data = features.map(f => f.usage);
+            
+            // 生成随机颜色
+            const colors = features.map(() => {
+                const r = Math.floor(Math.random() * 200) + 55;
+                const g = Math.floor(Math.random() * 200) + 55;
+                const b = Math.floor(Math.random() * 200) + 55;
+                return `rgba(${r}, ${g}, ${b}, 0.7)`;
+            });
+            
+            // 创建图表
+            window.featureChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '使用次数',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c.replace('0.7', '1')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `使用次数: ${context.raw}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新功能过滤器
+        function updateFeatureFilter(features) {
+            if (!features || features.length === 0) return;
+            
+            const featureFilter = document.getElementById('feature-filter');
+            
+            // 清空现有选项，保留第一个"全部功能"选项
+            while (featureFilter.options.length > 1) {
+                featureFilter.remove(1);
+            }
+            
+            // 添加功能选项
+            features.forEach(feature => {
+                const option = document.createElement('option');
+                option.value = feature.name;
+                option.textContent = feature.name;
+                featureFilter.appendChild(option);
+            });
+        }
+    </script>
+</body>
+</html> 

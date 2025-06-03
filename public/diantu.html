@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>垫图 - 萤火AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .upload-area { border: 2px dashed #cbd5e0; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
+        .upload-area:hover { border-color: #6366f1; background-color: #f9fafb; }
+        .result-section { border-left: 1px solid #e5e7eb; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+        .prompt-input { resize: none; min-height: 120px; border: 1px solid #e2e8f0; border-radius: 0.375rem; padding: 0.75rem; width: 100%; font-size: 0.9rem; line-height: 1.5; }
+        .prompt-input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 1px #4f46e5; }
+        .instructions { font-size: 0.875rem; color: #4b5563; margin-bottom: 1rem; line-height: 1.5; }
+        .preview-area { background-color: #f9fafb; border-radius: 0.5rem; min-height: 500px; display: flex; align-items: center; justify-content: center; }
+        img { -webkit-user-drag: none; user-select: none; -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+    </style>
+</head>
+<body class="min-h-screen bg-white">
+    <!-- 主内容区域 -->
+    <div class="w-full min-h-screen flex">
+        <div class="flex flex-col lg:flex-row bg-white h-full w-full">
+            <!-- 左侧：上传图片和提示词 -->
+            <div class="w-full lg:w-1/3 border-r border-gray-200 p-5 flex flex-col h-full overflow-auto">
+                <h2 class="text-xl font-bold mb-3">垫图</h2>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">使用提示:</p>
+                    <div class="instructions bg-gray-50 p-3 rounded-md">
+                        <p class="mb-2"><strong>使用场景：</strong>垫图适用于卡通IP开发（基于已有卡通形象生成新场景）、儿童教育（为儿童读物或教育材料生成卡通插图）等。</p>
+                        <p class="mb-2"><strong>提示词技巧：</strong>提示词需详细描述卡通形象的行动，建议采用格式"卡通形象……"，描述越具体，生成效果越好。</p>
+                        <p class="mb-2"><strong>图像限制：</strong></p>
+                        <ul class="list-disc pl-5 text-sm">
+                            <li>图像格式：JPG、JPEG、PNG、BMP、TIFF、WEBP。</li>
+                            <li>图像分辨率：图像的宽度和高度范围为[512, 4096]像素。</li>
+                            <li>图像大小：不超过10MB。</li>
+                            <li>URL地址中不能包含中文字符。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="upload-area" class="upload-area h-36 flex flex-col items-center justify-center mb-4 bg-gray-50 border border-dashed border-gray-300 rounded-md hover:border-indigo-500 hover:bg-gray-100 transition-colors">
+                    <i class="ri-upload-cloud-line text-2xl text-gray-400 mb-1"></i>
+                    <p class="text-gray-500 text-center text-xs px-2">点击或者拖动文件到这区域来上传</p>
+                    <input type="file" id="image-upload" class="hidden" accept="image/*">
+                </div>
+                <p class="text-xs text-gray-500 mb-4">上传图像</p>
+
+                <div class="flex-grow mb-4">
+                    <div class="mb-2">
+                        <label for="prompt-input" class="block text-sm font-medium text-gray-700 mb-1">输入指令:</label>
+                    </div>
+                    <textarea id="prompt-input" class="prompt-input" placeholder="请输入提示词，如: 添加柔和背景垫图，突出主体"></textarea>
+                </div>
+                
+                <button id="generate-btn" class="w-full bg-indigo-600 text-white py-3 rounded-md hover:bg-indigo-700 flex items-center justify-center">
+                    <i class="ri-magic-line mr-2"></i>
+                    立即生成
+                </button>
+            </div>
+            
+            <!-- 右侧：效果展示 -->
+            <div class="w-full lg:w-2/3 p-6 flex flex-col h-full overflow-auto">
+                <h2 class="text-xl font-bold mb-4 text-center">效果展示</h2>
+                
+                <div class="flex flex-col md:flex-row gap-6 flex-grow">
+                    <div class="w-full md:w-1/2">
+                        <h3 class="text-base font-medium mb-3 text-center">原始图像:</h3>
+                        <div id="original-image-container" class="h-64 md:h-96 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden relative">
+                            <img id="original-image" class="hidden max-w-full max-h-full object-contain" alt="上传的图片" draggable="false">
+                            <p id="original-image-placeholder" class="text-gray-500 text-center px-4">上传图片后将在这里显示</p>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full md:w-1/2">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-base font-medium text-center">生成结果:</h3>
+                            <button id="save-to-downloads-btn" class="hidden bg-indigo-600 text-white py-1 px-2 rounded-md hover:bg-indigo-700 text-sm flex items-center">
+                                <i class="ri-save-line mr-1"></i>
+                                保存到下载中心
+                            </button>
+                        </div>
+                        <div id="result-image-container" class="h-64 md:h-96 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                            <img id="result-image" class="hidden max-w-full max-h-full object-contain" alt="生成的图片">
+                            <p id="result-image-placeholder" class="text-gray-500 text-center px-4">生成结果将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-center">
+                    <button id="download-btn" class="hidden bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center justify-center">
+                        <i class="ri-download-line mr-2"></i>
+                        下载结果
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载中遮罩 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl flex flex-col items-center">
+            <div class="spinner rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
+            <p id="loading-message" class="text-lg font-medium">图像处理中，请耐心等待...</p>
+            <p class="text-sm text-gray-500 mt-2">处理时间约为5-10秒</p>
+        </div>
+    </div>
+
+    <!-- 引用外部Javascript文件 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM元素
+            const uploadArea = document.getElementById('upload-area');
+            const imageUpload = document.getElementById('image-upload');
+            const originalImage = document.getElementById('original-image');
+            const originalImageContainer = document.getElementById('original-image-container');
+            const originalImagePlaceholder = document.getElementById('original-image-placeholder');
+            const resultImage = document.getElementById('result-image');
+            const resultImagePlaceholder = document.getElementById('result-image-placeholder');
+            const generateBtn = document.getElementById('generate-btn');
+            const promptInput = document.getElementById('prompt-input');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingMessage = document.getElementById('loading-message');
+            const downloadBtn = document.getElementById('download-btn');
+            const userMenuBtn = document.getElementById('user-menu-btn');
+            const loginBtn = document.getElementById('login-btn');
+            const saveToDownloadsBtn = document.getElementById('save-to-downloads-btn');
+            
+            // 检查用户登录状态
+            checkAuthStatus();
+            
+            // 图片上传处理
+            uploadArea.addEventListener('click', () => {
+                imageUpload.click();
+            });
+            
+            imageUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleImageFile(file);
+                }
+            });
+            
+            // 拖放上传
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                
+                if (file && file.type.startsWith('image/')) {
+                    handleImageFile(file);
+                } else {
+                    alert('请上传图片文件！');
+                }
+            });
+            
+            // 生成按钮点击
+            generateBtn.addEventListener('click', async () => {
+                const prompt = promptInput.value.trim();
+                
+                if (!originalImage.src || originalImage.classList.contains('hidden')) {
+                    alert('请先上传图片！');
+                    return;
+                }
+                
+                // 显示加载中
+                loadingOverlay.classList.remove('hidden');
+                loadingMessage.textContent = '正在处理图像，请稍候...';
+                
+                try {
+                    // 1. 上传原图到服务器获取URL
+                    loadingMessage.textContent = '正在上传图片...';
+                    console.log('正在上传图片...');
+                    let imageUrl;
+                    
+                    try {
+                        imageUrl = await uploadImageToServer(originalImage.src);
+                    } catch (uploadError) {
+                        console.error('图片上传错误:', uploadError);
+                        throw new Error(`图片上传失败: ${uploadError.message}`);
+                    }
+                    
+                    if (!imageUrl) {
+                        throw new Error('图片上传失败，未获取到有效URL');
+                    }
+                    
+                    console.log('图片上传成功，获取到的URL:', imageUrl);
+                    
+                    // 2. 调用API创建垫图任务
+                    loadingMessage.textContent = '正在创建垫图任务...';
+                    console.log('正在创建垫图任务...');
+                    
+                    let taskId;
+                    try {
+                        taskId = await createDiantuTask(prompt, imageUrl);
+                    } catch (taskError) {
+                        console.error('创建任务错误:', taskError);
+                        throw new Error(`创建垫图任务失败: ${taskError.message}`);
+                    }
+                    
+                    if (!taskId) {
+                        throw new Error('创建垫图任务失败，未获取到任务ID');
+                    }
+                    
+                    console.log('创建任务成功，任务ID:', taskId);
+                    
+                    // 3. 轮询任务状态
+                    loadingMessage.textContent = '处理中，请耐心等待...';
+                    console.log('开始轮询任务状态...');
+                    
+                    let resultImageUrl;
+                    try {
+                        resultImageUrl = await pollTaskStatus(taskId);
+                    } catch (pollError) {
+                        console.error('轮询任务状态错误:', pollError);
+                        throw new Error(`获取任务结果失败: ${pollError.message}`);
+                    }
+                    
+                    if (!resultImageUrl) {
+                        throw new Error('获取结果图像失败，未获取到有效URL');
+                    }
+                    
+                    console.log('获取任务结果成功，图像URL:', resultImageUrl);
+                    
+                    // 4. 显示结果图像
+                    loadingMessage.textContent = '正在加载结果图像...';
+                    
+                    resultImage.onload = () => {
+                        loadingOverlay.classList.add('hidden');
+                    };
+                    
+                    resultImage.onerror = () => {
+                        loadingOverlay.classList.add('hidden');
+                        alert('加载结果图像失败，请稍后重试');
+                    };
+                    
+                    resultImage.src = resultImageUrl;
+                    resultImage.classList.remove('hidden');
+                    resultImagePlaceholder.classList.add('hidden');
+                    downloadBtn.classList.remove('hidden');
+                    saveToDownloadsBtn.classList.remove('hidden');
+                } catch (error) {
+                    console.error('处理失败:', error);
+                    alert('处理失败: ' + error.message);
+                } finally {
+                    // 隐藏加载遮罩
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+            
+            // 上传图片到服务器
+            async function uploadImageToServer(imageData) {
+                try {
+                    // 转换为Blob对象
+                    let blob;
+                    if (imageData.startsWith('data:')) {
+                        // 从base64字符串创建Blob对象
+                        blob = base64ToBlob(imageData.split(',')[1], 'image/jpeg');
+                    } else {
+                        // 处理URL情况 - 先获取图像再转换
+                        const response = await fetch(imageData);
+                        blob = await response.blob();
+                    }
+                    
+                    // 创建FormData对象
+                    const formData = new FormData();
+                    formData.append('image', blob, 'image.jpg');
+                    
+                    // 发送请求上传图片
+                    console.log('准备上传图片...');
+                    const response = await fetch('/api/text-to-video/upload-image', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || '图片上传失败');
+                    }
+                    
+                    const imageUrl = data.output?.img_url || data.imageUrl;
+                    console.log('上传图片，获取到的URL:', imageUrl);
+                    return imageUrl;
+                } catch (error) {
+                    console.error('图片上传错误:', error);
+                    throw new Error('图片上传失败: ' + error.message);
+                }
+            }
+            
+            // Base64转Blob
+            function base64ToBlob(base64Data, mimeType = 'image/jpeg') {
+                const byteCharacters = atob(base64Data);
+                const byteArrays = [];
+                
+                for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                    const slice = byteCharacters.slice(offset, offset + 512);
+                    
+                    const byteNumbers = new Array(slice.length);
+                    for (let i = 0; i < slice.length; i++) {
+                        byteNumbers[i] = slice.charCodeAt(i);
+                    }
+                    
+                    const byteArray = new Uint8Array(byteNumbers);
+                    byteArrays.push(byteArray);
+                }
+                
+                return new Blob(byteArrays, { type: mimeType });
+            }
+            
+            // 创建垫图任务
+            async function createDiantuTask(prompt, imageUrl) {
+                try {
+                    // 构建请求数据
+                    const requestData = {
+                        model: "wanx2.1-imageedit",
+                        input: {
+                            function: "control_cartoon_feature",
+                            prompt: prompt || "为图片添加垫图效果",
+                            base_image_url: imageUrl
+                        },
+                        parameters: {
+                            n: 1
+                        }
+                    };
+                    // 通过服务器代理调用阿里云API
+                    const response = await fetch('/api/image-edit/create-task', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        if (data.message && data.message.includes('积分不足')) {
+                            throw new Error('您的积分不足，请充值后再试');
+                        } else {
+                            throw new Error(data.message || '创建任务失败');
+                        }
+                    }
+                    return data.output?.task_id;
+                } catch (error) {
+                    console.error('创建任务错误:', error);
+                    throw new Error('创建任务失败: ' + error.message);
+                }
+            }
+            
+            // 轮询任务状态
+            async function pollTaskStatus(taskId) {
+                return new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    let errorCount = 0;
+                    const maxAttempts = 60; // 最多轮询60次，约10分钟
+                    const pollInterval = 10000; // 轮询间隔10秒
+                    async function checkStatus() {
+                        if (attempts >= maxAttempts) {
+                            clearTimeout(timeoutId);
+                            reject(new Error('任务处理超时，请稍后重试'));
+                            return;
+                        }
+                        attempts++;
+                        loadingMessage.textContent = `处理中，请耐心等待... (${attempts}/${maxAttempts})`;
+                        try {
+                            const response = await fetch(`/api/image-edit/task-status/${taskId}`, {
+                                headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                                }
+                            });
+                            if (!response.ok) {
+                                throw new Error('获取任务状态失败，服务器错误');
+                            }
+                            const data = await response.json();
+                            const taskStatus = data.output?.task_status;
+                            if (taskStatus === 'SUCCEEDED') {
+                                const resultsList = data.output?.results || [];
+                                if (resultsList.length > 0) {
+                                    const successResults = resultsList.filter(result => result.url);
+                                    if (successResults.length > 0) {
+                                        clearTimeout(timeoutId);
+                                        resolve(successResults[0].url);
+                                        return;
+                                    }
+                                }
+                                clearTimeout(timeoutId);
+                                reject(new Error('任务成功但未找到结果，请重试'));
+                                return;
+                            } else if (taskStatus === 'FAILED') {
+                                clearTimeout(timeoutId);
+                                reject(new Error(data.output?.message || '任务执行失败'));
+                                return;
+                            }
+                            timeoutId = setTimeout(checkStatus, pollInterval);
+                        } catch (error) {
+                            errorCount++;
+                            if (errorCount >= 3) {
+                                clearTimeout(timeoutId);
+                                reject(new Error('网络连接不稳定，请检查网络后重试'));
+                                return;
+                            }
+                            timeoutId = setTimeout(checkStatus, pollInterval);
+                        }
+                    }
+                    let timeoutId = setTimeout(checkStatus, 3000);
+                });
+            }
+            
+            // 保存到下载中心按钮
+            saveToDownloadsBtn.addEventListener('click', async () => {
+                if (!resultImage.src) return;
+                
+                try {
+                    // 显示加载中
+                    loadingOverlay.classList.remove('hidden');
+                    loadingMessage.textContent = '正在保存到下载中心...';
+                    
+                    // 获取提示文本
+                    const promptText = promptInput.value.trim() || '垫图';
+                    
+                    console.log('准备保存图片到下载中心:', resultImage.src.substring(0, 50) + '...');
+                    
+                    // 调用API保存图片到下载中心
+                    const response = await fetch('/api/downloads/save', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify({
+                            imageUrl: resultImage.src,
+                            title: '垫图: ' + (promptText.substring(0, 30) + (promptText.length > 30 ? '...' : '')),
+                            description: promptText,
+                            type: 'DIANTU'
+                        })
+                    });
+                    
+                    console.log('保存响应状态:', response.status);
+                    
+                    const data = await response.json();
+                    console.log('保存响应数据:', data);
+                    
+                    if (!response.ok) {
+                        throw new Error(data.message || data.error || '保存失败');
+                    }
+                    
+                    if (data.success) {
+                        alert('图片已成功保存到下载中心！');
+                    } else {
+                        throw new Error(data.message || '保存失败');
+                    }
+                } catch (error) {
+                    console.error('保存到下载中心失败:', error);
+                    alert('保存到下载中心失败: ' + error.message);
+                } finally {
+                    // 隐藏加载遮罩
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+
+            // 辅助函数
+            function handleImageFile(file) {
+                // 检查文件类型
+                if (!file.type.startsWith('image/')) {
+                    alert('请上传图片文件！支持的格式包括JPG、PNG和WEBP');
+                    return;
+                }
+                // 检查文件大小
+                if (file.size > 10 * 1024 * 1024) { // 10MB 限制
+                    alert('图片大小不能超过10MB！');
+                    return;
+                }
+                // 创建预览并检查图片尺寸
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = function() {
+                        // 检查图片尺寸
+                        if (img.width < 512 || img.height < 512) {
+                            alert('图片尺寸太小，请上传最小512×512像素的图片');
+                            return;
+                        }
+                        if (img.width > 4000 || img.height > 4000) {
+                            alert('图片尺寸过大，请上传不超过4000×4000像素的图片');
+                            return;
+                        }
+                        // 显示原始图片
+                        originalImage.src = event.target.result;
+                        originalImage.classList.remove('hidden');
+                        originalImagePlaceholder.classList.add('hidden');
+                        // 重置结果区域
+                        resultImage.classList.add('hidden');
+                        resultImagePlaceholder.classList.remove('hidden');
+                        downloadBtn.classList.add('hidden');
+                        saveToDownloadsBtn.classList.add('hidden');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.onerror = () => {
+                    alert('读取文件失败，请重新上传');
+                };
+                reader.readAsDataURL(file);
+            }
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            function highlight() {
+                uploadArea.classList.add('border-indigo-500', 'bg-indigo-50');
+            }
+            function unhighlight() {
+                uploadArea.classList.remove('border-indigo-500', 'bg-indigo-50');
+            }
+
+            // 检查用户登录状态
+            function checkAuthStatus() {
+                const authToken = localStorage.getItem('authToken');
+                const userInfo = localStorage.getItem('user');
+                if (authToken && userInfo) {
+                    try {
+                        const user = JSON.parse(userInfo);
+                        if (document.getElementById('username-display')) {
+                            document.getElementById('username-display').textContent = user.username;
+                        }
+                        if (loginBtn) loginBtn.classList.add('hidden');
+                        if (userMenuBtn) userMenuBtn.classList.remove('hidden');
+                        // 获取用户积分
+                        if (document.getElementById('user-credits')) {
+                            fetch('/api/user/credits', {
+                                headers: {
+                                    'Authorization': `Bearer ${authToken}`
+                                }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                document.getElementById('user-credits').textContent = `积分: ${data.credits || 0}`;
+                            })
+                            .catch(err => {
+                                console.error('获取积分失败:', err);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('解析用户信息出错:', e);
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('user');
+                    }
+                } else {
+                    if (userMenuBtn) userMenuBtn.classList.add('hidden');
+                    if (loginBtn) loginBtn.classList.remove('hidden');
+                }
+            }
+
+            // 下载按钮
+            downloadBtn.addEventListener('click', () => {
+                if (resultImage.src) {
+                    const link = document.createElement('a');
+                    link.href = resultImage.src;
+                    link.download = 'diantu-result.png';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

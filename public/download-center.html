@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>下载中心 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .sidebar-item.active {
+            background-color: #f3f0ff;
+            color: #6366f1;
+        }
+        .sidebar-item:hover:not(.active) {
+            background-color: #f9fafb;
+        }
+        .sidebar-item.active i {
+            color: #6366f1;
+        }
+        .image-card {
+            transition: all 0.3s ease;
+        }
+        .image-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* 图片卡片动画效果 */
+        .image-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .image-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 导航链接动画 */
+        .nav-item {
+            position: relative;
+            transition: all 0.2s;
+        }
+        .nav-item:after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: #4f46e5;
+            transition: all 0.2s;
+            transform: translateX(-50%);
+            opacity: 0;
+        }
+        .nav-item:hover:after,
+        .nav-item.active:after {
+            width: 100%;
+            opacity: 1;
+        }
+        .nav-item.active {
+            color: #4f46e5;
+        }
+        
+        /* 页面加载动画 */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(79, 70, 229, 0.2);
+            border-radius: 50%;
+            border-top-color: #4f46e5;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 图片预览点击动画 */
+        .preview-btn, .download-btn, .delete-btn {
+            transition: transform 0.2s;
+        }
+        .preview-btn:active, .download-btn:active, .delete-btn:active {
+            transform: scale(0.9);
+        }
+        
+        /* 分页按钮样式 */
+        #pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* 标签切换效果 */
+        .tab-btn {
+            transition: all 0.2s;
+        }
+        
+        /* 搜索框样式 */
+        #search-input {
+            transition: all 0.3s;
+        }
+        #search-input:focus {
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+        
+        /* 开关动画 */
+        .toggle-checkbox:checked {
+            right: 0;
+            transform: translateX(100%);
+        }
+        .toggle-checkbox {
+            transition: all 0.3s;
+        }
+        
+        /* 无数据提示样式 */
+        #no-data {
+            min-height: 300px;
+        }
+        
+        /* 确保侧边栏延伸到底部 */
+        .sidebar {
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex">
+        <!-- 侧边栏 -->
+        <div class="sidebar w-64 bg-white border-r border-gray-200">
+            <div class="py-4 px-3 h-full overflow-y-auto">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="/" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-home-line mr-3 text-lg"></i>
+                            <span>首页</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-translate-2 mr-3 text-lg"></i>
+                            <span>图片翻译</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-image-edit-line mr-3 text-lg"></i>
+                            <span>商品换背景</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-landscape-line mr-3 text-lg"></i>
+                            <span>场景图生成</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-flow-chart mr-3 text-lg"></i>
+                            <span>图像智能消除</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-question-answer-line mr-3 text-lg"></i>
+                            <span>模特换肤</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-file-text-line mr-3 text-lg"></i>
+                            <span>模拟试衣</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-t-shirt-line mr-3 text-lg"></i>
+                            <span>智能虚拟模特试穿</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-zoom-in-line mr-3 text-lg"></i>
+                            <span>智能服饰分割</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-t-shirt-line mr-3 text-lg"></i>
+                            <span>智能虚拟模特试穿</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-palette-line mr-3 text-lg"></i>
+                            <span>鞋靴虚拟试穿</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-file-list-line mr-3 text-lg"></i>
+                            <span>文生图片</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-video-line mr-3 text-lg"></i>
+                            <span>文生视频</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-film-line mr-3 text-lg"></i>
+                            <span>图生视频</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                            <i class="ri-picture-in-picture-line mr-3 text-lg"></i>
+                            <span>指令绘图</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/download-center.html" class="sidebar-item active flex items-center p-3 text-base font-medium rounded-lg">
+                            <i class="ri-download-2-line mr-3 text-lg"></i>
+                            <span>下载中心</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div class="flex-1 p-5 overflow-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-2xl font-bold">下载中心</h1>
+                
+                <!-- 搜索框 -->
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        placeholder="搜索..." 
+                        class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="ri-search-line text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 视图/操作选项 -->
+            <div class="flex flex-wrap justify-between items-center mb-4">
+                <!-- 标签切换 -->
+                <div class="flex space-x-2 flex-wrap gap-2">
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-indigo-600 text-white text-sm" data-tab="all">
+                        全部图片
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="图片翻译">
+                        图片翻译
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="营销图生成">
+                        营销图生成
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="商品换背景">
+                        商品换背景
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="场景图生成">
+                        场景图生成
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="图像智能消除">
+                        图像智能消除
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="模特换肤">
+                        模特换肤
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="模拟试衣">
+                        模拟试衣
+                    </button>
+                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="other">
+                        其他处理
+                    </button>
+                </div>
+                
+                <!-- 视图切换 -->
+                <div class="flex items-center space-x-3 mt-2 sm:mt-0">
+                    <span class="text-sm text-gray-500">视图:</span>
+                    <button id="grid-view-btn" class="p-1.5 rounded bg-indigo-100 text-indigo-700">
+                        <i class="ri-grid-fill text-lg"></i>
+                    </button>
+                    <button id="list-view-btn" class="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+                        <i class="ri-list-check text-lg"></i>
+                    </button>
+                    <button id="select-all-btn" class="ml-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <i class="ri-checkbox-multiple-line mr-1"></i>
+                        全选
+                    </button>
+                    <button id="delete-selected-btn" class="hidden px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 text-red-600 rounded-lg">
+                        <i class="ri-delete-bin-line mr-1"></i>
+                        删除所选
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 图片列表 -->
+            <div id="image-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                <!-- 图片卡片将通过JS动态添加 -->
+                <div class="loading flex items-center justify-center col-span-full py-10">
+                    <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-lg font-medium">正在加载...</span>
+                </div>
+            </div>
+            
+            <!-- 列表视图容器 -->
+            <div id="image-list" class="hidden">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-left">
+                            <th class="p-3 border-b"><input type="checkbox" id="select-all-table"></th>
+                            <th class="p-3 border-b">图片</th>
+                            <th class="p-3 border-b">处理类型</th>
+                            <th class="p-3 border-b">时间</th>
+                            <th class="p-3 border-b">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="image-table-body">
+                        <!-- 列表项通过JS动态添加 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 无数据提示 -->
+            <div id="no-data" class="hidden text-center py-10">
+                <i class="ri-image-line text-gray-300 text-6xl mb-2"></i>
+                <p class="text-gray-500 text-lg">暂无图片记录</p>
+            </div>
+            
+            <!-- 分页控件 -->
+            <div id="pagination" class="mt-5 flex justify-center items-center space-x-2">
+                <!-- 分页按钮将动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let allImages = [];
+        let currentView = 'grid'; // 'grid' 或 'list'
+        let currentPage = 1;
+        let itemsPerPage = 24;
+        let selectedItems = new Set();
+        
+        // 当页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 加载历史记录
+            await loadImageHistory();
+            
+            // 绑定标签切换功能
+            initTabButtons();
+            
+            // 绑定视图切换功能
+            initViewButtons();
+            
+            // 绑定搜索功能
+            initSearch();
+            
+            // 绑定全选按钮
+            initSelectAllButton();
+            
+            // 绑定删除所选按钮
+            initDeleteSelectedButton();
+        });
+        
+        // 初始化标签按钮
+        function initTabButtons() {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 移除所有active类
+                    tabButtons.forEach(b => {
+                        b.classList.remove('bg-indigo-600', 'text-white');
+                        b.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                    });
+                    
+                    // 给当前按钮添加active类
+                    this.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                    this.classList.add('bg-indigo-600', 'text-white');
+                    
+                    // 根据标签类型过滤图片
+                    filterImages(this.dataset.tab);
+                });
+            });
+        }
+        
+        // 初始化视图切换按钮
+        function initViewButtons() {
+            const gridViewBtn = document.getElementById('grid-view-btn');
+            const listViewBtn = document.getElementById('list-view-btn');
+            
+            gridViewBtn.addEventListener('click', function() {
+                if (currentView !== 'grid') {
+                    currentView = 'grid';
+                    
+                    // 更新按钮样式
+                    gridViewBtn.classList.add('bg-indigo-100', 'text-indigo-700');
+                    gridViewBtn.classList.remove('hover:bg-gray-100', 'text-gray-500');
+                    
+                    listViewBtn.classList.remove('bg-indigo-100', 'text-indigo-700');
+                    listViewBtn.classList.add('hover:bg-gray-100', 'text-gray-500');
+                    
+                    // 显示网格视图，隐藏列表视图
+                    document.getElementById('image-container').classList.remove('hidden');
+                    document.getElementById('image-list').classList.add('hidden');
+                    
+                    // 重新显示图片
+                    renderImages();
+                }
+            });
+            
+            listViewBtn.addEventListener('click', function() {
+                if (currentView !== 'list') {
+                    currentView = 'list';
+                    
+                    // 更新按钮样式
+                    listViewBtn.classList.add('bg-indigo-100', 'text-indigo-700');
+                    listViewBtn.classList.remove('hover:bg-gray-100', 'text-gray-500');
+                    
+                    gridViewBtn.classList.remove('bg-indigo-100', 'text-indigo-700');
+                    gridViewBtn.classList.add('hover:bg-gray-100', 'text-gray-500');
+                    
+                    // 显示列表视图，隐藏网格视图
+                    document.getElementById('image-list').classList.remove('hidden');
+                    document.getElementById('image-container').classList.add('hidden');
+                    
+                    // 重新显示图片
+                    renderImages();
+                }
+            });
+        }
+        
+        // 初始化搜索功能
+        function initSearch() {
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                
+                if (searchTerm === '') {
+                    // 如果搜索词为空，显示所有图片
+                    renderImages(allImages);
+                } else {
+                    // 否则，过滤图片
+                    const filteredImages = allImages.filter(item => 
+                        (item.description && item.description.toLowerCase().includes(searchTerm)) || 
+                        (item.processType && item.processType.toLowerCase().includes(searchTerm))
+                    );
+                    renderImages(filteredImages);
+                }
+            });
+        }
+        
+        // 初始化全选按钮
+        function initSelectAllButton() {
+            const selectAllBtn = document.getElementById('select-all-btn');
+            selectAllBtn.addEventListener('click', function() {
+                const cards = document.querySelectorAll('.image-card');
+                const checkboxes = document.querySelectorAll('.image-checkbox');
+                
+                // 检查是否已全选
+                const allSelected = selectedItems.size === cards.length;
+                
+                if (allSelected) {
+                    // 取消全选
+                    selectedItems.clear();
+                    checkboxes.forEach(cb => {
+                        cb.checked = false;
+                    });
+                    document.getElementById('delete-selected-btn').classList.add('hidden');
+                } else {
+                    // 全选
+                    cards.forEach(card => {
+                        if (!card.classList.contains('hidden')) {
+                            selectedItems.add(card.dataset.id);
+                        }
+                    });
+                    checkboxes.forEach(cb => {
+                        if (!cb.closest('.image-card').classList.contains('hidden')) {
+                            cb.checked = true;
+                        }
+                    });
+                    document.getElementById('delete-selected-btn').classList.remove('hidden');
+                }
+                
+                // 更新列表视图的全选按钮
+                document.getElementById('select-all-table').checked = !allSelected;
+            });
+            
+            // 列表视图的全选按钮
+            const selectAllTable = document.getElementById('select-all-table');
+            selectAllTable.addEventListener('change', function() {
+                const rows = document.querySelectorAll('#image-table-body tr');
+                const isChecked = this.checked;
+                
+                rows.forEach(row => {
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    if (checkbox) {
+                        checkbox.checked = isChecked;
+                        const imageId = row.dataset.id;
+                        
+                        if (isChecked) {
+                            selectedItems.add(imageId);
+                        } else {
+                            selectedItems.delete(imageId);
+                        }
+                    }
+                });
+                
+                // 显示或隐藏删除按钮
+                if (selectedItems.size > 0) {
+                    document.getElementById('delete-selected-btn').classList.remove('hidden');
+                } else {
+                    document.getElementById('delete-selected-btn').classList.add('hidden');
+                }
+            });
+        }
+        
+        // 初始化删除所选按钮
+        function initDeleteSelectedButton() {
+            const deleteBtn = document.getElementById('delete-selected-btn');
+            deleteBtn.addEventListener('click', async function() {
+                if (selectedItems.size === 0) return;
+                
+                if (confirm(`确定要删除选中的 ${selectedItems.size} 张图片吗？`)) {
+                    try {
+                        // 调用后端API删除图片
+                        const token = localStorage.getItem('authToken') || '';
+                        const response = await fetch('/api/delete-images', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': token ? `Bearer ${token}` : '',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ ids: Array.from(selectedItems) })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.message || '删除失败');
+                        }
+                        
+                        // 从本地数组中移除
+                        allImages = allImages.filter(item => !selectedItems.has(item.id.toString()));
+                        
+                        // 重新渲染
+                        renderImages();
+                        
+                        // 清空选择
+                        selectedItems.clear();
+                        document.getElementById('delete-selected-btn').classList.add('hidden');
+                        
+                        alert('删除成功');
+                    } catch (error) {
+                        console.error('删除失败:', error);
+                        alert('删除失败: ' + error.message);
+                    }
+                }
+            });
+        }
+        
+        // 加载图片历史记录
+        async function loadImageHistory() {
+            try {
+                console.log('开始加载图片历史记录...');
+                document.querySelector('.loading').classList.remove('hidden');
+                document.getElementById('no-data').classList.add('hidden');
+                
+                // 获取认证令牌
+                const token = localStorage.getItem('authToken');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                    console.log('使用认证令牌加载历史记录');
+                } else {
+                    console.log('以匿名模式加载历史记录');
+                }
+                
+                const response = await fetch('/api/history', {
+                    headers: headers
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`获取历史记录失败: HTTP ${response.status}`, errorText);
+                    throw new Error(`获取历史记录失败 (${response.status}): ${errorText || '未知错误'}`);
+                }
+                
+                const data = await response.json();
+                console.log('获取历史记录成功，结果数量:', data.results ? data.results.length : 0);
+                
+                // 隐藏加载中提示
+                document.querySelector('.loading').classList.add('hidden');
+                
+                if (!data.results || data.results.length === 0) {
+                    // 显示无数据提示
+                    document.getElementById('no-data').classList.remove('hidden');
+                    console.log('没有历史记录数据');
+                    return;
+                }
+                
+                // 保存所有图片数据
+                allImages = data.results.map(item => ({
+                    ...item,
+                    id: item.id.toString()
+                }));
+                
+                console.log('处理后的图片数据:', allImages.length);
+                
+                // 渲染图片
+                renderImages();
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+                // 隐藏加载中提示
+                document.querySelector('.loading').classList.add('hidden');
+                // 显示错误提示
+                const container = document.getElementById('image-container');
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-10">
+                        <i class="ri-error-warning-line text-red-500 text-5xl mb-2"></i>
+                        <p class="text-gray-700">加载失败: ${error.message}</p>
+                        <button class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700" onclick="loadImageHistory()">
+                            重试
+                        </button>
+                    </div>
+                `;
+                
+                // 也清空表格视图
+                document.getElementById('image-table-body').innerHTML = '';
+            }
+        }
+        
+        // 渲染图片
+        function renderImages(images = allImages) {
+            // 计算总页数
+            const totalPages = Math.ceil(images.length / itemsPerPage);
+            
+            // 确保当前页在有效范围内
+            if (currentPage > totalPages) {
+                currentPage = totalPages || 1;
+            }
+            
+            // 获取当前页的图片
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = startIdx + itemsPerPage;
+            const currentPageImages = images.slice(startIdx, endIdx);
+            
+            // 检查是否有数据
+            if (currentPageImages.length === 0) {
+                document.getElementById('no-data').classList.remove('hidden');
+                document.getElementById('image-container').innerHTML = '';
+                document.getElementById('image-table-body').innerHTML = '';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            } else {
+                document.getElementById('no-data').classList.add('hidden');
+            }
+            
+            // 根据当前视图渲染
+            if (currentView === 'grid') {
+                renderGridView(currentPageImages);
+            } else {
+                renderListView(currentPageImages);
+            }
+            
+            // 渲染分页
+            renderPagination(totalPages);
+        }
+        
+        // 渲染网格视图
+        function renderGridView(images) {
+            const container = document.getElementById('image-container');
+            container.innerHTML = ''; // 清空容器
+            
+            images.forEach(item => {
+                const card = createImageCard(item);
+                container.appendChild(card);
+            });
+        }
+        
+        // 渲染列表视图
+        function renderListView(images) {
+            const tbody = document.getElementById('image-table-body');
+            tbody.innerHTML = ''; // 清空容器
+            
+            images.forEach(item => {
+                const row = createImageRow(item);
+                tbody.appendChild(row);
+            });
+        }
+        
+        // 渲染分页控件
+        function renderPagination(totalPages) {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            
+            if (totalPages <= 1) return;
+            
+            // 上一页按钮
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200';
+            prevBtn.innerHTML = '<i class="ri-arrow-left-s-line"></i>';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderImages();
+                }
+            });
+            pagination.appendChild(prevBtn);
+            
+            // 页码按钮
+            const maxPageButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+            
+            if (endPage - startPage + 1 < maxPageButtons) {
+                startPage = Math.max(1, endPage - maxPageButtons + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = i === currentPage 
+                    ? 'px-3 py-1 rounded-md bg-indigo-600 text-white'
+                    : 'px-3 py-1 rounded-md hover:bg-gray-200';
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', () => {
+                    currentPage = i;
+                    renderImages();
+                });
+                pagination.appendChild(pageBtn);
+            }
+            
+            // 下一页按钮
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200';
+            nextBtn.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderImages();
+                }
+            });
+            pagination.appendChild(nextBtn);
+        }
+        
+        // 创建图片卡片元素
+        function createImageCard(item) {
+            const card = document.createElement('div');
+            card.className = 'image-card bg-white rounded-lg shadow-sm overflow-hidden relative group';
+            card.dataset.type = item.processType || 'other';
+            card.dataset.id = item.id;
+            
+            const processedImageUrl = item.processedImageUrl || '';
+            const processTime = item.processTime ? new Date(item.processTime).toLocaleString() : '未知时间';
+            const processType = item.processType || '图片处理';
+            
+            // 检查图片是否被选中
+            const isSelected = selectedItems.has(item.id.toString());
+            
+            card.innerHTML = `
+                <div class="absolute top-2 left-2 z-10">
+                    <input type="checkbox" class="image-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" ${isSelected ? 'checked' : ''}>
+                </div>
+                <div class="relative h-36 bg-gray-100 flex items-center justify-center overflow-hidden">
+                    <img src="${processedImageUrl}" alt="${processType}" class="w-full h-full object-contain">
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300"></div>
+                    <div class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 flex space-x-1">
+                        <button class="preview-btn bg-white text-gray-700 p-1.5 rounded-full hover:bg-gray-200">
+                            <i class="ri-eye-line"></i>
+                        </button>
+                        <button class="download-btn bg-white text-gray-700 p-1.5 rounded-full hover:bg-gray-200">
+                            <i class="ri-download-2-line"></i>
+                        </button>
+                        <button class="delete-btn bg-white text-red-500 p-1.5 rounded-full hover:bg-red-100">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-2">
+                    <div class="flex justify-between items-center">
+                        <span class="inline-block px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
+                            ${processType}
+                        </span>
+                        <span class="text-xs text-gray-500">${formatDate(processTime)}</span>
+                    </div>
+                </div>
+            `;
+            
+            // 添加checkbox事件
+            const checkbox = card.querySelector('.image-checkbox');
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    selectedItems.add(item.id.toString());
+                } else {
+                    selectedItems.delete(item.id.toString());
+                }
+                
+                // 显示或隐藏删除按钮
+                if (selectedItems.size > 0) {
+                    document.getElementById('delete-selected-btn').classList.remove('hidden');
+                } else {
+                    document.getElementById('delete-selected-btn').classList.add('hidden');
+                }
+            });
+            
+            // 添加下载按钮事件
+            const downloadBtn = card.querySelector('.download-btn');
+            downloadBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                downloadImage(processedImageUrl);
+            });
+            
+            // 添加删除按钮事件
+            const deleteBtn = card.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                deleteImage(item.id);
+            });
+            
+            // 添加预览按钮事件
+            const previewBtn = card.querySelector('.preview-btn');
+            previewBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                previewImage(item);
+            });
+            
+            return card;
+        }
+        
+        // 创建表格行元素
+        function createImageRow(item) {
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-gray-50';
+            row.dataset.id = item.id;
+            
+            const processedImageUrl = item.processedImageUrl || '';
+            const processTime = item.processTime ? new Date(item.processTime).toLocaleString() : '未知时间';
+            const processType = item.processType || '图片处理';
+            
+            // 检查图片是否被选中
+            const isSelected = selectedItems.has(item.id.toString());
+            
+            row.innerHTML = `
+                <td class="p-3">
+                    <input type="checkbox" class="image-checkbox w-4 h-4" ${isSelected ? 'checked' : ''}>
+                </td>
+                <td class="p-3">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 mr-3 bg-gray-100 rounded overflow-hidden">
+                            <img src="${processedImageUrl}" class="w-full h-full object-contain" alt="${processType}">
+                        </div>
+                        <div class="truncate max-w-xs">
+                            ${item.description || processType}
+                        </div>
+                    </div>
+                </td>
+                <td class="p-3">
+                    <span class="inline-block px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
+                        ${processType}
+                    </span>
+                </td>
+                <td class="p-3 text-sm text-gray-600">${formatDate(processTime)}</td>
+                <td class="p-3">
+                    <div class="flex space-x-1">
+                        <button class="preview-btn p-1.5 rounded text-gray-600 hover:bg-gray-100">
+                            <i class="ri-eye-line"></i>
+                        </button>
+                        <button class="download-btn p-1.5 rounded text-gray-600 hover:bg-gray-100">
+                            <i class="ri-download-2-line"></i>
+                        </button>
+                        <button class="delete-btn p-1.5 rounded text-red-500 hover:bg-red-100">
+                            <i class="ri-delete-bin-line"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            
+            // 添加checkbox事件
+            const checkbox = row.querySelector('.image-checkbox');
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    selectedItems.add(item.id.toString());
+                } else {
+                    selectedItems.delete(item.id.toString());
+                }
+                
+                // 显示或隐藏删除按钮
+                if (selectedItems.size > 0) {
+                    document.getElementById('delete-selected-btn').classList.remove('hidden');
+                } else {
+                    document.getElementById('delete-selected-btn').classList.add('hidden');
+                }
+            });
+            
+            // 添加下载按钮事件
+            const downloadBtn = row.querySelector('.download-btn');
+            downloadBtn.addEventListener('click', function() {
+                downloadImage(processedImageUrl);
+            });
+            
+            // 添加删除按钮事件
+            const deleteBtn = row.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function() {
+                deleteImage(item.id);
+            });
+            
+            // 添加预览按钮事件
+            const previewBtn = row.querySelector('.preview-btn');
+            previewBtn.addEventListener('click', function() {
+                previewImage(item);
+            });
+            
+            return row;
+        }
+        
+        // 过滤图片函数
+        function filterImages(type) {
+            if (type === 'all') {
+                renderImages();
+            } else {
+                const filtered = allImages.filter(item => 
+                    item.processType && (item.processType === type || type === 'other' && !['图片翻译', '营销图生成', '商品换背景', '场景图生成', '图像智能消除', '模特换肤', '模拟试衣'].includes(item.processType))
+                );
+                renderImages(filtered);
+            }
+        }
+        
+        // 下载图片函数
+        function downloadImage(url) {
+            if (!url) return;
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `image-${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // 删除图片函数
+        async function deleteImage(id) {
+            if (confirm('确定要删除这张图片吗？')) {
+                try {
+                    // 调用后端API删除图片
+                    const token = localStorage.getItem('authToken') || '';
+                    const response = await fetch(`/api/delete-image/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': token ? `Bearer ${token}` : ''
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || '删除失败');
+                    }
+                    
+                    // 从本地数组中移除
+                    allImages = allImages.filter(item => item.id.toString() !== id.toString());
+                    
+                    // 从选中集合中移除
+                    selectedItems.delete(id.toString());
+                    
+                    // 重新渲染
+                    renderImages();
+                    
+                    // 如果没有选中项，隐藏删除按钮
+                    if (selectedItems.size === 0) {
+                        document.getElementById('delete-selected-btn').classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('删除失败:', error);
+                    alert('删除失败: ' + error.message);
+                }
+            }
+        }
+        
+        // 预览图片函数
+        function previewImage(item) {
+            // 创建模态框
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+            modal.id = 'preview-modal';
+            
+            const processedImageUrl = item.processedImageUrl || '';
+            const originalImageUrl = item.originalImageUrl || '';
+            const processTime = item.processTime ? new Date(item.processTime).toLocaleString() : '未知时间';
+            const processType = item.processType || '图片处理';
+            
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto relative">
+                    <button class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl" id="close-modal">
+                        <i class="ri-close-line"></i>
+                    </button>
+                    
+                    <div class="p-5">
+                        <h3 class="text-xl font-semibold mb-4">${processType}</h3>
+                        
+                        <div class="flex flex-col md:flex-row gap-4">
+                            ${originalImageUrl ? `
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-500 mb-2">原图:</p>
+                                <div class="border rounded-lg overflow-hidden">
+                                    <img src="${originalImageUrl}" alt="原图" class="w-full">
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-500 mb-2">处理后:</p>
+                                <div class="border rounded-lg overflow-hidden">
+                                    <img src="${processedImageUrl}" alt="处理后图片" class="w-full">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex justify-between items-center">
+                            <div>
+                                <p class="text-sm text-gray-500">处理时间: ${formatDate(processTime)}</p>
+                                <p class="text-sm text-gray-500">类型: ${processType}</p>
+                            </div>
+                            
+                            <button class="download-preview-btn px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                                <i class="ri-download-2-line mr-1"></i> 下载
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 禁止页面滚动
+            document.body.style.overflow = 'hidden';
+            
+            // 添加关闭按钮事件
+            modal.querySelector('#close-modal').addEventListener('click', function() {
+                document.body.removeChild(modal);
+                document.body.style.overflow = '';
+            });
+            
+            // 点击模态框背景关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // 添加下载按钮事件
+            const downloadBtn = modal.querySelector('.download-preview-btn');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function() {
+                    downloadImage(processedImageUrl);
+                });
+            }
+        }
+        
+        // 格式化日期函数
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+            
+            // 小于24小时显示相对时间
+            if (diff < 24 * 60 * 60 * 1000) {
+                if (diff < 60 * 1000) return '刚刚';
+                if (diff < 60 * 60 * 1000) return `${Math.floor(diff / (60 * 1000))}分钟前`;
+                return `${Math.floor(diff / (60 * 60 * 1000))}小时前`;
+            }
+            
+            // 超过24小时显示日期
+            return date.toLocaleString().replace(/:\d{2}$/, '');
+        }
+        
+        // 认证检查函数 - 在跳转前检查用户是否已登录
+        function checkAuthAndRedirect(path) {
+            // 检查用户是否已登录的逻辑
+            // 示例: 获取localStorage中的token
+            const token = localStorage.getItem('authToken');
+            
+            if (!token) {
+                window.location.href = '/login.html';
+            } else {
+                window.location.href = path;
+            }
+        }
+    </script>
+</body>
+</html> 

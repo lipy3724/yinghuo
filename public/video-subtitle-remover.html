@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频去除字幕 - 萤火.AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #6366f1;
+            background-color: #f9fafb;
+        }
+        .result-section {
+            border-left: 1px solid #e5e7eb;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        .video-control {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .video-wrapper:hover .video-control {
+            opacity: 1;
+        }
+        
+        /* 自定义开关样式 */
+        #toggle-background.bg-blue-500 {
+            border-color: #3b82f6;
+        }
+        
+        #toggle-slider {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .sidebar-item.active {
+            background-color: #f3f0ff;
+            color: #6366f1;
+        }
+        .sidebar-item:hover:not(.active) {
+            background-color: #f9fafb;
+        }
+        .sidebar-item.active i {
+            color: #6366f1;
+        }
+        
+        /* 确保侧边栏延伸到底部 */
+        .sidebar {
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto;
+        }
+
+        /* 下载按钮样式 */
+        .download-btn {
+            transition: all 0.3s ease;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex">
+        <!-- 主内容区域 -->
+        <div class="flex-1 flex flex-col">
+            <div class="main-container flex-grow">
+                <div class="content-container flex flex-col lg:flex-row h-full">
+                    <!-- 左侧：上传视频 -->
+                    <div class="w-full lg:w-1/5 lg:min-w-[200px] border-b lg:border-b-0 lg:border-r border-gray-200 p-3">
+                        <h2 class="text-lg font-bold mb-2">上传视频</h2>
+                        
+                        <div id="upload-area" class="upload-area h-36 flex flex-col items-center justify-center mb-2 bg-gray-50 border border-dashed border-gray-300 rounded-md hover:border-indigo-500 hover:bg-gray-100 transition-colors">
+                            <i class="ri-upload-cloud-line text-2xl text-gray-400 mb-1"></i>
+                            <p class="text-gray-500 text-center text-xs px-2">点击或者拖动视频文件到这区域来上传</p>
+                            <input type="file" id="video-upload" class="hidden" accept="video/mp4">
+                        </div>
+                        <p class="text-xs text-gray-500 mb-2 -mt-1">支持MP4格式，大小不超过200MB</p>
+                        
+                        <!-- 添加视频时长和积分消耗信息 -->
+                        <div id="video-duration-info" class="hidden p-3 bg-blue-50 text-blue-700 rounded-md mb-4 text-sm">
+                            视频时长: 计算中...
+                        </div>
+
+                        <div id="original-video-container" class="mb-8">
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：视频预览和结果 -->
+                    <div class="w-full lg:w-4/5 lg:pl-6 lg:pr-4 py-6 result-section flex-grow">
+                        <h2 class="text-2xl font-bold mb-6 text-center">字幕去除效果</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h3 class="text-lg font-medium mb-3">原视频：</h3>
+                                <div id="original-video-container" class="h-64 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                                    <div id="original-video-wrapper" class="video-wrapper hidden w-full h-full relative">
+                                        <video id="original-video" class="w-full h-full object-contain" controls></video>
+                                    </div>
+                                    <p id="original-video-placeholder" class="text-gray-500 text-center px-4">上传视频后将在这里显示</p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-lg font-medium">处理后视频：</h3>
+                                    <button id="download-btn" class="download-btn hidden bg-indigo-600 text-white px-3 py-1 rounded-md flex items-center text-sm hover:bg-indigo-700">
+                                        <i class="ri-download-2-line mr-1"></i>
+                                        下载
+                                    </button>
+                                </div>
+                                <div id="output-video-container" class="h-64 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                                    <div id="output-video-wrapper" class="video-wrapper hidden w-full h-full relative">
+                                        <video id="output-video" class="w-full h-full object-contain" controls></video>
+                                    </div>
+                                    <p id="output-video-placeholder" class="text-gray-500 text-center px-4">处理完成后将在这里显示</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 填充剩余空间的内容 -->
+                        <div class="mt-8 bg-gray-50 p-4 rounded-lg flex-grow">
+                            <h3 class="text-lg font-medium mb-3">使用说明</h3>
+                            <div class="text-gray-600 text-sm">
+                                <p class="mb-2">1. 上传一个包含字幕的视频文件（支持MP4格式）</p>
+                                <p class="mb-2">2. 点击"开始处理"按钮，等待AI处理（处理时间与视频长度成正比）</p>
+                                <p class="mb-2">3. 处理完成后，您可以预览并下载无字幕的视频</p>
+                                
+                                <p class="font-medium mt-4">注意事项：</p>
+                                <p class="mb-1">- 每次处理视频将消耗您账户中的积分</p>
+                                <p class="mb-1">- 硬字幕（内嵌字幕）去除效果比软字幕更好</p>
+                                <p class="mb-1">- 成功率与视频清晰度、字幕类型和背景复杂度有关</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 添加固定在底部的按钮 -->
+            <div class="w-full lg:w-1/5 p-3 bg-white border-t border-gray-200">
+                <button id="process-btn" class="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 flex items-center justify-center text-sm">
+                    <i class="ri-film-line mr-1"></i>
+                    开始处理
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加加载中的遮罩层 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <div class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+                <p id="loading-message" class="text-gray-700 text-center">正在处理，请稍候...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const uploadArea = document.getElementById('upload-area');
+            const videoUpload = document.getElementById('video-upload');
+            const originalVideoContainer = document.getElementById('original-video-container');
+            const originalVideo = document.getElementById('original-video');
+            const originalVideoWrapper = document.getElementById('original-video-wrapper');
+            const originalVideoPlaceholder = document.getElementById('original-video-placeholder');
+            const outputVideo = document.getElementById('output-video');
+            const outputVideoWrapper = document.getElementById('output-video-wrapper');
+            const outputVideoPlaceholder = document.getElementById('output-video-placeholder');
+            const downloadBtn = document.getElementById('download-btn');
+            const processBtn = document.getElementById('process-btn');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingMessage = document.getElementById('loading-message');
+            
+            // 默认配置
+            const DEFAULT_SUBTITLE_POSITION = 'Bottom'; // 默认字幕位置：底部
+            const DEFAULT_INTENSITY = 'Normal'; // 默认处理强度：正常
+            
+            let uploadedVideo = null;
+            let videoUrl = null;
+            let taskId = null;
+            
+            // 上传区域点击事件
+            uploadArea.addEventListener('click', () => {
+                videoUpload.click();
+            });
+            
+            // 文件选择事件
+            videoUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 200 * 1024 * 1024) {
+                        alert('视频文件过大，请上传小于200MB的视频');
+                        return;
+                    }
+                    
+                    if (file.type !== 'video/mp4') {
+                        alert('请上传MP4格式的视频');
+                        return;
+                    }
+                    
+                    uploadedVideo = file;
+                    const videoURL = URL.createObjectURL(file);
+                    
+                    originalVideo.src = videoURL;
+                    originalVideoPlaceholder.style.display = 'none';
+                    originalVideoWrapper.classList.remove('hidden');
+                    
+                    // 监听视频元数据加载事件，获取视频时长
+                    originalVideo.onloadedmetadata = function() {
+                        const duration = originalVideo.duration;
+                        console.log(`视频元数据加载完成，时长: ${duration}秒`);
+                        
+                        // 如果视频太长，显示警告
+                        if (duration > 300) { // 超过5分钟的视频
+                            alert(`注意: 视频时长为${Math.ceil(duration)}秒，处理时间可能较长。\n根据规则，将按每30秒30积分计费，不足30秒按30秒计算。`);
+                        }
+                        
+                        // 更新预计费信息
+                        const creditCost = Math.ceil(duration / 30) * 30;
+                        const videoDurationInfo = document.getElementById('video-duration-info');
+                        if (videoDurationInfo) {
+                            videoDurationInfo.textContent = `视频时长: ${Math.ceil(duration)}秒，预计消耗${creditCost}积分`;
+                            videoDurationInfo.classList.remove('hidden');
+                        }
+                    };
+                    
+                    // 重置输出视频
+                    outputVideoWrapper.classList.add('hidden');
+                    outputVideoPlaceholder.style.display = 'block';
+                    downloadBtn.classList.add('hidden');
+                }
+            });
+            
+            // 拖拽上传
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('border-indigo-500', 'bg-gray-100');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('border-indigo-500', 'bg-gray-100');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('border-indigo-500', 'bg-gray-100');
+                
+                const file = e.dataTransfer.files[0];
+                if (file && file.type === 'video/mp4') {
+                    if (file.size > 200 * 1024 * 1024) {
+                        alert('视频文件过大，请上传小于200MB的视频');
+                        return;
+                    }
+                    
+                    uploadedVideo = file;
+                    const videoURL = URL.createObjectURL(file);
+                    
+                    originalVideo.src = videoURL;
+                    originalVideoPlaceholder.style.display = 'none';
+                    originalVideoWrapper.classList.remove('hidden');
+                    
+                    // 重置输出视频
+                    outputVideoWrapper.classList.add('hidden');
+                    outputVideoPlaceholder.style.display = 'block';
+                    downloadBtn.classList.add('hidden');
+                } else {
+                    alert('请上传MP4格式的视频文件');
+                }
+            });
+            
+            // 下载按钮点击
+            downloadBtn.addEventListener('click', () => {
+                if (videoUrl) {
+                    console.log('开始下载视频:', videoUrl);
+                    
+                    // 创建一个隐藏的下载链接
+                    const a = document.createElement('a');
+                    a.href = videoUrl;
+                    a.download = '无字幕视频.mp4'; // 设置下载文件名
+                    a.target = '_blank'; // 在新窗口打开，避免导航离开当前页面
+                    
+                    // 添加到文档中
+                    document.body.appendChild(a);
+                    
+                    // 模拟点击并跟踪状态
+                    try {
+                        a.click();
+                        console.log('下载链接已点击');
+                    } catch (e) {
+                        console.error('点击下载链接失败:', e);
+                        // 尝试直接在新窗口打开
+                        window.open(videoUrl, '_blank');
+                    }
+                    
+                    // 移除下载链接
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                    }, 100);
+                } else {
+                    console.error('没有可下载的视频URL');
+                    alert('没有可下载的视频');
+                }
+            });
+            
+            // 处理按钮点击
+            processBtn.addEventListener('click', () => {
+                if (!uploadedVideo) {
+                    alert('请先上传视频！');
+                    return;
+                }
+                
+                // 检查用户是否登录
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    if (confirm('需要登录才能使用此功能，是否前往登录？')) {
+                        window.location.href = '/login.html';
+                    }
+                    return;
+                }
+                
+                // 显示加载中
+                loadingOverlay.classList.remove('hidden');
+                
+                // 获取视频时长以计算积分消耗
+                let duration = 30; // 默认30秒
+                if (originalVideo && originalVideo.duration) {
+                    duration = Math.ceil(originalVideo.duration);
+                }
+                
+                // 计算所需积分
+                const requiredCredits = Math.ceil(duration / 30) * 30;
+                
+                // 获取用户当前积分
+                fetch('/api/user/credits', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const userCredits = data.credits;
+                        
+                        // 检查是否有足够积分
+                        if (userCredits < requiredCredits) {
+                            loadingOverlay.classList.add('hidden');
+                            if (confirm(`积分不足！处理${duration}秒视频需要${requiredCredits}积分，您当前有${userCredits}积分。\n是否前往积分中心充值？`)) {
+                                window.location.href = '/credits.html';
+                            }
+                            return;
+                        }
+                        
+                        // 继续处理视频
+                        processVideo();
+                    } else {
+                        throw new Error('获取用户积分失败');
+                    }
+                })
+                .catch(error => {
+                    console.error('检查积分错误:', error);
+                    loadingOverlay.classList.add('hidden');
+                    alert('无法验证用户积分，请稍后再试');
+                });
+                
+                // 处理视频函数
+                function processVideo() {
+                    // 上传视频到服务器
+                    uploadVideoToServer(uploadedVideo)
+                        .then(url => {
+                            console.log('视频上传成功，URL:', url);
+                            return callAliyunSubtitleRemoval(url);
+                        })
+                        .then(result => {
+                            console.log('视频字幕擦除任务已提交，开始轮询任务状态');
+                            return pollJobStatus(result.jobId);
+                        })
+                        .then(result => {
+                            console.log('视频处理成功，结果:', result);
+                            // 显示处理后的视频
+                            videoUrl = result.videoUrl;
+                            outputVideo.src = videoUrl;
+                            outputVideoPlaceholder.style.display = 'none';
+                            outputVideoWrapper.classList.remove('hidden');
+                            downloadBtn.classList.remove('hidden');
+                            
+                            loadingOverlay.classList.add('hidden');
+                        })
+                        .catch(error => {
+                            console.error('视频处理失败:', error);
+                            loadingOverlay.classList.add('hidden');
+                            alert('处理失败: ' + error.message);
+                        });
+                }
+            });
+            
+            // 上传视频到服务器
+            function uploadVideoToServer(videoFile) {
+                return new Promise((resolve, reject) => {
+                    const formData = new FormData();
+                    formData.append('video', videoFile);
+                    
+                    // 添加更详细的日志
+                    console.log('准备上传视频:', videoFile.name, '大小:', (videoFile.size / 1024 / 1024).toFixed(2) + 'MB');
+                    
+                    fetch('/api/upload-video', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: formData
+                    })
+                    .then(response => {
+                        console.log('上传视频响应状态:', response.status);
+                        if (!response.ok) {
+                            return response.json().then(data => {
+                                console.error('上传视频失败:', data);
+                                throw new Error(data.error || '上传视频失败');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('上传视频成功:', data);
+                        if (data.success && data.videoUrl) {
+                            resolve(data.videoUrl);
+                        } else {
+                            reject(new Error(data.message || '上传视频失败'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('上传视频请求错误:', error);
+                        reject(error);
+                    });
+                });
+            }
+            
+            // 调用阿里云视频字幕擦除API（通过SDK）
+            function callAliyunSubtitleRemoval(videoUrl) {
+                return new Promise((resolve, reject) => {
+                    console.log('开始调用视频字幕擦除:', videoUrl);
+                    
+                    // 使用默认配置
+                    const subtitlePositionValue = DEFAULT_SUBTITLE_POSITION;
+                    const intensity = DEFAULT_INTENSITY;
+                    
+                    // 从原始视频获取时长
+                    let videoDuration = 30; // 默认30秒
+                    
+                    // 尝试从originalVideo元素获取视频时长
+                    if (originalVideo && originalVideo.duration) {
+                        videoDuration = Math.ceil(originalVideo.duration);
+                        console.log('获取到视频时长:', videoDuration, '秒');
+                    } else {
+                        console.log('未能获取视频时长，使用默认值:', videoDuration, '秒');
+                    }
+                    
+                    // 调用后端API
+                    fetch('/api/remove-subtitles', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify({
+                            videoUrl: videoUrl,
+                            subtitlePosition: subtitlePositionValue,
+                            videoDuration: videoDuration
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(data => {
+                                console.error('API返回错误:', data);
+                                throw new Error(data.error || data.details || '处理请求失败');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('API返回结果:', data);
+                        if (data.success && data.jobId) {
+                            console.log('任务提交成功，任务ID:', data.jobId);
+                            resolve({
+                                success: true,
+                                jobId: data.jobId
+                            });
+                        } else {
+                            reject(new Error(data.message || '处理失败'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('字幕擦除API调用失败:', error);
+                        reject(error);
+                    });
+                });
+            }
+            
+            // 轮询查询任务状态
+            function pollJobStatus(jobId) {
+                return new Promise((resolve, reject) => {
+                    let retryCount = 0;
+                    const maxRetries = 60; // 最多轮询60次，约5分钟
+                    
+                    const checkStatus = () => {
+                        console.log(`查询任务状态 (${retryCount}/${maxRetries}):`, jobId);
+                        
+                        fetch(`/api/check-job-status?jobId=${jobId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(data => {
+                                    throw new Error(data.error || data.details || '查询任务状态失败');
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('任务状态查询结果:', JSON.stringify(data, null, 2));
+                            
+                            if (data.success) {
+                                // 如果API直接返回了视频URL (最优先)
+                                if (data.videoUrl) {
+                                    console.log('在响应根级别找到视频URL:', data.videoUrl);
+                                    resolve({
+                                        videoUrl: data.videoUrl
+                                    });
+                                    return;
+                                }
+                                
+                                // 获取状态
+                                const status = data.status || '';
+                                let jobInfo = data.jobInfo || {};
+                                
+                                // 根据任务状态处理 - 支持多种状态格式
+                                const successStates = ['PROCESS_SUCCESS', 'SUCCESS', 'SUCCEED'];
+                                const failedStates = ['PROCESS_FAILED', 'FAILED', 'FAIL'];
+                                const processingStates = ['PROCESSING', 'PROCESS', 'QUEUING', 'RUNNING'];
+                                
+                                // 检查返回数据中是否有指示处理中的文本信息
+                                let isTextProcessing = false;
+                                if (data.data && typeof data.data.result === 'string') {
+                                    isTextProcessing = data.data.result.includes('异步处理中') || 
+                                                       data.data.result.includes('稍等') ||
+                                                       data.data.result.includes('轮询查询');
+                                }
+                                
+                                if (successStates.some(s => status.toUpperCase().includes(s))) {
+                                    // 处理成功，尝试获取视频URL
+                                    console.log('任务处理成功，尝试获取视频URL');
+                                    let foundUrl = false;
+                                    
+                                    // 尝试从多个位置查找视频URL
+                                    try {
+                                        // 1. 检查jobInfo.Data.Result
+                                        if (jobInfo.Data && jobInfo.Data.Result) {
+                                            let result;
+                                            try {
+                                                // 检查是否看起来像JSON字符串 (以 { 或 [ 开头)
+                                                if (typeof jobInfo.Data.Result === 'string' && 
+                                                    jobInfo.Data.Result.trim().match(/^[\{\[]/)) {
+                                                    result = JSON.parse(jobInfo.Data.Result);
+                                                    console.log('从Result解析到:', result);
+                                                    
+                                                    if (result.VideoUrl) {
+                                                        console.log('从Result字段找到视频URL:', result.VideoUrl);
+                                                        resolve({
+                                                            videoUrl: result.VideoUrl
+                                                        });
+                                                        foundUrl = true;
+                                                        return;
+                                                    }
+                                                } else {
+                                                    console.log('Result不是JSON格式:', jobInfo.Data.Result);
+                                                }
+                                            } catch (e) {
+                                                console.warn('解析Result字段失败:', e);
+                                            }
+                                        }
+                                        
+                                        // 2. 检查data.data.result (阿里云格式)
+                                        if (!foundUrl && data.data && data.data.result) {
+                                            let result;
+                                            try {
+                                                if (typeof data.data.result === 'string') {
+                                                    // 检查是否看起来像JSON字符串
+                                                    if (data.data.result.trim().match(/^[\{\[]/)) {
+                                                        result = JSON.parse(data.data.result);
+                                                    } else {
+                                                        console.log('阿里云返回非JSON格式结果:', data.data.result);
+                                                        result = data.data.result;
+                                                    }
+                                                } else {
+                                                    result = data.data.result;
+                                                }
+                                                
+                                                console.log('从data.data.result解析到:', result);
+                                                
+                                                if (result.VideoUrl) {
+                                                    console.log('从data.data.result找到视频URL:', result.VideoUrl);
+                                                    resolve({
+                                                        videoUrl: result.VideoUrl
+                                                    });
+                                                    foundUrl = true;
+                                                    return;
+                                                }
+                                            } catch (e) {
+                                                console.warn('解析data.data.result失败:', e);
+                                            }
+                                        }
+                                        
+                                        // 如果还没找到，检查其他可能的位置
+                                        if (!foundUrl) {
+                                            console.log('尝试在响应的其他位置查找视频URL');
+                                            
+                                            // 递归查找对象中的VideoUrl字段
+                                            function findVideoUrl(obj) {
+                                                if (!obj || typeof obj !== 'object') return null;
+                                                
+                                                if (obj.VideoUrl) return obj.VideoUrl;
+                                                if (obj.videoUrl) return obj.videoUrl;
+                                                
+                                                for (const key in obj) {
+                                                    const result = findVideoUrl(obj[key]);
+                                                    if (result) return result;
+                                                }
+                                                
+                                                return null;
+                                            }
+                                            
+                                            const videoUrl = findVideoUrl(data);
+                                            if (videoUrl) {
+                                                console.log('在嵌套对象中找到视频URL:', videoUrl);
+                                                resolve({
+                                                    videoUrl: videoUrl
+                                                });
+                                                return;
+                                            }
+                                        }
+                                        
+                                        reject(new Error('任务已完成，但无法获取处理后的视频URL'));
+                                    } catch (error) {
+                                        console.error('解析任务结果失败:', error);
+                                        reject(new Error('解析任务结果失败: ' + error.message));
+                                    }
+                                } else if (failedStates.some(s => status.toUpperCase().includes(s))) {
+                                    // 任务处理失败
+                                    let errorMessage = '未知错误';
+                                    
+                                    // 尝试从多个位置获取错误信息
+                                    if (jobInfo.Data && jobInfo.Data.ErrorMessage) {
+                                        errorMessage = jobInfo.Data.ErrorMessage;
+                                    } else if (jobInfo.errorMessage) {
+                                        errorMessage = jobInfo.errorMessage;
+                                    } else if (data.data && data.data.errorMessage) {
+                                        errorMessage = data.data.errorMessage;
+                                    }
+                                    
+                                    reject(new Error('视频处理失败：' + errorMessage));
+                                } else if (retryCount >= maxRetries) {
+                                    // 超过最大轮询次数
+                                    reject(new Error('处理超时，请稍后在历史记录中查看结果'));
+                                } else if (processingStates.some(s => status.toUpperCase().includes(s)) || 
+                                          isTextProcessing ||
+                                          (data.data && data.data.status === 'PROCESSING')) {
+                                    // 任务仍在处理中（各种形式的"处理中"状态）
+                                    retryCount++;
+                                    
+                                    // 显示详细状态
+                                    let statusText = '处理中';
+                                    if (isTextProcessing && data.data && data.data.result) {
+                                        statusText = data.data.result.substring(0, 20) + (data.data.result.length > 20 ? '...' : '');
+                                    } else {
+                                        statusText = status || 'PROCESSING';
+                                    }
+                                    
+                                    loadingMessage.textContent = `正在处理视频，请耐心等待... (${statusText}) [${retryCount}/${maxRetries}]`;
+                                    
+                                    // 调整等待时间策略
+                                    // 前10次每5秒查询一次，后面每10秒查询一次
+                                    const waitTime = retryCount < 10 ? 5000 : 10000;
+                                    setTimeout(checkStatus, waitTime);
+                                } else {
+                                    // 未知状态，默认为处理中
+                                    console.log('未识别的状态:', status);
+                                    retryCount++;
+                                    loadingMessage.textContent = `正在处理视频，请耐心等待... (未知状态) [${retryCount}/${maxRetries}]`;
+                                    
+                                    // 使用稍长的等待时间
+                                    const waitTime = 10000;
+                                    setTimeout(checkStatus, waitTime);
+                                }
+                            } else {
+                                reject(new Error(data.error || '查询任务状态失败'));
+                            }
+                })
+                .catch(error => {
+                            console.error('查询任务状态请求错误:', error);
+                            
+                            // 如果还没超过最大重试次数，继续重试
+                            if (retryCount < maxRetries) {
+                                retryCount++;
+                                // 发生错误时，等待时间略长一些
+                                setTimeout(checkStatus, 8000);
+                            } else {
+                                reject(error);
+                            }
+                        });
+                    };
+                    
+                    // 开始轮询
+                    checkStatus();
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

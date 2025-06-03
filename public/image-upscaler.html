@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图像高清放大 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="/feature-tracker.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .card {
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .feature-card {
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 主内容区域 -->
+    <div class="container mx-auto p-8">
+        <h1 class="text-2xl font-bold mb-6">图像高清放大</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-semibold mb-4">上传图片进行高清放大</h2>
+            <p class="text-gray-600 mb-4">上传您的图片，使用AI技术提升分辨率，获得更清晰、更高质量的图像。</p>
+            
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-md mb-6">
+                <div class="flex items-start">
+                    <div class="mr-3 mt-1 text-indigo-500">
+                        <i class="ri-information-line text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-indigo-700">使用提示</h3>
+                        <ul class="list-disc ml-5 mt-2 text-sm text-indigo-700">
+                            <li>图片尺寸需大于 100×100 像素，小于 3000×3000 像素</li>
+                            <li>放大后的图片不能超过 3000×3000 像素</li>
+                            <li>支持JPG、PNG、WEBP等常见图片格式</li>
+                            <li>放大倍数范围：2-4倍（推荐2倍效果最佳，4倍效果更明显）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <form id="upscalerForm" enctype="multipart/form-data">
+                <div class="mb-6">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors cursor-pointer" id="dropZone">
+                        <input type="file" id="imageInput" name="image" accept="image/*" class="hidden">
+                        <div id="uploadPlaceholder">
+                            <i class="ri-upload-cloud-2-line text-4xl text-gray-400 mb-2"></i>
+                            <p class="text-gray-500">拖放图片到此处或 <span class="text-indigo-600 font-medium">点击上传</span></p>
+                            <p class="text-sm text-gray-400 mt-1">支持 JPG, PNG, WEBP 格式</p>
+                        </div>
+                        <div id="previewContainer" class="hidden">
+                            <img id="imagePreview" class="max-h-48 mx-auto mb-3">
+                            <p id="imageInfo" class="text-sm text-gray-500"></p>
+                            <button type="button" id="removeImage" class="mt-2 text-sm text-red-500 hover:text-red-700">
+                                移除图片
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">放大倍数</label>
+                    <div class="flex gap-3">
+                        <button type="button" class="upscale-factor-btn active py-2 px-4 border-2 border-indigo-600 bg-indigo-50 text-indigo-600 rounded-lg font-medium hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 flex items-center justify-center" data-value="2">
+                            <i class="ri-zoom-in-line mr-1"></i>
+                            2倍
+                        </button>
+                        <button type="button" class="upscale-factor-btn py-2 px-4 border-2 border-gray-300 bg-white text-gray-700 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 flex items-center justify-center" data-value="3">
+                            <i class="ri-zoom-in-line mr-1"></i>
+                            3倍
+                        </button>
+                        <button type="button" class="upscale-factor-btn py-2 px-4 border-2 border-gray-300 bg-white text-gray-700 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-1 flex items-center justify-center" data-value="4">
+                            <i class="ri-zoom-in-line mr-1"></i>
+                            4倍
+                        </button>
+                    </div>
+                    <input type="hidden" id="upscaleFactor" name="upscaleFactor" value="2">
+                    <p class="text-xs text-gray-500 mt-2">高倍数放大需要更长的处理时间，但可以获得更大的图像尺寸和更清晰的细节</p>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" id="upscaleButton" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="ri-zoom-in-line mr-2"></i>
+                        开始放大
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <div id="resultContainer" class="hidden bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">处理结果</h2>
+            
+            <div class="flex flex-col md:flex-row gap-6 mb-6">
+                <div class="flex-1">
+                    <h3 class="font-medium text-gray-700 mb-2">原始图片</h3>
+                    <div class="border border-gray-200 rounded-lg p-2 bg-gray-50">
+                        <img id="originalImage" class="max-w-full max-h-64 mx-auto">
+                        <p id="originalImageInfo" class="text-sm text-gray-500 mt-2 text-center"></p>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-medium text-gray-700 mb-2">处理后图片</h3>
+                    <div id="resultImageWrapper" class="border border-gray-200 rounded-lg p-2 bg-gray-50">
+                        <img id="resultImage" class="max-w-full max-h-64 mx-auto">
+                        <p id="resultImageInfo" class="text-sm text-gray-500 mt-2 text-center"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" id="downloadButton" class="inline-flex items-center px-4 py-2 border border-indigo-600 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <i class="ri-download-2-line mr-1"></i>
+                    下载图片
+                </button>
+                <button type="button" id="saveToDownloadCenterButton" class="inline-flex items-center px-4 py-2 border border-indigo-600 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <i class="ri-save-line mr-1"></i>
+                    保存
+                </button>
+                <button type="button" id="newUpscaleButton" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <i class="ri-add-line mr-1"></i>
+                    上传新图片
+                </button>
+            </div>
+        </div>
+        
+        <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-5 rounded-lg shadow-lg w-80 flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                <p class="text-gray-700" id="processingText">正在处理中，请稍候...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('dropZone');
+            const imageInput = document.getElementById('imageInput');
+            const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+            const previewContainer = document.getElementById('previewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            const imageInfo = document.getElementById('imageInfo');
+            const removeImageBtn = document.getElementById('removeImage');
+            const upscaleFactor = document.getElementById('upscaleFactor');
+            const upscaleFactorValue = document.getElementById('upscaleFactorValue');
+            const upscaleButton = document.getElementById('upscaleButton');
+            const upscalerForm = document.getElementById('upscalerForm');
+            const resultContainer = document.getElementById('resultContainer');
+            const originalImage = document.getElementById('originalImage');
+            const originalImageInfo = document.getElementById('originalImageInfo');
+            const resultImage = document.getElementById('resultImage');
+            const resultImageInfo = document.getElementById('resultImageInfo');
+            const downloadButton = document.getElementById('downloadButton');
+            const newUpscaleButton = document.getElementById('newUpscaleButton');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const processingText = document.getElementById('processingText');
+            
+            let selectedFile = null;
+            
+            // 初始化禁用上传按钮
+            upscaleButton.disabled = true;
+            
+            // 点击上传区域触发文件选择
+            dropZone.addEventListener('click', () => {
+                imageInput.click();
+            });
+            
+            // 拖拽文件处理
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-indigo-400');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-indigo-400');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-indigo-400');
+                
+                if (e.dataTransfer.files.length) {
+                    handleSelectedFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // 选择文件处理
+            imageInput.addEventListener('change', (e) => {
+                if (e.target.files.length) {
+                    handleSelectedFile(e.target.files[0]);
+                }
+            });
+            
+            // 移除图片按钮
+            removeImageBtn.addEventListener('click', () => {
+                resetImageUpload();
+            });
+            
+            // 放大倍数按钮
+            const upscaleFactorBtns = document.querySelectorAll('.upscale-factor-btn');
+            const upscaleFactorInput = document.getElementById('upscaleFactor');
+            
+            upscaleFactorBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 移除所有按钮的active状态
+                    upscaleFactorBtns.forEach(b => {
+                        b.classList.remove('active');
+                        b.classList.remove('border-indigo-600', 'bg-indigo-50', 'text-indigo-600');
+                        b.classList.add('border-gray-300', 'bg-white', 'text-gray-700');
+                    });
+                    
+                    // 添加当前按钮的active状态
+                    this.classList.add('active');
+                    this.classList.remove('border-gray-300', 'bg-white', 'text-gray-700');
+                    this.classList.add('border-indigo-600', 'bg-indigo-50', 'text-indigo-600');
+                    
+                    // 更新隐藏的输入值
+                    upscaleFactorInput.value = this.dataset.value;
+                });
+            });
+            
+            // 提交表单
+            upscalerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                if (!selectedFile) {
+                    alert('请先选择一张图片');
+                    return;
+                }
+                
+                // 获取用户选择的放大倍数（从隐藏输入框）
+                const upscaleFactor = parseInt(document.getElementById('upscaleFactor').value);
+                
+                // 记录功能使用
+                const canProceed = await trackFeatureUsage('image-upscaler');
+                if (!canProceed) {
+                    return; // 如果不能继续（如积分不足），则中止处理
+                }
+                
+                // 显示放大倍数提示信息
+                let processingMessage = '正在处理图片';
+                if (upscaleFactor >= 4) {
+                    processingMessage += '，4倍放大需要较长时间，请耐心等待...';
+                } else if (upscaleFactor === 3) {
+                    processingMessage += '，请稍候...';
+                } else {
+                    processingMessage += '，这可能需要几秒钟...';
+                }
+                
+                showLoadingOverlay('正在上传图片...');
+                
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                formData.append('upscaleFactor', upscaleFactor);
+                
+                try {
+                    // 发送图片进行处理
+                    showLoadingOverlay(processingMessage);
+                    
+                    const response = await fetch('/api/upscale', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || '图片处理失败');
+                    }
+                    
+                    const result = await response.json();
+                    showResults(result);
+                } catch (error) {
+                    hideLoadingOverlay();
+                    alert(`错误: ${error.message}`);
+                }
+            });
+            
+            // 显示处理结果
+            function showResults(result) {
+                hideLoadingOverlay();
+                
+                originalImage.src = URL.createObjectURL(selectedFile);
+                resultImage.src = result.imageUrl;
+                
+                const img = new Image();
+                img.onload = () => {
+                    originalImageInfo.textContent = `${selectedFile.name} (原始尺寸: ${imagePreview.naturalWidth}×${imagePreview.naturalHeight} px)`;
+                    resultImageInfo.textContent = `放大${document.getElementById('upscaleFactor').value}倍 (${img.width}×${img.height} px)`;
+                    
+                    // 移除自动保存结果到下载中心
+                    // saveImageToDownloadCenter(result.originalUrl, result.imageUrl);
+                };
+                img.src = result.imageUrl;
+                
+                upscalerForm.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+            }
+            
+            // 保存到下载中心按钮
+            const saveToDownloadCenterButton = document.getElementById('saveToDownloadCenterButton');
+            
+            saveToDownloadCenterButton.addEventListener('click', async () => {
+                if (resultImage.src) {
+                    try {
+                        showLoadingOverlay('正在保存到下载中心...');
+                        
+                        // 获取原始图片URL和处理后的图片URL
+                        const originalUrl = originalImage.src;
+                        const processedUrl = resultImage.src;
+                        
+                        // 调用保存函数
+                        await saveImageToDownloadCenter(originalUrl, processedUrl);
+                        
+                        hideLoadingOverlay();
+                        alert('图片已成功保存到下载中心！');
+                    } catch (error) {
+                        hideLoadingOverlay();
+                        alert(`保存失败: ${error.message}`);
+                    }
+                }
+            });
+            
+            // 保存图片到下载中心
+            async function saveImageToDownloadCenter(originalImageUrl, processedImageUrl) {
+                try {
+                    // 准备要发送的数据
+                    const resultData = {
+                        originalImageUrl: originalImageUrl,
+                        processedImageUrl: processedImageUrl,
+                        processTime: new Date().toISOString(),
+                        processType: '图像高清放大', // 功能类型
+                        description: `图像放大${document.getElementById('upscaleFactor').value}倍结果`
+                    };
+                    
+                    // 发送到服务器API
+                    const response = await fetch('/api/save-result', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': localStorage.getItem('authToken') ? `Bearer ${localStorage.getItem('authToken')}` : ''
+                        },
+                        body: JSON.stringify(resultData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('保存失败，服务器返回错误');
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        console.log('图片结果已保存到下载中心:', result);
+                        return true;
+                    } else {
+                        console.error('保存到下载中心失败:', result.error);
+                        throw new Error(result.message || '保存失败');
+                    }
+                } catch (error) {
+                    console.error('保存到下载中心出错:', error);
+                    throw error;
+                }
+            }
+            
+            // 下载结果图片
+            downloadButton.addEventListener('click', () => {
+                if (resultImage.src) {
+                    const link = document.createElement('a');
+                    link.href = resultImage.src;
+                    link.download = `upscaled_${selectedFile.name}`;
+                    link.click();
+                }
+            });
+            
+            // 新的图片上传按钮
+            newUpscaleButton.addEventListener('click', () => {
+                resetImageUpload();
+                resultContainer.classList.add('hidden');
+                upscalerForm.classList.remove('hidden');
+            });
+            
+            // 处理选择的文件
+            function handleSelectedFile(file) {
+                // 检查文件类型
+                if (!file.type.match('image.*')) {
+                    alert('请选择图片文件');
+                    return;
+                }
+                
+                selectedFile = file;
+                
+                // 显示预览
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    uploadPlaceholder.classList.add('hidden');
+                    previewContainer.classList.remove('hidden');
+                    
+                    // 检查图片尺寸
+                    const img = new Image();
+                    img.onload = () => {
+                        const width = img.width;
+                        const height = img.height;
+                        
+                        imageInfo.textContent = `${file.name} (${width}×${height} px, ${formatFileSize(file.size)})`;
+                        
+                        // 检查尺寸限制
+                        if (width < 100 || height < 100) {
+                            alert('图片尺寸太小，需要大于100×100像素');
+                            resetImageUpload();
+                            return;
+                        }
+                        
+                        if (width > 3000 || height > 3000) {
+                            alert('图片尺寸太大，需要小于3000×3000像素');
+                            resetImageUpload();
+                            return;
+                        }
+                        
+                        // 计算可用的最大放大倍数
+                        const maxFactor = Math.min(
+                            Math.floor(3000 / width),
+                            Math.floor(3000 / height),
+                            4 // 最大支持4倍
+                        );
+                        
+                        // 启用上传按钮
+                        upscaleButton.disabled = false;
+
+                        if (maxFactor < 2) {
+                            alert('图片尺寸太大，放大后将超过限制');
+                            resetImageUpload();
+                            return;
+                        }
+                        
+                        // 更新可用的放大倍数按钮
+                        upscaleFactorBtns.forEach(btn => {
+                            const value = parseInt(btn.dataset.value);
+                            if (value > maxFactor) {
+                                btn.disabled = true;
+                                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                                btn.title = `图片太大，不支持${value}倍放大`;
+                            } else {
+                                btn.disabled = false;
+                                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                                btn.title = '';
+                            }
+                        });
+                        
+                        // 如果当前选中的按钮不可用，则自动选择可用的最大倍数
+                        const activeBtn = document.querySelector('.upscale-factor-btn.active');
+                        if (activeBtn && activeBtn.disabled) {
+                            // 找到可用的最大倍数按钮
+                            const availableBtns = Array.from(upscaleFactorBtns).filter(btn => !btn.disabled);
+                            if (availableBtns.length > 0) {
+                                // 按倍数从大到小排序
+                                availableBtns.sort((a, b) => parseInt(b.dataset.value) - parseInt(a.dataset.value));
+                                // 点击可用的最大倍数按钮
+                                availableBtns[0].click();
+                            }
+                        }
+                        
+                        // 启用上传按钮
+                        upscaleButton.disabled = false;
+                    };
+                    
+                    img.src = e.target.result;
+                };
+                
+                reader.readAsDataURL(file);
+            }
+            
+            // 重置图片上传
+            function resetImageUpload() {
+                imageInput.value = '';
+                uploadPlaceholder.classList.remove('hidden');
+                previewContainer.classList.add('hidden');
+                imagePreview.src = '';
+                imageInfo.textContent = '';
+                selectedFile = null;
+                upscaleButton.disabled = true;
+                
+                // 重置放大倍数按钮状态
+                upscaleFactorBtns.forEach(btn => {
+                    // 启用所有按钮
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btn.title = '';
+                    
+                    // 重置样式
+                    btn.classList.remove('active');
+                    btn.classList.remove('border-indigo-600', 'bg-indigo-50', 'text-indigo-600');
+                    btn.classList.add('border-gray-300', 'bg-white', 'text-gray-700');
+                    
+                    // 默认选中2倍按钮
+                    if (btn.dataset.value === '2') {
+                        btn.classList.add('active');
+                        btn.classList.remove('border-gray-300', 'bg-white', 'text-gray-700');
+                        btn.classList.add('border-indigo-600', 'bg-indigo-50', 'text-indigo-600');
+                    }
+                });
+                
+                // 重置隐藏输入值
+                document.getElementById('upscaleFactor').value = '2';
+            }
+            
+            // 显示加载蒙层
+            function showLoadingOverlay(message) {
+                processingText.textContent = message || '正在处理中...';
+                loadingOverlay.classList.remove('hidden');
+            }
+            
+            // 隐藏加载蒙层
+            function hideLoadingOverlay() {
+                loadingOverlay.classList.add('hidden');
+            }
+            
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                else return (bytes / 1048576).toFixed(1) + ' MB';
+            }
+        });
+    </script>
+</body>
+</html> 

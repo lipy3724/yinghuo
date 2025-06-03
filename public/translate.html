@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片翻译工具</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #myiframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+    <script>
+        // open sdk 扩展配置
+        window.INTL_OP_FRAME_SDK_CONFIG = {
+            apiMap: {
+                signature: '/open/api/signature' // 签名接口路径
+            },
+            appKey: '502592', // 正确的appKey
+            secretKey: 'dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t' // 正确的secretKey
+        };
+    </script>
+    <script src="https://g.alicdn.com/code/npm/@ali/intl-op-frame-sdk/0.1.10/main.min.js"></script>
+</head>
+<body>
+    <iframe id="myiframe" class="aidc-open-frame" src="" frameborder="0"></iframe>
+
+    <script>
+        // 必要的变量设置
+        let iframeEle = document.getElementById("myiframe");
+        let receiveBiz = ""; // 保存业务标识，用于postMessage回应
+        
+        // 记录功能使用
+        async function trackFeatureUsage() {
+            try {
+                // 获取用户token
+                const authToken = localStorage.getItem('authToken');
+                if (!authToken) {
+                    console.error('用户未登录，无法记录使用情况');
+                    return;
+                }
+                
+                const response = await fetch('/api/credits/track-usage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        featureName: 'translate' // 功能名称对应featureAccess.js中的配置
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('功能使用已记录:', result.data);
+                } else {
+                    console.error('记录功能使用失败:', result.message);
+                    // 如果是积分不足，可以提示用户
+                    if (response.status === 402) {
+                        alert('您的免费试用次数已用完，积分不足，请充值后再使用。');
+                        // 跳转到积分管理页面
+                        window.location.href = '/credits.html';
+                        return false;
+                    }
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('跟踪功能使用出错:', error);
+                return false;
+            }
+        }
+        
+        // 构建编辑器URL并加载
+        async function initializeEditor() {
+            // 不再记录功能使用 - 移除初始化时扣除次数
+            // const canProceed = await trackFeatureUsage();
+            // if (!canProceed) {
+            //     return; // 如果不能继续（如积分不足），则不加载编辑器
+            // }
+            
+            // 只构建基本参数，不包含imageUrl
+            const params = {
+                apiHost: 'aibcn',
+                appKey: "502592",
+                trial: true,
+                lang: 'zh-cn',
+                // 添加源语言和目标语言设置
+                sourceLanguage: 'zh', // 中文
+                targetLanguage: 'en',  // 英语
+                charge: true // 开启生产拦截
+            };
+            
+            // 使用payload方式构建URL
+            const payloadString = encodeURIComponent(JSON.stringify(params));
+            const url = `https://editor.d.design/editor/index.html/#/translate?payload=${payloadString}`;
+            
+            // 更新iframe的src
+            iframeEle.src = url;
+            console.log("加载编辑器: 默认源语言为中文，目标语言为英语，已开启生产拦截");
+        }
+        
+        // 保存图片到服务器
+        async function saveImageResult(data) {
+            try {
+                console.log("开始处理保存数据:", JSON.stringify(data));
+                
+                // 获取原始图片和处理后的图片URL
+                let originalImageUrl = null;
+                let processedImageUrl = null;
+                
+                // 重点：处理各种可能的数据结构
+                if (typeof data === 'object') {
+                    console.log("处理对象形式的数据");
+                    
+                    // 情况1: 包含imageUrl属性
+                    if (data.imageUrl) {
+                        processedImageUrl = data.imageUrl;
+                        originalImageUrl = data.originalImageUrl || null;
+                        console.log("从data.imageUrl获取结果URL:", processedImageUrl);
+                    }
+                    // 情况2: 包含url属性
+                    else if (data.url) {
+                        processedImageUrl = data.url;
+                        originalImageUrl = data.originalUrl || data.sourceUrl || null;
+                        console.log("从data.url获取结果URL:", processedImageUrl);
+                    }
+                    // 情况3: 检查data.data可能包含的URL
+                    else if (data.data) {
+                        console.log("检测到data.data字段");
+                        const subData = data.data;
+                        
+                        if (typeof subData === 'object') {
+                            if (subData.imageUrl) {
+                                processedImageUrl = subData.imageUrl;
+                                console.log("从data.data.imageUrl获取结果URL:", processedImageUrl);
+                            } else if (subData.url) {
+                                processedImageUrl = subData.url;
+                                console.log("从data.data.url获取结果URL:", processedImageUrl);
+                            }
+                        } else if (typeof subData === 'string' && subData.startsWith('http')) {
+                            processedImageUrl = subData;
+                            console.log("从data.data字符串获取结果URL:", processedImageUrl);
+                        }
+                    }
+                    // 情况4: 检查result属性
+                    else if (data.result) {
+                        console.log("检测到data.result字段");
+                        if (typeof data.result === 'object') {
+                            if (data.result.url) {
+                                processedImageUrl = data.result.url;
+                                originalImageUrl = data.result.originalUrl || null;
+                                console.log("从data.result.url获取结果URL:", processedImageUrl);
+                            } else if (data.result.imageUrl) {
+                                processedImageUrl = data.result.imageUrl;
+                                console.log("从data.result.imageUrl获取结果URL:", processedImageUrl);
+                            }
+                        }
+                    }
+                }
+                
+                // 处理数组格式
+                if (!processedImageUrl && Array.isArray(data) && data.length > 0) {
+                    console.log("处理数组形式的数据");
+                    if (data[0] && data[0].url) {
+                        processedImageUrl = data[0].url;
+                        originalImageUrl = data[0].originalUrl || data[0].sourceUrl || null;
+                        console.log("从data[0].url获取结果URL:", processedImageUrl);
+                    } else if (data[0] && typeof data[0] === 'string' && data[0].startsWith('http')) {
+                        processedImageUrl = data[0];
+                        console.log("从data[0]字符串获取结果URL:", processedImageUrl);
+                    }
+                }
+                
+                // 检查直接是URL字符串的情况
+                if (!processedImageUrl && typeof data === 'string' && data.startsWith('http')) {
+                    processedImageUrl = data;
+                    console.log("从字符串直接获取结果URL:", processedImageUrl);
+                }
+                
+                if (!processedImageUrl) {
+                    console.error("提取URL失败，未找到有效的图片URL。数据结构:", JSON.stringify(data));
+                    alert('保存失败：未能提取有效的图片URL');
+                    return false;
+                }
+                
+                console.log("最终提取的处理后图片URL:", processedImageUrl);
+                console.log("提取的原始图片URL:", originalImageUrl);
+                
+                // 准备要发送的数据
+                const resultData = {
+                    originalImageUrl: originalImageUrl,
+                    processedImageUrl: processedImageUrl,
+                    processTime: new Date().toISOString(),
+                    processType: '图片翻译', // 翻译功能
+                    description: '图片翻译处理结果'
+                };
+                
+                console.log("发送到服务器的数据:", JSON.stringify(resultData));
+                
+                // 发送到服务器API
+                const response = await fetch('/api/save-result', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': localStorage.getItem('authToken') ? `Bearer ${localStorage.getItem('authToken')}` : ''
+                    },
+                    body: JSON.stringify(resultData)
+                });
+                
+                if (!response.ok) {
+                    console.error('服务器响应错误:', response.status, response.statusText);
+                    const errorText = await response.text();
+                    console.error('错误详情:', errorText);
+                    alert('保存失败：服务器响应错误 ' + response.status);
+                    return false;
+                }
+                
+                const result = await response.json();
+                console.log('服务器返回结果:', result);
+                
+                if (result.success) {
+                    console.log('图片结果已保存到下载中心:', result);
+                    return true;
+                } else {
+                    console.error('保存到下载中心失败:', result.error);
+                    alert('保存失败：' + (result.message || '未知错误'));
+                    return false;
+                }
+            } catch (error) {
+                console.error('保存到下载中心出错:', error);
+                alert('保存出错：' + error.message);
+                return false;
+            }
+        }
+        
+        // 监听编辑器消息
+        window.addEventListener("message", (ev) => {
+            console.log("收到编辑器消息:", JSON.stringify(ev.data));
+            
+            // 检查源是否可信
+            if (ev.origin !== 'https://editor.d.design') {
+                console.log("收到来自其他源的消息:", ev.origin);
+                // 出于安全考虑，我们仍然处理消息，但要记录下来
+            }
+            
+            // 解构消息数据
+            const { data, action, biz, errMessage, code } = ev.data || {};
+            
+            // 保存业务标识用于后续回复
+            if (biz) {
+                receiveBiz = biz;
+            }
+            
+            // 记录详细信息
+            console.log("消息动作:", action);
+            console.log("消息数据:", data);
+            console.log("业务类型:", biz);
+            
+            // 生产拦截逻辑
+            if (action === 'generate') {
+                // 获取图片数量
+                const { imageNum } = data || { imageNum: 1 };
+                console.log("用户请求生成图片，数量:", imageNum);
+                
+                // 记录功能使用并检查是否可以继续
+                trackFeatureUsage().then(canProceed => {
+                    // 响应编辑器请求
+                    iframeEle.contentWindow.postMessage({
+                        biz: receiveBiz,
+                        action: 'respond',
+                        success: canProceed // 根据是否可以继续返回成功或失败
+                    }, '*');
+                    
+                    if (!canProceed) {
+                        console.log("用户积分不足，已阻止生产");
+                        alert("积分不足，无法继续生成图片");
+                    } else {
+                        console.log("已允许继续生产流程");
+                    }
+                });
+            } else if (action === "pageReady") {
+                console.log("编辑器页面已准备就绪");
+            } else if (action === "taskSuccess") {
+                console.log(`业务[${biz}]生产任务完成:`, data);
+            } else if (action === "submit") {
+                console.log("用户点击了保存按钮:", data);
+                
+                // 检查数据结构
+                if (!data) {
+                    console.error("保存失败：未收到数据");
+                    alert("保存失败：编辑器未返回处理结果");
+                    return;
+                }
+                
+                // 保存结果到下载中心
+                saveImageResult(data).then(success => {
+                    if (success) {
+                        alert('图片已保存到下载中心!');
+                    } else {
+                        alert('保存失败，请重试');
+                    }
+                });
+            } else if (action === "download") {
+                console.log("用户点击了下载按钮:", data);
+                
+                // 同时保存到下载中心
+                saveImageResult(data).then(success => {
+                    if (success) {
+                        console.log('图片已保存到下载中心');
+                    }
+                });
+            } else if (action === "error") {
+                // 处理错误消息
+                console.error(`编辑器错误 [${code}]: ${errMessage}`);
+                alert(`操作出错: ${errMessage || '未知错误'}`);
+            } else {
+                // 记录未知的消息类型
+                console.log("收到未知类型的消息:", action);
+            }
+        });
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEditor();
+        });
+    </script>
+</body>
+</html> 

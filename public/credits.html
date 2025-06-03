@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>积分管理 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+        .btn-primary {
+            padding: 0.5rem 1rem;
+            background-color: #4f46e5;
+            color: white;
+            border-radius: 0.375rem;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+        .alert-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .alert-danger {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        .feature-card {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+            background-color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center">
+            <a href="/" class="flex items-center">
+                <span class="font-bold text-2xl text-indigo-600 mr-1">萤火AI</span>
+                <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
+            </a>
+        </div>
+        <div class="flex items-center space-x-6">
+            <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center">
+                <i class="ri-home-line mr-1"></i>
+                <span>首页</span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto mt-8 px-4">
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h1 class="text-2xl font-bold mb-6">积分管理</h1>
+
+            <div class="hidden" id="message-box"></div>
+
+            <!-- 积分概览 -->
+            <div class="bg-indigo-50 p-6 rounded-lg mb-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-700">积分余额</h2>
+                        <p class="text-3xl font-bold text-indigo-600 mt-2"><span id="user-credits">0</span> 积分</p>
+                        <p class="text-sm text-gray-500 mt-1">上次充值: <span id="last-recharge-time">从未充值</span></p>
+                    </div>
+                    <button id="recharge-btn" class="btn-primary flex items-center">
+                        <i class="ri-add-circle-line mr-1"></i>
+                        充值积分
+                    </button>
+                </div>
+            </div>
+
+            <!-- 开发者模式 (默认隐藏) -->
+            <div id="developer-mode-container" class="hidden border border-gray-200 p-4 rounded-lg mb-6 bg-gray-50">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">开发者模式</h2>
+                    <button id="close-dev-mode" class="text-gray-500 hover:text-gray-700">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-4 border border-gray-200 rounded bg-white">
+                        <h3 class="font-medium mb-2">积分管理</h3>
+                        <div class="flex items-center space-x-2 mb-2">
+                            <input type="number" id="dev-credits-amount" class="form-control" placeholder="输入积分数量">
+                            <button id="dev-set-credits" class="btn-primary whitespace-nowrap">设置积分</button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 border border-gray-200 rounded bg-white">
+                        <h3 class="font-medium mb-2">功能使用次数重置</h3>
+                        <div class="flex items-center space-x-2 mb-2">
+                            <select id="dev-feature-select" class="form-control">
+                                <option value="all">所有功能</option>
+                                <!-- 其他选项由JS动态填充 -->
+                            </select>
+                            <button id="dev-reset-usage" class="btn-primary whitespace-nowrap">重置次数</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="dev-result" class="text-sm text-gray-600 hidden bg-gray-100 p-2 rounded"></div>
+            </div>
+
+            <!-- 充值表单 (默认隐藏) -->
+            <div id="recharge-form-container" class="hidden border border-gray-200 p-4 rounded-lg mb-6">
+                <h2 class="text-lg font-semibold mb-4">积分充值</h2>
+                <form id="recharge-form">
+                    <div class="form-group">
+                        <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">充值金额</label>
+                        <div class="grid grid-cols-5 gap-2">
+                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="800">99元/800积分</button>
+                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="3980">399元/3980积分</button>
+                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="6730">599元/6730积分</button>
+                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="12500">999元/12500积分</button>
+                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="198">59元/198积分</button>
+                        </div>
+                        <div id="custom-amount-container" class="hidden mt-2">
+                            <input type="number" id="custom-amount" class="form-control" min="10" placeholder="请输入充值金额（最低10积分）">
+                        </div>
+                        <input type="hidden" id="amount" name="amount" value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">支付方式</label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <button type="button" class="payment-method py-2 px-3 border border-gray-300 rounded text-center active" data-method="alipay">
+                                <i class="ri-alipay-line mr-1"></i>支付宝
+                            </button>
+                        </div>
+                        <input type="hidden" id="payment-method" name="paymentMethod" value="alipay">
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancel-recharge" class="py-2 px-4 border border-gray-300 rounded">取消</button>
+                        <button type="submit" class="btn-primary">确认充值</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 功能价格列表 -->
+            <h2 class="text-xl font-semibold mb-4">功能价格列表</h2>
+            <div id="pricing-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- 价格列表项将通过JS动态生成 -->
+                <div class="animate-pulse">
+                    <div class="h-20 bg-gray-200 rounded"></div>
+                </div>
+                <div class="animate-pulse">
+                    <div class="h-20 bg-gray-200 rounded"></div>
+                </div>
+                <div class="bg-white p-4 rounded shadow-sm border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-semibold">视频风格重绘</h3>
+                            <p class="text-sm text-gray-500">免费试用: 1次</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-indigo-600 font-bold">540P：3积分/秒</p>
+                            <p class="text-indigo-600 font-bold">720P：6积分/秒</p>
+                            <p class="text-xs text-gray-500">不同分辨率价格不同，按实际选择计费</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用记录 -->
+            <h2 class="text-xl font-semibold mb-4">我的使用记录
+                <button id="refresh-usage" class="ml-2 text-sm font-normal text-indigo-600 hover:text-indigo-800 flex items-center">
+                    <i class="ri-refresh-line mr-1"></i>刷新
+                </button>
+            </h2>
+            <div id="usage-list" class="space-y-4">
+                <!-- 使用记录将通过JS动态生成 -->
+                <div class="animate-pulse">
+                    <div class="h-16 bg-gray-200 rounded"></div>
+                </div>
+                <div class="animate-pulse">
+                    <div class="h-16 bg-gray-200 rounded"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开发者模式悬浮按钮 -->
+    <div class="fixed bottom-4 right-4" id="dev-mode-button" style="display: none;">
+        <button id="dev-mode-toggle" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-3 shadow-lg flex items-center px-4" title="开发者模式">
+            <i class="ri-code-s-slash-line text-xl mr-1"></i>
+            <span>开发者模式</span>
+        </button>
+    </div>
+
+    <script>
+        // 全局变量
+        let userCredits = 0;
+        let featurePricing = [];
+        let featureUsages = {};
+        const messageBox = document.getElementById('message-box');
+        
+        // 显示消息
+        function showMessage(message, type = 'success') {
+            messageBox.innerHTML = `<div class="alert ${type === 'success' ? 'alert-success' : 'alert-danger'}">${message}</div>`;
+            messageBox.classList.remove('hidden');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+        
+        // 检查用户是否已登录
+        function checkAuth() {
+            const authToken = localStorage.getItem('authToken');
+            const userInfo = localStorage.getItem('user');
+            
+            if (!authToken || !userInfo) {
+                // 用户未登录，跳转到登录页面
+                window.location.href = '/login.html';
+                return false;
+            }
+            
+            try {
+                JSON.parse(userInfo);
+                return true;
+            } catch (e) {
+                console.error('解析用户信息出错:', e);
+                // 清除无效的存储
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('user');
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+        
+        // 检查用户是否有开发者权限
+        async function checkDeveloperAccess() {
+            try {
+                const response = await fetch('/api/auth/check-developer', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success && data.isDeveloper) {
+                        // 如果用户是开发者，显示开发者模式按钮
+                        document.getElementById('dev-mode-button').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('检查开发者权限出错:', error);
+            }
+        }
+        
+        // 加载用户积分信息
+        async function loadCreditsInfo() {
+            try {
+                const response = await fetch('/api/credits', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success && data.data) {
+                        // 更新用户积分信息
+                        userCredits = data.data.user.credits;
+                        document.getElementById('user-credits').textContent = userCredits;
+                        
+                        // 更新上次充值时间
+                        const lastRechargeTime = data.data.user.lastRechargeTime;
+                        if (lastRechargeTime) {
+                            const date = new Date(lastRechargeTime);
+                            document.getElementById('last-recharge-time').textContent = date.toLocaleString('zh-CN');
+                        }
+                        
+                        // 更新功能使用记录
+                        featureUsages = data.data.featureUsages;
+                        
+                        // 如果没有视频风格重绘的使用记录，手动添加一个
+                        if (!featureUsages['VIDEO_STYLE_REPAINT']) {
+                            featureUsages['VIDEO_STYLE_REPAINT'] = {
+                                name: 'VIDEO_STYLE_REPAINT',
+                                remainingFreeUsage: 1,
+                                freeUsageLimit: 1,
+                                lastUsed: null
+                            };
+                        }
+                        
+                        renderUsageList();
+                    }
+                } else {
+                    const error = await response.json();
+                    showMessage(error.message || '获取积分信息失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载积分信息出错:', error);
+                showMessage('加载积分信息出错，请刷新页面重试', 'error');
+            }
+        }
+        
+        // 加载功能价格列表
+        async function loadPricing() {
+            try {
+                const response = await fetch('/api/credits/pricing');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success && data.data.pricing) {
+                        featurePricing = data.data.pricing;
+                        renderPricingList();
+                    }
+                } else {
+                    const error = await response.json();
+                    console.error('获取价格列表失败:', error);
+                }
+            } catch (error) {
+                console.error('加载价格列表出错:', error);
+            }
+        }
+        
+        // 功能名称本地化
+        function formatFeatureName(name) {
+            const featureNames = {
+                'image-upscaler': '图像高清放大',
+                'marketing-images': 'AI营销图生成',
+                'cutout': '商品换背景',
+                'translate': '图片翻译',
+                'scene-generator': '场景图生成',
+                'image-removal': '图像智能消除',
+                'model-skin-changer': '模特换肤',
+                'clothing-simulation': '模拟试衣',
+                'text-to-video': '文生视频',
+                'image-to-video': '图生视频',
+                'IMAGE_EDIT': '指令编辑',
+                'LOCAL_REDRAW': '局部重绘',
+                'IMAGE_COLORIZATION': '图像上色',
+                'IMAGE_EXPANSION': '智能扩图',
+                'VIRTUAL_SHOE_MODEL': '鞋靴虚拟试穿',
+                'TEXT_TO_IMAGE': '文生图片',
+                'IMAGE_SHARPENING': '模糊图片变清晰',
+                'CLOTH_SEGMENTATION': '智能服饰分割',
+                'GLOBAL_STYLE': '全局风格化',
+                'VIRTUAL_MODEL_VTON': '智能虚拟模特试穿',
+                'VIDEO_SUBTITLE_REMOVER': '视频去除字幕',
+                'MULTI_IMAGE_TO_VIDEO': '多图转视频',
+                'DIGITAL_HUMAN_VIDEO': '视频数字人',
+                'VIDEO_STYLE_REPAINT': '视频风格重绘',
+                'amazon_video_script': '亚马逊广告视频脚本生成',
+                'product_improvement_analysis': '选品的改款分析和建议',
+                'amazon_brand_info': '品牌信息收集和总结',
+                'amazon_brand_naming': '亚马逊品牌起名',
+                'amazon_listing': '亚马逊Listing写作与优化',
+                'amazon_search_term': '亚马逊后台搜索词',
+                'amazon_review_analysis': '亚马逊客户评论分析',
+                'amazon_consumer_insights': '亚马逊消费者洞察专家',
+                'amazon_customer_email': '亚马逊客户邮件回复',
+                'fba_claim_email': 'FBA索赔邮件',
+                'amazon_review_generator': '亚马逊评论生成',
+                'amazon_review_response': '亚马逊评论回复',
+                'product_comparison': '产品对比',
+                'amazon_post_creator': '创建亚马逊Post',
+                'amazon_keyword_recommender': '亚马逊关键词推荐',
+                'amazon_case_creator': '亚马逊客服case内容'
+            };
+            
+            return featureNames[name] || name;
+        }
+        
+        // 渲染价格列表
+        function renderPricingList() {
+            const pricingList = document.getElementById('pricing-list');
+            
+            if (featurePricing.length === 0) {
+                pricingList.innerHTML = '<p class="text-gray-500">暂无价格信息</p>';
+                return;
+            }
+            
+            pricingList.innerHTML = '';
+            
+            featurePricing.forEach(feature => {
+                // 跳过 VIDEO_STYLE_REPAINT
+                if (feature.name === 'VIDEO_STYLE_REPAINT') return;
+                // 功能名称本地化
+                const localName = formatFeatureName(feature.name);
+                
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded shadow-sm border border-gray-200';
+
+                // 根据功能类型提供不同的显示格式
+                if (feature.name === 'VIDEO_SUBTITLE_REMOVER' || feature.name === 'MULTI_IMAGE_TO_VIDEO') {
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold">${localName}</h3>
+                                <p class="text-sm text-gray-500">免费试用: ${feature.freeUsage}次</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-indigo-600 font-bold">30 积分/30秒</p>
+                                <p class="text-xs text-gray-500">不满30秒按30秒计算</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (feature.name === 'DIGITAL_HUMAN_VIDEO') {
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold">${localName}</h3>
+                                <p class="text-sm text-gray-500">免费试用: ${feature.freeUsage}次</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-indigo-600 font-bold">9 积分/秒</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (feature.name === 'VIRTUAL_MODEL_VTON') {
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold">${localName}</h3>
+                                <p class="text-sm text-gray-500">免费试用: ${feature.freeUsage}次</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-indigo-600 font-bold">模型vton1.0/40积分</p>
+                                <p class="text-indigo-600 font-bold">模型vton1.5/45积分</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (feature.name === 'text-to-video' || feature.name === 'image-to-video') {
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold">${localName}</h3>
+                                <p class="text-sm text-gray-500">免费试用: ${feature.freeUsage}次</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-indigo-600 font-bold">${feature.creditCost} 积分/次</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold">${localName}</h3>
+                                <p class="text-sm text-gray-500">免费试用: ${feature.freeUsage}次</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-indigo-600 font-bold">${feature.creditCost} 积分/次</p>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                pricingList.appendChild(card);
+            });
+            // 在这里插入"视频风格重绘"卡片
+            const repaintCard = document.createElement('div');
+            repaintCard.className = 'bg-white p-4 rounded shadow-sm border border-gray-200';
+            repaintCard.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-semibold">视频风格重绘</h3>
+                        <p class="text-sm text-gray-500">免费试用: 1次</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-indigo-600 font-bold">540P：3积分/秒</p>
+                        <p class="text-indigo-600 font-bold">720P：6积分/秒</p>
+                        <p class="text-xs text-gray-500">不同分辨率价格不同，按实际选择计费</p>
+                    </div>
+                </div>
+            `;
+            pricingList.appendChild(repaintCard);
+        }
+        
+        // 渲染使用记录列表
+        function renderUsageList() {
+            const usageList = document.getElementById('usage-list');
+            
+            if (Object.keys(featureUsages).length === 0) {
+                usageList.innerHTML = '<p class="text-gray-500">暂无使用记录</p>';
+                return;
+            }
+            
+            usageList.innerHTML = '';
+            
+            // 功能名称本地化
+            const featureNames = {
+                'image-upscaler': '图像高清放大',
+                'marketing-images': 'AI营销图生成',
+                'cutout': '商品换背景',
+                'translate': '图片翻译',
+                'scene-generator': '场景图生成',
+                'image-removal': '图像智能消除',
+                'model-skin-changer': '模特换肤',
+                'clothing-simulation': '模拟试衣',
+                'text-to-video': '文生视频',
+                'image-to-video': '图生视频',
+                'IMAGE_EDIT': '指令编辑',
+                'LOCAL_REDRAW': '局部重绘',
+                'IMAGE_COLORIZATION': '图像上色',
+                'IMAGE_EXPANSION': '智能扩图',
+                'VIRTUAL_SHOE_MODEL': '鞋靴虚拟试穿',
+                'TEXT_TO_IMAGE': '文生图片',
+                'IMAGE_SHARPENING': '模糊图片变清晰',
+                'CLOTH_SEGMENTATION': '智能服饰分割',
+                'GLOBAL_STYLE': '全局风格化',
+                'VIRTUAL_MODEL_VTON': '智能虚拟模特试穿',
+                'VIDEO_SUBTITLE_REMOVER': '视频去除字幕',
+                'MULTI_IMAGE_TO_VIDEO': '多图转视频',
+                'DIGITAL_HUMAN_VIDEO': '视频数字人',
+                'VIDEO_STYLE_REPAINT': '视频风格重绘'
+            };
+            
+            // 过滤掉亚马逊相关功能
+            const filteredFeatures = Object.keys(featureUsages).filter(key => {
+                const featureName = featureUsages[key].name;
+                return !(featureName.startsWith('amazon_') || 
+                       featureName === 'product_improvement_analysis' || 
+                       featureName === 'product_comparison' || 
+                       featureName === 'fba_claim_email');
+            });
+            
+            if (filteredFeatures.length === 0) {
+                usageList.innerHTML = '<p class="text-gray-500">暂无使用记录</p>';
+                return;
+            }
+            
+            filteredFeatures.forEach(key => {
+                const usage = featureUsages[key];
+                const localName = featureNames[usage.name] || usage.name;
+                
+                const lastUsedText = usage.lastUsed 
+                    ? `上次使用: ${new Date(usage.lastUsed).toLocaleString('zh-CN')}`
+                    : '从未使用';
+                
+                const card = document.createElement('div');
+                card.className = 'feature-card';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-semibold">${localName}</h3>
+                            <p class="text-sm text-gray-500">${lastUsedText}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-indigo-600">剩余试用次数: <span class="font-bold">${usage.remainingFreeUsage}</span>/${usage.freeUsageLimit}</p>
+                        </div>
+                    </div>
+                `;
+                
+                usageList.appendChild(card);
+            });
+        }
+        
+        // 创建支付宝订单并处理结果
+        async function createAlipayOrder(amount) {
+            try {
+                // 显示充值状态
+                const rechargeStatus = document.createElement('div');
+                rechargeStatus.id = 'recharge-status';
+                rechargeStatus.className = 'alert alert-success mb-4';
+                rechargeStatus.innerText = '正在创建订单...';
+                
+                // 插入状态显示
+                const formContainer = document.getElementById('recharge-form-container');
+                formContainer.insertBefore(rechargeStatus, formContainer.firstChild);
+                
+                const response = await fetch('/api/credits/alipay/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ amount })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data.paymentUrl) {
+                    // 保存订单信息到本地存储，以便在支付完成后查询
+                    localStorage.setItem('pendingOrderNumber', result.data.orderNumber);
+                    localStorage.setItem('pendingOrderAmount', amount);
+                    
+                    // 如果有过期时间，也保存下来
+                    if (result.data.expireTime) {
+                        localStorage.setItem('orderExpireTime', new Date(result.data.expireTime).getTime());
+                    }
+                    
+                    console.log('订单创建成功，订单号:', result.data.orderNumber);
+                    rechargeStatus.innerText = '订单创建成功，正在跳转到支付页面...';
+                    
+                    // 跳转到支付页面
+                    window.location.href = result.data.paymentUrl;
+                } else {
+                    rechargeStatus.innerText = result.message || '创建订单失败，请稍后重试';
+                    rechargeStatus.className = 'alert alert-danger mb-4';
+                    console.error('创建订单失败:', result);
+                }
+            } catch (error) {
+                const rechargeStatus = document.getElementById('recharge-status') || 
+                    document.createElement('div');
+                
+                if (!rechargeStatus.parentNode) {
+                    rechargeStatus.id = 'recharge-status';
+                    rechargeStatus.className = 'alert alert-danger mb-4';
+                    const formContainer = document.getElementById('recharge-form-container');
+                    formContainer.insertBefore(rechargeStatus, formContainer.firstChild);
+                }
+                
+                rechargeStatus.innerText = '创建订单请求出错，请稍后重试';
+                rechargeStatus.className = 'alert alert-danger mb-4';
+                console.error('创建订单请求出错:', error);
+            }
+        }
+        
+        // 调用充值API
+        async function callRechargeApi(finalAmount, paymentMethod) {
+            try {
+                const response = await fetch('/api/credits/recharge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ 
+                        amount: finalAmount, 
+                        paymentMethod,
+                        transactionId: 'demo_' + Date.now() // 模拟交易ID
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showMessage('积分充值成功');
+                    
+                    // 更新显示的积分
+                    userCredits = data.data.credits;
+                    document.getElementById('user-credits').textContent = userCredits;
+                    
+                    // 更新充值时间
+                    const date = new Date(data.data.lastRechargeTime);
+                    document.getElementById('last-recharge-time').textContent = date.toLocaleString('zh-CN');
+                    
+                    // 隐藏充值表单
+                    document.getElementById('recharge-form-container').classList.add('hidden');
+                    document.getElementById('recharge-form').reset();
+                } else {
+                    showMessage(data.message || '充值失败，请重试', 'error');
+                }
+            } catch (error) {
+                console.error('充值出错:', error);
+                showMessage('充值出错，请稍后重试: ' + error.message, 'error');
+            }
+        }
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 检查用户是否已登录
+            if (!checkAuth()) return;
+            
+            // 加载功能价格列表
+            await loadPricing();
+            
+            // 加载用户积分和使用记录
+            await loadCreditsInfo();
+            
+            // 检查用户是否有开发者权限
+            await checkDeveloperAccess();
+            
+            // 刷新按钮点击事件
+            document.getElementById('refresh-usage').addEventListener('click', function() {
+                loadCreditsInfo();
+                showMessage('使用记录已刷新');
+            });
+            
+            // 充值按钮点击事件
+            document.getElementById('recharge-btn').addEventListener('click', function() {
+                document.getElementById('recharge-form-container').classList.remove('hidden');
+            });
+            
+            // 取消充值按钮点击事件
+            document.getElementById('cancel-recharge').addEventListener('click', function() {
+                document.getElementById('recharge-form-container').classList.add('hidden');
+                document.getElementById('recharge-form').reset();
+            });
+            
+            // 金额选项点击事件
+            document.querySelectorAll('.amount-option').forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有按钮的激活状态
+                    document.querySelectorAll('.amount-option').forEach(btn => {
+                        btn.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+                    });
+                    
+                    // 添加当前按钮的激活状态
+                    this.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+                    
+                    const amount = this.getAttribute('data-amount');
+                    
+                    if (amount === 'custom') {
+                        // 显示自定义金额输入框
+                        document.getElementById('custom-amount-container').classList.remove('hidden');
+                        document.getElementById('amount').value = '';
+                    } else {
+                        // 隐藏自定义金额输入框
+                        document.getElementById('custom-amount-container').classList.add('hidden');
+                        document.getElementById('amount').value = amount;
+                    }
+                });
+            });
+            
+            // 自定义金额输入框变化事件
+            document.getElementById('custom-amount').addEventListener('input', function() {
+                document.getElementById('amount').value = this.value;
+            });
+            
+            // 支付方式选择事件
+            document.querySelectorAll('.payment-method').forEach(button => {
+                button.addEventListener('click', function() {
+                    // 支付方式已经固定为支付宝，无需选择
+                });
+            });
+            
+            // 充值表单提交事件
+            document.getElementById('recharge-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const amount = document.getElementById('amount').value;
+                const paymentMethod = 'alipay'; // 固定为支付宝
+                
+                // 验证金额
+                let finalAmount = parseInt(amount);
+                if (amount === '' && document.getElementById('custom-amount').value) {
+                    finalAmount = parseInt(document.getElementById('custom-amount').value);
+                }
+                
+                if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
+                    showMessage('请输入有效的充值金额，最低10积分', 'error');
+                    return;
+                }
+                
+                // 显示加载状态
+                showMessage('正在创建支付订单，请稍候...', 'success');
+                
+                // 支付宝支付处理
+                createAlipayOrder(finalAmount);
+            });
+            
+            // 开发者模式切换
+            document.getElementById('dev-mode-toggle').addEventListener('click', function() {
+                const devContainer = document.getElementById('developer-mode-container');
+                
+                if (devContainer.classList.contains('hidden')) {
+                    devContainer.classList.remove('hidden');
+                    populateDevModeFeatureSelect();
+                } else {
+                    devContainer.classList.add('hidden');
+                }
+            });
+            
+            // 关闭开发者模式按钮
+            document.getElementById('close-dev-mode').addEventListener('click', function() {
+                document.getElementById('developer-mode-container').classList.add('hidden');
+            });
+            
+            // 填充功能选择下拉框
+            function populateDevModeFeatureSelect() {
+                const featureSelect = document.getElementById('dev-feature-select');
+                
+                // 清除现有选项，保留"所有功能"选项
+                while (featureSelect.options.length > 1) {
+                    featureSelect.remove(1);
+                }
+                
+                // 功能名称本地化
+                const featureNames = {
+                    'image-upscaler': '图像高清放大',
+                    'marketing-images': 'AI营销图生成',
+                    'cutout': '商品换背景',
+                    'translate': '图片翻译',
+                    'scene-generator': '场景图生成',
+                    'image-removal': '图像智能消除',
+                    'model-skin-changer': '模特换肤',
+                    'clothing-simulation': '模拟试衣',
+                    'text-to-video': '文生视频',
+                    'image-to-video': '图生视频',
+                    'IMAGE_EDIT': '指令编辑',
+                    'LOCAL_REDRAW': '局部重绘',
+                    'IMAGE_COLORIZATION': '图像上色',
+                    'IMAGE_EXPANSION': '智能扩图',
+                    'VIRTUAL_SHOE_MODEL': '鞋靴虚拟试穿',
+                    'TEXT_TO_IMAGE': '文生图片',
+                    'IMAGE_SHARPENING': '模糊图片变清晰',
+                    'CLOTH_SEGMENTATION': '智能服饰分割',
+                    'GLOBAL_STYLE': '全局风格化',
+                    'VIRTUAL_MODEL_VTON': '智能虚拟模特试穿',
+                    'VIDEO_SUBTITLE_REMOVER': '视频去除字幕',
+                    'MULTI_IMAGE_TO_VIDEO': '多图转视频',
+                    'DIGITAL_HUMAN_VIDEO': '视频数字人',
+                    'VIDEO_STYLE_REPAINT': '视频风格重绘'
+                };
+                
+                // 添加所有功能到下拉框
+                Object.keys(featureUsages).forEach(key => {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = featureNames[key] || key;
+                    featureSelect.appendChild(option);
+                });
+            }
+            
+            // 设置积分按钮点击事件
+            document.getElementById('dev-set-credits').addEventListener('click', async function() {
+                const creditsAmount = document.getElementById('dev-credits-amount').value;
+                
+                if (!creditsAmount || isNaN(creditsAmount)) {
+                    showDevResult('请输入有效的积分数量', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/credits/dev/set-credits', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify({ amount: parseInt(creditsAmount) })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        showDevResult(`积分已成功设置为 ${data.data.credits} 点`);
+                        
+                        // 更新显示的积分
+                        userCredits = data.data.credits;
+                        document.getElementById('user-credits').textContent = userCredits;
+                    } else {
+                        showDevResult(data.message || '设置积分失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('设置积分出错:', error);
+                    showDevResult('设置积分出错，请稍后重试', 'error');
+                }
+            });
+            
+            // 重置功能使用次数按钮点击事件
+            document.getElementById('dev-reset-usage').addEventListener('click', async function() {
+                const featureName = document.getElementById('dev-feature-select').value;
+                
+                try {
+                    const response = await fetch('/api/credits/dev/reset-usage', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
+                        body: JSON.stringify({ featureName })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        showDevResult(data.message || '功能使用次数重置成功');
+                        
+                        // 重新加载积分和使用信息
+                        loadCreditsInfo();
+                    } else {
+                        showDevResult(data.message || '重置功能使用次数失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('重置功能使用次数出错:', error);
+                    showDevResult('重置功能使用次数出错，请稍后重试', 'error');
+                }
+            });
+            
+            // 显示开发者模式操作结果
+            function showDevResult(message, type = 'success') {
+                const resultBox = document.getElementById('dev-result');
+                resultBox.textContent = message;
+                resultBox.className = `text-sm p-2 rounded ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+                resultBox.classList.remove('hidden');
+                
+                // 3秒后自动隐藏
+                setTimeout(() => {
+                    resultBox.classList.add('hidden');
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html> 

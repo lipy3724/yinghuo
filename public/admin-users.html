@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f9fafb;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        .sidebar {
+            transition: transform 0.3s ease;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-100">
+    <!-- 移动端导航栏 -->
+    <div class="md:hidden bg-white shadow-sm py-3 px-4 flex items-center justify-between">
+        <button id="mobile-menu-button" class="text-gray-600 focus:outline-none">
+            <i class="ri-menu-line text-2xl"></i>
+        </button>
+        <h1 class="text-xl font-bold text-indigo-600">萤火AI 管理系统</h1>
+        <div class="w-8"></div> <!-- 占位元素，保持两端对齐 -->
+    </div>
+    
+    <div class="flex min-h-screen">
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="sidebar bg-white shadow-lg w-64 fixed h-screen z-10 md:sticky md:top-0 md:translate-x-0 flex flex-col overflow-y-auto">
+            <div class="p-4 border-b">
+                <div class="flex items-center justify-center">
+                    <h1 class="text-xl font-bold text-indigo-600">
+                        <span class="logo-text">萤火<span class="logo-dot"></span>AI</span>
+                    </h1>
+                    <span class="ml-2 text-gray-700">管理系统</span>
+                </div>
+            </div>
+            
+            <nav class="mt-4 flex-1">
+                <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wider">主菜单</div>
+                
+                <a href="/admin-dashboard.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-dashboard-line mr-3"></i>
+                    <span>仪表盘</span>
+                </a>
+                
+                <a href="/admin-users.html" class="flex items-center px-4 py-3 text-gray-700 bg-indigo-50 border-r-4 border-indigo-600">
+                    <i class="ri-user-line mr-3 text-indigo-600"></i>
+                    <span>用户管理</span>
+                </a>
+                
+                <a href="/admin-payments.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-money-cny-circle-line mr-3"></i>
+                    <span>充值记录</span>
+                </a>
+                
+                <a href="/admin-features.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-function-line mr-3"></i>
+                    <span>功能使用统计</span>
+                </a>
+                
+                <a href="/admin-credits.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-coins-line mr-3"></i>
+                    <span>积分管理</span>
+                </a>
+                
+                <a href="/admin-login.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-home-line mr-3"></i>
+                    <span>返回首页</span>
+                </a>
+                
+                <div class="px-4 py-2 mt-4 text-xs text-gray-500 uppercase tracking-wider">系统</div>
+                
+                <a href="#" id="logout-btn" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                    <i class="ri-logout-box-line mr-3"></i>
+                    <span>退出登录</span>
+                </a>
+            </nav>
+            
+            <!-- 占位空白区域，确保导航栏总是延伸到底部 -->
+            <div class="flex-grow"></div>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="flex-1 p-4 md:p-6">
+            <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">用户管理</h2>
+                    <p class="text-gray-600">管理用户信息和积分</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <button id="create-admin-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center">
+                        <i class="ri-user-add-line mr-2"></i>
+                        <span>创建管理员</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 搜索和过滤 -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div class="relative w-full md:w-64 mb-4 md:mb-0">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <i class="ri-search-line text-gray-400"></i>
+                        </span>
+                        <input id="search-input" type="text" placeholder="搜索用户名或手机号" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="search-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
+                            搜索
+                        </button>
+                        <button id="reset-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md">
+                            重置
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 用户列表 -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    用户ID
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    用户名
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    手机号
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    积分
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    注册时间
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    权限
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    操作
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list" class="bg-white divide-y divide-gray-200">
+                            <!-- 用户列表内容将由JavaScript生成 -->
+                            <tr>
+                                <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                    加载中...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 分页控件 -->
+                <div id="pagination" class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p id="pagination-info" class="text-sm text-gray-700">
+                                显示第 <span class="font-medium">1</span> 到 <span class="font-medium">10</span> 条，共 <span class="font-medium">0</span> 条记录
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="分页">
+                                <button id="prev-page" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">上一页</span>
+                                    <i class="ri-arrow-left-s-line"></i>
+                                </button>
+                                <div id="page-numbers" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                    <!-- 页码将由JavaScript生成 -->
+                                </div>
+                                <button id="next-page" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">下一页</span>
+                                    <i class="ri-arrow-right-s-line"></i>
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 用户编辑模态框 -->
+    <div id="edit-user-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b flex items-center justify-between">
+                <h3 class="text-lg font-medium text-gray-900">编辑用户</h3>
+                <button id="close-edit-modal" class="text-gray-400 hover:text-gray-500">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+            <form id="edit-user-form">
+                <div class="px-6 py-4">
+                    <input type="hidden" id="edit-user-id">
+                    
+                    <div class="mb-4">
+                        <label for="edit-username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                        <input type="text" id="edit-username" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="edit-phone" class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                        <input type="text" id="edit-phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="edit-credits" class="block text-sm font-medium text-gray-700 mb-1">积分</label>
+                        <input type="number" id="edit-credits" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="edit-isAdmin" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <span class="ml-2 text-sm text-gray-700">管理员权限</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
+                    <button type="button" id="cancel-edit" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 创建管理员模态框 -->
+    <div id="create-admin-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b flex items-center justify-between">
+                <h3 class="text-lg font-medium text-gray-900">创建管理员账号</h3>
+                <button id="close-create-modal" class="text-gray-400 hover:text-gray-500">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+            <form id="create-admin-form">
+                <div class="px-6 py-4">
+                    <div class="mb-4">
+                        <label for="create-username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                        <input type="text" id="create-username" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="create-password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                        <input type="password" id="create-password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="create-phone" class="block text-sm font-medium text-gray-700 mb-1">手机号 (可选)</label>
+                        <input type="text" id="create-phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
+                    <button type="button" id="cancel-create" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700">
+                        创建
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 确认删除模态框 -->
+    <div id="confirm-delete-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b">
+                <h3 class="text-lg font-medium text-gray-900">确认删除</h3>
+            </div>
+            <div class="px-6 py-4">
+                <p class="text-gray-700">您确定要删除该用户吗？此操作不可撤销。</p>
+                <div id="delete-loading" class="hidden mt-4 text-center">
+                    <i class="ri-loader-4-line animate-spin text-xl text-indigo-600"></i>
+                    <span class="ml-2 text-gray-700">正在处理...</span>
+                </div>
+                <div id="delete-error" class="hidden mt-4 p-3 bg-red-50 text-red-700 rounded-md">
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
+                <button id="cancel-delete" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2">
+                    取消
+                </button>
+                <button id="confirm-delete" class="px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700">
+                    删除
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查管理员登录状态
+            checkAdminAuth();
+            
+            // 移动端菜单切换
+            document.getElementById('mobile-menu-button').addEventListener('click', function() {
+                document.getElementById('sidebar').classList.toggle('open');
+            });
+            
+            // 退出登录
+            document.getElementById('logout-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
+            
+            // 加载用户列表
+            loadUsers();
+            
+            // 搜索按钮事件
+            document.getElementById('search-btn').addEventListener('click', function() {
+                currentPage = 1;
+                loadUsers();
+            });
+            
+            // 重置按钮事件
+            document.getElementById('reset-btn').addEventListener('click', function() {
+                document.getElementById('search-input').value = '';
+                currentPage = 1;
+                loadUsers();
+            });
+            
+            // 上一页按钮事件
+            document.getElementById('prev-page').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadUsers();
+                }
+            });
+            
+            // 下一页按钮事件
+            document.getElementById('next-page').addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadUsers();
+                }
+            });
+            
+            // 创建管理员按钮事件
+            document.getElementById('create-admin-btn').addEventListener('click', showCreateAdminModal);
+            
+            // 编辑用户表单提交事件
+            document.getElementById('edit-user-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                updateUser();
+            });
+            
+            // 创建管理员表单提交事件
+            document.getElementById('create-admin-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                createAdmin();
+            });
+            
+            // 关闭编辑模态框
+            document.getElementById('close-edit-modal').addEventListener('click', closeEditModal);
+            document.getElementById('cancel-edit').addEventListener('click', closeEditModal);
+            
+            // 关闭创建模态框
+            document.getElementById('close-create-modal').addEventListener('click', closeCreateModal);
+            document.getElementById('cancel-create').addEventListener('click', closeCreateModal);
+            
+            // 关闭删除确认模态框
+            document.getElementById('cancel-delete').addEventListener('click', closeDeleteModal);
+            
+            // 确认删除按钮事件
+            document.getElementById('confirm-delete').addEventListener('click', deleteUser);
+        });
+        
+        // 全局变量
+        let currentPage = 1;
+        let pageSize = 10;
+        let totalPages = 1;
+        let deleteUserId = null;
+        
+        // 检查管理员登录状态
+        function checkAdminAuth() {
+            const adminToken = localStorage.getItem('adminAuthToken');
+            const adminInfo = localStorage.getItem('adminUser');
+            
+            if (!adminToken || !adminInfo) {
+                // 未登录，重定向到登录页
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(adminInfo);
+                if (!user.isAdmin) {
+                    // 不是管理员，重定向到登录页
+                    window.location.href = '/admin-login.html';
+                }
+            } catch (e) {
+                console.error('解析用户信息出错:', e);
+                // 清除无效的存储
+                localStorage.removeItem('adminAuthToken');
+                localStorage.removeItem('adminUser');
+                window.location.href = '/admin-login.html';
+            }
+        }
+        
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('adminAuthToken');
+            localStorage.removeItem('adminUser');
+            window.location.href = '/admin-login.html';
+        }
+        
+        // 加载用户列表
+        async function loadUsers() {
+            const token = localStorage.getItem('adminAuthToken');
+            const search = document.getElementById('search-input').value.trim();
+            
+            try {
+                // 显示加载状态
+                document.getElementById('user-list').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                            加载中...
+                        </td>
+                    </tr>
+                `;
+                
+                // 构建API请求URL
+                let url = `/api/admin/users?page=${currentPage}&limit=${pageSize}`;
+                if (search) {
+                    url += `&search=${encodeURIComponent(search)}`;
+                }
+                
+                // 请求用户列表
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取用户列表失败');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const { users, pagination } = result.data;
+                    
+                    // 更新分页信息
+                    totalPages = pagination.totalPages || 1;
+                    updatePagination(pagination);
+                    
+                    // 渲染用户列表
+                    renderUserList(users);
+                } else {
+                    throw new Error(result.message || '获取用户列表失败');
+                }
+            } catch (error) {
+                console.error('加载用户列表出错:', error);
+                document.getElementById('user-list').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-red-500">
+                            加载失败: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // 渲染用户列表
+        function renderUserList(users) {
+            const userList = document.getElementById('user-list');
+            
+            if (!users || users.length === 0) {
+                userList.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                            暂无数据
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // 获取当前用户ID
+            let currentUserId = 0;
+            try {
+                const adminInfo = localStorage.getItem('adminUser');
+                if (adminInfo) {
+                    const user = JSON.parse(adminInfo);
+                    currentUserId = user.id;
+                }
+            } catch (e) {
+                console.error('解析用户信息出错:', e);
+            }
+            
+            // 渲染用户列表
+            userList.innerHTML = users.map(user => `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${user.id}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${user.username}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${user.phone || '-'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${user.credits}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${formatDate(user.createdAt)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        ${user.isAdmin ? 
+                            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">管理员</span>' : 
+                            '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">普通用户</span>'
+                        }
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900 mr-2" onclick="showEditModal(${user.id})">
+                            编辑
+                        </button>
+                        ${user.id != currentUserId ? 
+                            `<button class="text-red-600 hover:text-red-900" onclick="showDeleteModal(${user.id})">
+                                删除
+                            </button>` : 
+                            '<span class="text-gray-400 cursor-not-allowed">删除</span>'
+                        }
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // 更新分页信息
+        function updatePagination(pagination) {
+            const { total, page, limit, totalPages } = pagination;
+            
+            // 更新分页信息文本
+            const start = (page - 1) * limit + 1;
+            const end = Math.min(page * limit, total);
+            
+            document.getElementById('pagination-info').innerHTML = `
+                显示第 <span class="font-medium">${start}</span> 到 <span class="font-medium">${end}</span> 条，共 <span class="font-medium">${total}</span> 条记录
+            `;
+            
+            // 更新页码
+            const pageNumbers = document.getElementById('page-numbers');
+            pageNumbers.innerHTML = `${page} / ${totalPages}`;
+            
+            // 更新上一页/下一页按钮状态
+            document.getElementById('prev-page').disabled = page <= 1;
+            document.getElementById('next-page').disabled = page >= totalPages;
+            
+            // 更新按钮样式
+            if (page <= 1) {
+                document.getElementById('prev-page').classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                document.getElementById('prev-page').classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            
+            if (page >= totalPages) {
+                document.getElementById('next-page').classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                document.getElementById('next-page').classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        
+        // 显示编辑用户模态框
+        async function showEditModal(userId) {
+            const token = localStorage.getItem('adminAuthToken');
+            
+            try {
+                // 获取用户详情
+                const response = await fetch(`/api/admin/users/${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取用户详情失败');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.data.user) {
+                    const user = result.data.user;
+                    
+                    // 填充表单
+                    document.getElementById('edit-user-id').value = user.id;
+                    document.getElementById('edit-username').value = user.username;
+                    document.getElementById('edit-phone').value = user.phone || '';
+                    document.getElementById('edit-credits').value = user.credits;
+                    document.getElementById('edit-isAdmin').checked = user.isAdmin;
+                    
+                    // 显示模态框
+                    document.getElementById('edit-user-modal').classList.remove('hidden');
+                } else {
+                    throw new Error(result.message || '获取用户详情失败');
+                }
+            } catch (error) {
+                console.error('加载用户详情出错:', error);
+                alert('获取用户信息失败: ' + error.message);
+            }
+        }
+        
+        // 关闭编辑用户模态框
+        function closeEditModal() {
+            document.getElementById('edit-user-modal').classList.add('hidden');
+            document.getElementById('edit-user-form').reset();
+        }
+        
+        // 更新用户信息
+        async function updateUser() {
+            const token = localStorage.getItem('adminAuthToken');
+            const userId = document.getElementById('edit-user-id').value;
+            
+            try {
+                // 获取表单数据
+                const userData = {
+                    username: document.getElementById('edit-username').value.trim(),
+                    phone: document.getElementById('edit-phone').value.trim() || null,
+                    credits: parseInt(document.getElementById('edit-credits').value),
+                    isAdmin: document.getElementById('edit-isAdmin').checked
+                };
+                
+                // 发送更新请求
+                const response = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('用户信息更新成功');
+                    closeEditModal();
+                    loadUsers(); // 重新加载用户列表
+                } else {
+                    throw new Error(result.message || '更新用户信息失败');
+                }
+            } catch (error) {
+                console.error('更新用户信息出错:', error);
+                alert('更新用户信息失败: ' + error.message);
+            }
+        }
+        
+        // 显示创建管理员模态框
+        function showCreateAdminModal() {
+            document.getElementById('create-admin-modal').classList.remove('hidden');
+        }
+        
+        // 关闭创建管理员模态框
+        function closeCreateModal() {
+            document.getElementById('create-admin-modal').classList.add('hidden');
+            document.getElementById('create-admin-form').reset();
+        }
+        
+        // 创建管理员账号
+        async function createAdmin() {
+            const token = localStorage.getItem('adminAuthToken');
+            
+            try {
+                // 获取表单数据
+                const adminData = {
+                    username: document.getElementById('create-username').value.trim(),
+                    password: document.getElementById('create-password').value,
+                    phone: document.getElementById('create-phone').value.trim() || null
+                };
+                
+                // 发送创建请求
+                const response = await fetch('/api/admin/create-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(adminData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('管理员账号创建成功');
+                    closeCreateModal();
+                    loadUsers(); // 重新加载用户列表
+                } else {
+                    throw new Error(result.message || '创建管理员账号失败');
+                }
+            } catch (error) {
+                console.error('创建管理员账号出错:', error);
+                alert('创建管理员账号失败: ' + error.message);
+            }
+        }
+        
+        // 显示删除确认模态框
+        function showDeleteModal(userId) {
+            deleteUserId = userId;
+            document.getElementById('confirm-delete-modal').classList.remove('hidden');
+        }
+        
+        // 关闭删除确认模态框
+        function closeDeleteModal() {
+            document.getElementById('confirm-delete-modal').classList.add('hidden');
+            document.getElementById('delete-loading').classList.add('hidden');
+            document.getElementById('delete-error').classList.add('hidden');
+            document.getElementById('confirm-delete').disabled = false;
+            document.getElementById('cancel-delete').disabled = false;
+            deleteUserId = null;
+        }
+        
+        // 删除用户
+        async function deleteUser() {
+            if (!deleteUserId) return;
+            
+            const token = localStorage.getItem('adminAuthToken');
+            const deleteLoadingEl = document.getElementById('delete-loading');
+            const deleteErrorEl = document.getElementById('delete-error');
+            const confirmBtn = document.getElementById('confirm-delete');
+            const cancelBtn = document.getElementById('cancel-delete');
+            
+            try {
+                // 显示加载状态
+                deleteLoadingEl.classList.remove('hidden');
+                deleteErrorEl.classList.add('hidden');
+                confirmBtn.disabled = true;
+                cancelBtn.disabled = true;
+                
+                // 发送删除请求
+                const response = await fetch(`/api/admin/users/${deleteUserId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                // 解析响应
+                let result;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    throw new Error('服务器返回的数据格式不正确');
+                }
+                
+                if (!response.ok) {
+                    throw new Error(result?.message || `服务器返回错误状态码: ${response.status}`);
+                }
+                
+                if (result.success) {
+                    // 删除成功
+                    closeDeleteModal();
+                    
+                    // 延迟一点显示成功提示，让用户看到模态框关闭的动画
+                    setTimeout(() => {
+                        // 检查当前页是否只有一条记录，如果是则返回上一页
+                        const userListRows = document.querySelectorAll('#user-list tr').length;
+                        if (userListRows === 1 && currentPage > 1) {
+                            currentPage--;
+                        }
+                        
+                        loadUsers(); // 重新加载用户列表
+                        
+                        // 显示成功提示
+                        const successToast = document.createElement('div');
+                        successToast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg z-50';
+                        successToast.textContent = '用户删除成功';
+                        document.body.appendChild(successToast);
+                        
+                        // 3秒后移除提示
+                        setTimeout(() => {
+                            successToast.remove();
+                        }, 3000);
+                    }, 300);
+                } else {
+                    throw new Error(result.message || '删除用户失败');
+                }
+            } catch (error) {
+                console.error('删除用户出错:', error);
+                
+                // 显示错误信息
+                deleteErrorEl.textContent = `删除失败: ${error.message}`;
+                deleteErrorEl.classList.remove('hidden');
+                
+                // 恢复按钮状态
+                confirmBtn.disabled = false;
+                cancelBtn.disabled = false;
+            } finally {
+                // 隐藏加载状态
+                deleteLoadingEl.classList.add('hidden');
+            }
+        }
+        
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html> 
