@@ -65,21 +65,9 @@
             border-bottom: 1px solid #e5e7eb;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
-        /* 侧边栏样式 */
-        .sidebar {
-            position: fixed;
-            top: 60px; /* 与导航栏高度一致 */
-            left: 0;
-            bottom: 0;
-            width: 16rem;
-            overflow-y: auto;
-            background-color: white;
-            border-right: 1px solid #e5e7eb;
-            z-index: 40;
-        }
-        /* 主内容区域样式 */
+        /* 主内容区域样式 - 修改为全宽 */
         .main-content {
-            margin-left: 16rem;
+            margin-left: 0;
             margin-top: 60px; /* 与导航栏高度一致 */
             padding: 2rem;
             height: calc(100vh - 60px); /* 减去导航栏高度 */
@@ -94,6 +82,43 @@
             color: currentColor;
             opacity: 0.8;
         }
+        
+        /* 功能中心下拉菜单样式 */
+        #features-dropdown {
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        /* 下拉菜单中的链接样式 */
+        #features-dropdown ul li a {
+            transition: all 0.2s ease;
+            display: block;
+        }
+        
+        #features-dropdown ul li a:hover {
+            background-color: #f3f0ff;
+            color: #6366f1;
+            padding-left: 0.75rem;
+        }
+        
+        /* 分类标题样式 */
+        #features-dropdown h3 {
+            color: #4f46e5;
+            font-weight: 600;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        /* 导航菜单项的悬停效果 */
+        .navbar a:hover, .navbar button:hover {
+            color: #6366f1;
+        }
+        
+        /* 隐藏侧边栏 */
+        .sidebar {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -104,6 +129,98 @@
                 <span class="font-bold text-2xl text-indigo-600 mr-1 logo-text">萤火<span class="logo-dot"></span>AI</span>
                 <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
             </a>
+            <!-- 添加顶部导航功能菜单 -->
+            <div class="ml-8 flex items-center space-x-6">
+                <a href="#" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="ri-home-line mr-1"></i>
+                    <span>首页</span>
+                </a>
+                <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/marketing-images.html')" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="ri-image-line mr-1"></i>
+                    <span>AI营销图</span>
+                </a>
+                <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/translate')" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="ri-translate-2 mr-1"></i>
+                    <span>图片翻译</span>
+                </a>
+                <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/cutout')" class="text-gray-600 hover:text-gray-900 flex items-center">
+                    <i class="ri-image-edit-line mr-1"></i>
+                    <span>商品换背景</span>
+                </a>
+                <!-- 功能中心下拉菜单 -->
+                <div class="relative">
+                    <button class="text-gray-600 hover:text-gray-900 flex items-center" id="features-menu-btn">
+                        <i class="ri-apps-line mr-1"></i>
+                        <span>功能中心</span>
+                        <i class="ri-arrow-down-s-line ml-1"></i>
+                    </button>
+                    <div id="features-dropdown" class="hidden absolute left-0 mt-2 w-[800px] bg-white rounded-md shadow-lg py-4 z-10">
+                        <div class="grid grid-cols-4 gap-2 px-4">
+                            <!-- 图像处理类 -->
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">图像处理</h3>
+                                <ul class="space-y-1">
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/scene-generator')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">场景图生成</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-removal.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">图像智能消除</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-expansion.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">智能扩图</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-sharpen.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">模糊图片变清晰</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-upscaler.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">图像高清放大</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-colorization.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">图像上色</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/local-redraw.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">局部重绘</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/global-style.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">全局风格化</a></li>
+                                    <li><a onclick="checkAuthAndRedirect('/diantu.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">垫图</a></li>
+                                </ul>
+                            </div>
+                            <!-- 模特/服饰类 -->
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">模特与服饰</h3>
+                                <ul class="space-y-1">
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/model-skin-changer.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">模特换肤</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/clothing-simulation.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">模拟试衣</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/clothing-segmentation.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">智能服饰分割</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/virtual-model')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">智能虚拟模特试穿</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/virtual-model-shoes.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">鞋靴虚拟试穿</a></li>
+                                </ul>
+                                
+                                <h3 class="text-sm font-semibold text-gray-900 mt-4 mb-2 pb-1 border-b">AI创作</h3>
+                                <ul class="space-y-1">
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/text-to-image.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">文生图片</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/prompt-editor.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">指令编辑</a></li>
+                                </ul>
+                            </div>
+                            <!-- 视频处理类 -->
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">视频处理</h3>
+                                <ul class="space-y-1">
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/text-to-video.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">文生视频</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-to-video.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">图生视频</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/multi-image-to-video.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">多图转视频</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/video-style-repaint.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">视频风格重绘</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/digital-human-video.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">视频数字人</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/video-subtitle-remover.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">视频去除字幕</a></li>
+                                </ul>
+                            </div>
+                            <!-- 亚马逊助手 -->
+                            <div>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">亚马逊助手</h3>
+                                <ul class="space-y-1">
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-listing.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">Listing写作与优化</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-search-term.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">后台搜索词</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-review-analysis.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">客户评论分析</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-consumer-insights.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">消费者洞察</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-customer-email.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">客户邮件回复</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/fba-claim-email.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">FBA索赔邮件</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-review-generator.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">评论生成</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-review-response.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">评论回复</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-brand-naming.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">品牌起名</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-post-creator.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">创建Post</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-video-script.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">广告视频脚本</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="flex items-center space-x-6">
             <div class="relative">
@@ -432,7 +549,7 @@
                 <!-- 模特试衣 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/clothing-simulation.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="https://picsum.photos/400/300?random=1" class="h-full w-full object-cover" alt="模特试衣">
+                        <img src="/public/images/clothing/before-after-model.jpg" onerror="this.src='https://picsum.photos/400/300?random=1'; console.log('请将图片放置到 /public/images/clothing/before-after-model.jpg 路径');" class="h-full w-full object-cover" alt="模特试衣">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
@@ -621,135 +738,94 @@
     </div>
 
     <script>
-        document.getElementById('openEditorPayload')?.addEventListener('click', function() {
-            // 定义参数
-            const params = {
-                appKey: '502592',
-                apiHost: 'https://api-cv.aliyuncs.com',
-                language: 'auto'
-            };
-            
-            // 创建payload字符串
-            const payload = encodeURIComponent(JSON.stringify(params));
-            
-            // 构造最终URL
-            const url = `https://editor.d.design?payload=${payload}`;
-            
-            // 在新窗口打开编辑器
-            window.open(url, '_blank');
-        });
-
-        // 积分中心菜单切换
-        const creditsMenuBtn = document.getElementById('credits-menu-btn');
-        const creditsDropdown = document.getElementById('credits-dropdown');
-        
-        if (creditsMenuBtn) {
-            creditsMenuBtn.addEventListener('click', () => {
-                creditsDropdown.classList.toggle('hidden');
-            });
-        
-            // 点击菜单外区域关闭下拉菜单
-            document.addEventListener('click', (event) => {
-                if (!creditsMenuBtn.contains(event.target) && !creditsDropdown.contains(event.target)) {
-                    creditsDropdown.classList.add('hidden');
-                }
-            });
-        }
-
-        // 用户菜单切换
-        const userMenuBtn = document.getElementById('user-menu-btn');
-        const userDropdown = document.getElementById('user-dropdown');
-        
-        if (userMenuBtn) {
-            userMenuBtn.addEventListener('click', () => {
-                userDropdown.classList.toggle('hidden');
-            });
-        
-            // 点击菜单外区域关闭下拉菜单
-            document.addEventListener('click', (event) => {
-                if (!userMenuBtn.contains(event.target) && !userDropdown.contains(event.target)) {
-                    userDropdown.classList.add('hidden');
-                }
-            });
-        }
-        
-        // 检查用户登录状态
-        function checkAuthStatus() {
-            const authToken = localStorage.getItem('authToken');
+        // 检查用户是否登录并更新UI
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取用户信息
+            const token = localStorage.getItem('authToken');
             const userInfo = localStorage.getItem('user');
-            const loginBtn = document.getElementById('login-btn');
-            const userInfoElement = document.getElementById('user-info');
             
-            if (authToken && userInfo) {
-                // 用户已登录
+            if (token && userInfo) {
                 try {
+                    // 解析用户信息
                     const user = JSON.parse(userInfo);
-                    document.getElementById('username-display').textContent = user.username;
                     
-                    // 显示用户信息，隐藏登录按钮
-                    if (loginBtn) loginBtn.classList.add('hidden');
-                    if (userInfoElement) userInfoElement.classList.remove('hidden');
+                    // 用户已登录
+                    document.getElementById('login-btn').classList.add('hidden');
+                    document.getElementById('user-info').classList.remove('hidden');
+                    document.getElementById('username-display').textContent = user.username || '用户';
+                    
+                    console.log('用户已登录:', user.username);
                 } catch (e) {
                     console.error('解析用户信息出错:', e);
-                    // 清除无效的存储
+                }
+            }
+            
+            // 积分中心下拉菜单
+            const creditsMenuBtn = document.getElementById('credits-menu-btn');
+            const creditsDropdown = document.getElementById('credits-dropdown');
+            
+            creditsMenuBtn.addEventListener('click', function() {
+                creditsDropdown.classList.toggle('hidden');
+            });
+            
+            // 用户菜单下拉
+            const userMenuBtn = document.getElementById('user-menu-btn');
+            const userDropdown = document.getElementById('user-dropdown');
+            
+            if (userMenuBtn) {
+                userMenuBtn.addEventListener('click', function() {
+                    userDropdown.classList.toggle('hidden');
+                });
+            }
+            
+            // 退出登录
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('user');
-                }
-            } else {
-                // 用户未登录
-                if (loginBtn) loginBtn.classList.remove('hidden');
-                if (userInfoElement) userInfoElement.classList.add('hidden');
+                    window.location.href = '/';
+                });
             }
-        }
-        
-        // 处理退出登录
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                // 清除认证信息
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('user');
-                // 更新界面
-                checkAuthStatus();
-                // 刷新页面或重定向
-                window.location.reload();
+            
+            // 功能中心下拉菜单
+            const featuresMenuBtn = document.getElementById('features-menu-btn');
+            const featuresDropdown = document.getElementById('features-dropdown');
+            
+            featuresMenuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                featuresDropdown.classList.toggle('hidden');
+                
+                // 关闭其他下拉菜单
+                creditsDropdown.classList.add('hidden');
+                if (userDropdown) userDropdown.classList.add('hidden');
             });
-        }
-        
-        /**
-         * 检查用户是否已登录，如果未登录则跳转到登录页面
-         * @param {string} targetUrl 目标页面URL
-         */
-        function checkAuthAndRedirect(targetUrl) {
-            const authToken = localStorage.getItem('authToken');
-            const userInfo = localStorage.getItem('user');
             
-            if (authToken && userInfo) {
-                // 用户已登录，直接跳转到目标页面
-                if (targetUrl.startsWith('#')) {
-                    // 如果是锚点链接，在当前页面内跳转
-                    window.location.hash = targetUrl;
-                } else {
-                    // 如果是外部链接，在新标签页打开
-                    window.open(targetUrl, '_blank');
+            // 点击页面其他区域关闭所有下拉菜单
+            document.addEventListener('click', function(e) {
+                if (!creditsMenuBtn.contains(e.target)) {
+                    creditsDropdown.classList.add('hidden');
                 }
+                
+                if (userMenuBtn && !userMenuBtn.contains(e.target)) {
+                    userDropdown.classList.add('hidden');
+                }
+                
+                if (!featuresMenuBtn.contains(e.target) && !featuresDropdown.contains(e.target)) {
+                    featuresDropdown.classList.add('hidden');
+                }
+            });
+        });
+        
+        // 检查用户权限并重定向
+        function checkAuthAndRedirect(url) {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                window.location.href = url;
             } else {
-                // 用户未登录，始终将登录后的跳转目标设为首页
-                localStorage.setItem('redirectAfterLogin', '/');
-                // 记录用户原本想访问的页面，但不用于自动跳转
-                localStorage.setItem('lastAttemptedPage', targetUrl);
-                // 跳转到登录页
-                window.location.href = '/login.html';
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(url);
             }
         }
-        
-        // 页面加载时检查登录状态
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAuthStatus();
-            
-            // 移除登录后自动跳转的逻辑
-        });
     </script>
 </body>
 </html>
