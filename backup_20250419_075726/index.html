@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商工具</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- 添加通信SDK配置 -->
+    <script>
+        var INTL_OP_FRAME_SDK_CONFIG = {
+            apiMap: {
+                signature: '/open/api/signature' // 签名接口路径
+            },
+            appKey: '502908', // 添加appKey
+            secretKey: 'GWQi1gvi6VzKN0aggHEr0B1C6am8VFyJ' // 添加secretKey
+        };
+    </script>
+    <!-- 引入SDK -->
+    <script src="https://g.alicdn.com/code/npm/@ali/intl-op-frame-sdk/0.1.10/main.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-item">电商工图实景图/电商海报智能生成</div>
+            <div class="sidebar-item">产品电商场景图/产品换场景/换背景</div>
+            <div class="sidebar-item">
+                <span>视频语音翻译</span>
+                <span class="badge">1</span>
+            </div>
+            <div class="sidebar-item">
+                <span>视频文字翻译</span>
+                <span class="badge">1</span>
+            </div>
+            <div class="sidebar-item selected">
+                <span>图片文字翻译转换</span>
+                <span class="badge">3</span>
+                <span class="editable">(可修改)</span>
+            </div>
+            <div class="sidebar-item">
+                <span>图片文字翻译转换</span>
+                <span class="badge">1</span>
+            </div>
+            <div class="sidebar-item">
+                <span>智能虚拟模特试衣</span>
+                <span class="badge">2</span>
+            </div>
+            <div class="sidebar-item">跨境合规标签</div>
+        </div>
+        
+        <div class="main-content">
+            <div class="content-area">
+                <div class="product-display">
+                    <div class="product-images">
+                        <!-- 这里放产品图片展示 -->
+                    </div>
+                </div>
+                
+                <div class="translation-form">
+                    <div class="form-group">
+                        <label for="productTitle">
+                            <span class="required">*</span>
+                            翻译商品主体上文字
+                        </label>
+                        <div class="dropdown">
+                            <span class="dropdown-text">是</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="imageUpload">
+                            <span class="required">*</span>
+                            图片处理
+                        </label>
+                        <div class="upload-area">
+                            <div class="upload-box" id="uploadBox">
+                                <span class="upload-icon">+</span>
+                                <span style="display:block; margin-top:10px; font-size:12px; color:#666;">点击打开工作台</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn-reset" id="resetBtn">重置</button>
+                        <button class="btn-submit" id="submitBtn">打开工作台生成</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html> 

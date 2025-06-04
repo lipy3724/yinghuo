@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片翻译工具</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #myiframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+    <script>
+        // open sdk 扩展配置
+        window.INTL_OP_FRAME_SDK_CONFIG = {
+            // API 映射
+            apiMap: {
+                '/open/api/signature': '/open/api/signature'
+            }
+        };
+    </script>
+    <script src="https://g.alicdn.com/code/npm/@ali/intl-op-frame-sdk/0.1.10/main.min.js"></script>
+</head>
+<body>
+    <iframe id="myiframe" class="aidc-open-frame" src="" frameborder="0"></iframe>
+
+    <script>
+        // 必要的变量设置
+        let iframeEle = document.getElementById("myiframe");
+        
+        // 构建编辑器URL并加载
+        function initializeEditor() {
+            // 构建参数对象
+            const params = {
+                apiHost: 'aibcn',
+                appKey: "502592",
+                trial: true,
+                imageUrl: "https://img.alicdn.com/imgextra/i3/O1CN01F84hLR29Futc7Oshz_!!6000000008039-0-tps-750-1000.jpg",
+                sourceLanguage: 'zh',
+                targetLanguage: 'en',
+                translatingTextInTheProduct: true,
+                lang: 'zh-cn'
+            };
+            
+            // 使用payload方式构建URL
+            const payloadString = encodeURIComponent(JSON.stringify(params));
+            const url = `https://editor.d.design/editor/index.html/#/translate?payload=${payloadString}`;
+            
+            // 更新iframe的src
+            iframeEle.src = url;
+        }
+        
+        // 监听编辑器消息
+        window.addEventListener("message", (ev) => {
+            console.log("收到编辑器消息:", ev.data);
+            const { data, action, biz } = ev.data;
+            
+            if (action === "pageReady") {
+                console.log("编辑器页面已准备就绪");
+            } else if (action === "taskSuccess") {
+                console.log(`业务[${biz}]生产任务完成:`, data);
+            } else if (action === "submit") {
+                console.log("用户点击了保存按钮:", data);
+            } else if (action === "download") {
+                console.log("用户点击了下载按钮:", data);
+            }
+        });
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEditor();
+        });
+    </script>
+</body>
+</html> 

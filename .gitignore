@@ -34,7 +34,7 @@ server.log
 
 # 临时文件
 .tmp/
-.temp/
+.temp/ 
 
 # 上传的文件和结果
 uploads/

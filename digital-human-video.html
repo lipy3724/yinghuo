@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频数字人 - 萤火AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            overflow: hidden;
+        }
+        @keyframes firefly-glow {
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+        }
+        .logo-text {
+            animation: firefly-glow 3s infinite;
+        }
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-left: 2px;
+            margin-right: 4px;
+            position: relative;
+            top: -2px;
+        }
+        .custom-file-upload {
+            display: inline-block;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 0.375rem;
+            background-color: #f9fafb;
+            border: 1px dashed #d1d5db;
+            transition: all 0.3s ease;
+        }
+        .custom-file-upload:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        .video-preview-container {
+            aspect-ratio: 9/16;
+            background-color: #f3f4f6;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+        .avatar-option {
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .avatar-option.selected {
+            border-color: #6366f1;
+            transform: scale(1.05);
+        }
+        .avatar-option:hover:not(.selected) {
+            transform: scale(1.03);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .vertical-divider {
+            width: 2px;
+            background-color: #e5e7eb;
+            margin: 0 1rem;
+        }
+        .preview-container {
+            aspect-ratio: 16/9;
+            background-color: #f3f4f6;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+            border: 1px dashed #d1d5db;
+        }
+        .scrollable-panel {
+            height: calc(100vh - 60px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        .scrollable-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollable-panel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .scrollable-panel::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+        .scrollable-panel::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        .upload-progress {
+            width: 0%;
+            height: 4px;
+            background-color: #6366f1;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <header class="bg-white shadow-sm py-3 px-6 flex items-center justify-between h-[60px]">
+        <div class="flex items-center">
+            <span class="text-xl font-bold text-indigo-600">萤火·AI</span>
+            <span class="ml-2 text-gray-500 text-sm">Yinghuo.AI</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <a href="/" class="text-gray-600 hover:text-gray-900 flex items-center text-sm">
+                <i class="ri-arrow-left-line mr-1"></i>
+                <span>返回首页</span>
+            </a>
+            <span class="text-gray-600 text-sm">积分: 951</span>
+        </div>
+    </header>
+
+    <main class="flex h-[calc(100vh-60px)]">
+        <!-- 左侧区域：上传区域和配置 -->
+        <div class="w-full md:w-1/3 scrollable-panel p-6">
+            <div class="space-y-6">
+                <!-- 上传视频 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">上传人物视频</h2>
+                    <div class="preview-container flex items-center justify-center mb-4 relative">
+                        <div id="video-placeholder" class="flex flex-col items-center justify-center p-6 text-center">
+                            <i class="ri-video-upload-line text-5xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500 text-sm">点击或者拖拽视频文件到这里上传</p>
+                            <p class="text-gray-400 text-xs mt-2">支持MP4格式，≤300MB，2秒＜时长＜120秒</p>
+                            <input type="file" id="video-upload" accept="video/mp4" class="hidden" />
+                            <button onclick="document.getElementById('video-upload').click()" class="mt-4 px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-medium rounded-md hover:bg-indigo-100 focus:outline-none">
+                                上传视频
+                            </button>
+                        </div>
+                        <div id="video-preview" class="hidden w-full h-full">
+                            <video id="uploaded-video" class="w-full h-full object-contain" controls></video>
+                        </div>
+                        <div class="upload-progress" id="video-progress"></div>
+                    </div>
+                    <p class="text-xs text-gray-500">视频要求: 人物正面出镜的近景画面，人脸清晰可见且占比适中，避免大角度侧脸。</p>
+                </div>
+
+                <!-- 上传音频 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">上传语音/音频</h2>
+                    <div class="preview-container flex items-center justify-center mb-4 relative">
+                        <div id="audio-placeholder" class="flex flex-col items-center justify-center p-6 text-center">
+                            <i class="ri-file-music-line text-5xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500 text-sm">点击或者拖拽音频文件到这里上传</p>
+                            <p class="text-gray-400 text-xs mt-2">支持MP3格式，≤50MB，时长无特别限制</p>
+                            <input type="file" id="audio-upload" accept="audio/mp3,audio/mpeg" class="hidden" />
+                            <button onclick="document.getElementById('audio-upload').click()" class="mt-4 px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-medium rounded-md hover:bg-indigo-100 focus:outline-none">
+                                上传音频
+                            </button>
+                        </div>
+                        <div id="audio-preview" class="hidden w-full h-full">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="ri-file-music-fill text-5xl text-indigo-500 mb-3"></i>
+                                <p id="audio-name" class="text-gray-700 text-center mb-2">audio.mp3</p>
+                                <audio id="uploaded-audio" controls class="w-full max-w-xs"></audio>
+                            </div>
+                        </div>
+                        <div class="upload-progress" id="audio-progress"></div>
+                    </div>
+                    <p class="text-xs text-gray-500">音频要求: 清晰的人声录音，背景噪音小，普通话/方言不限，尽量避免混有明显背景音乐。</p>
+                </div>
+
+                <!-- 积分消费说明 -->
+                <div class="bg-indigo-50 p-4 rounded-lg mt-4">
+                    <div class="flex items-start">
+                        <i class="ri-information-line text-indigo-600 text-xl mr-2 mt-0.5"></i>
+                        <div>
+                            <h3 class="text-sm font-medium text-indigo-800">积分消费说明</h3>
+                            <p class="text-xs text-indigo-700 mt-1">
+                                数字人视频功能按<strong>生成视频的实际时长</strong>计算积分，而非上传素材的时长。
+                                <br>目前计费标准为：<strong>9积分/秒</strong>。
+                                <br>例如：生成一个30秒的视频将消耗270积分。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 人脸参考图（可选） -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">人脸参考图</h2>
+                        <span class="text-xs text-gray-500">选填</span>
+                    </div>
+                    <div class="preview-container flex items-center justify-center mb-4 relative">
+                        <div id="image-placeholder" class="flex flex-col items-center justify-center p-6 text-center">
+                            <i class="ri-user-line text-5xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500 text-sm">点击或者拖拽人脸图片到这里上传</p>
+                            <p class="text-gray-400 text-xs mt-2">支持JPEG、PNG等格式，≤10MB</p>
+                            <input type="file" id="image-upload" accept="image/jpeg,image/png,image/bmp,image/webp" class="hidden" />
+                            <button onclick="document.getElementById('image-upload').click()" class="mt-4 px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-medium rounded-md hover:bg-indigo-100 focus:outline-none">
+                                上传图片
+                            </button>
+                        </div>
+                        <div id="image-preview" class="hidden w-full h-full">
+                            <img id="uploaded-image" class="w-full h-full object-contain" alt="人脸参考图" />
+                        </div>
+                        <div class="upload-progress" id="image-progress"></div>
+                    </div>
+                    <p class="text-xs text-gray-500">用于指定视频中的哪个人物进行口型合成，如不上传将自动选择主要人物。</p>
+                </div>
+                
+                <!-- 高级选项 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">高级选项</h2>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="video-extension" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
+                        <label for="video-extension" class="ml-2 text-sm text-gray-700">视频延长模式（视频会延长以匹配音频时长）</label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">当音频长度超过视频长度时，自动扩展视频时长以匹配音频长度。</p>
+                </div>
+
+                <button id="generate-btn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <i class="ri-magic-line mr-2"></i>立即生成
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧区域：效果展示和输出视频 -->
+        <div class="w-full md:w-2/3 scrollable-panel p-6 border-l border-gray-200">
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">效果展示</h2>
+                    <p class="text-gray-700 mb-4">声动人像VideoRetalk可基于人物视频和人声音频，生成人物讲话口型与输入音频相匹配的新视频。</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 源视频 -->
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800 mb-3">源视频:</h3>
+                            <div class="preview-container flex items-center justify-center">
+                                <div id="source-preview" class="text-center text-gray-500">
+                                    上传视频后将在这里显示
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 输出视频 -->
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800 mb-3">输出视频:</h3>
+                            <div class="preview-container flex items-center justify-center">
+                                <div id="result-preview" class="hidden w-full h-full">
+                                    <video id="result-video" class="w-full h-full object-cover" controls></video>
+                                </div>
+                                <div id="result-placeholder" class="flex flex-col items-center justify-center text-center text-gray-500">
+                                    <i class="ri-video-line text-5xl text-gray-300 mb-2"></i>
+                                    <p>视频生成后将在这里显示</p>
+                                    <p class="text-xs mt-1">处理需要3-10分钟</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="generation-status" class="mt-4 hidden">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-gray-700">处理进度</span>
+                            <span id="status-text" class="text-sm text-indigo-600">正在处理...</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="result-actions" class="mt-4 hidden">
+                        <div class="flex space-x-4">
+                            <button id="download-btn" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none">
+                                <i class="ri-download-line mr-1"></i> 下载视频
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 class="text-xl font-semibold mb-4">注意事项</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="font-medium text-indigo-700">视频要求：</p>
+                            <ul class="space-y-1 mt-1">
+                                <li>• 文件限制：支持mp4、avi、mov，文件≤300MB，2秒＜时长＜120秒。</li>
+                                <li>• 视频限制：15fps≤帧率≤60fps；编码采用H.264或H.265；边长不低于640，不大于2048。</li>
+                                <li>• 视频内容：视频应为人物正面出镜的近景画面。避免大角度侧脸或人脸过小。</li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <p class="font-medium text-indigo-700">音频要求：</p>
+                            <ul class="space-y-1 mt-1">
+                                <li>• 文件限制：支持wav、mp3、aac，文件≤30MB，2秒＜时长＜120秒。</li>
+                                <li>• 音频内容：音频中需包含清晰、响亮的人声语音，并去除了环境噪音、背景音乐等声音干扰信息。</li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <p class="font-medium text-indigo-700">人物参考图要求：</p>
+                            <ul class="space-y-1 mt-1">
+                                <li>• 文件限制：支持jpeg、jpg、png、bmp、webp，文件≤10MB。</li>
+                                <li>• 图片内容：需包含一张清晰的人物正脸，且该人物出现在视频画面中。也可从视频画面中截图用作人物参考图。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 文件上传和预览相关元素
+            const videoUpload = document.getElementById('video-upload');
+            const audioUpload = document.getElementById('audio-upload');
+            const imageUpload = document.getElementById('image-upload');
+            
+            const videoPreview = document.getElementById('video-preview');
+            const audioPreview = document.getElementById('audio-preview');
+            const imagePreview = document.getElementById('image-preview');
+            
+            const videoPlaceholder = document.getElementById('video-placeholder');
+            const audioPlaceholder = document.getElementById('audio-placeholder');
+            const imagePlaceholder = document.getElementById('image-placeholder');
+            
+            const uploadedVideo = document.getElementById('uploaded-video');
+            const uploadedAudio = document.getElementById('uploaded-audio');
+            const uploadedImage = document.getElementById('uploaded-image');
+            const audioName = document.getElementById('audio-name');
+            
+            const sourcePreview = document.getElementById('source-preview');
+            
+            const generateBtn = document.getElementById('generate-btn');
+            const resultPreview = document.getElementById('result-preview');
+            const resultPlaceholder = document.getElementById('result-placeholder');
+            const resultVideo = document.getElementById('result-video');
+            
+            const generationStatus = document.getElementById('generation-status');
+            const statusText = document.getElementById('status-text');
+            const progressBar = document.getElementById('progress-bar');
+            const resultActions = document.getElementById('result-actions');
+            const downloadBtn = document.getElementById('download-btn');
+            
+            // 上传进度条
+            const videoProgress = document.getElementById('video-progress');
+            const audioProgress = document.getElementById('audio-progress');
+            const imageProgress = document.getElementById('image-progress');
+            
+            // 高级选项
+            const videoExtension = document.getElementById('video-extension');
+            
+            // 文件存储信息
+            let uploadedFiles = {
+                video: null,
+                audio: null,
+                image: null
+            };
+            
+            // 任务ID - 用于状态查询
+            let taskId = null;
+            let statusCheckInterval = null;
+            
+            // 检查登录状态和获取用户积分
+            checkLoginStatus();
+            
+            // 检查用户登录状态
+            function checkLoginStatus() {
+                const token = localStorage.getItem('authToken');
+                const creditsElement = document.querySelector('header .text-sm:last-child');
+                
+                if (token) {
+                    // 用户已登录，获取积分信息
+                    fetch('/api/user/credits', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.credits !== undefined) {
+                            // 更新显示的积分
+                            creditsElement.textContent = `积分: ${data.credits}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取积分失败:', error);
+                    });
+                } else {
+                    // 用户未登录
+                    creditsElement.textContent = '未登录';
+                    
+                    // 添加登录链接
+                    const headerDiv = document.querySelector('header .flex.items-center.space-x-4');
+                    
+                    // 检查是否已经添加了登录按钮
+                    if (!document.getElementById('login-btn')) {
+                        const loginLink = document.createElement('a');
+                        loginLink.href = '/login.html';
+                        loginLink.className = 'text-indigo-600 hover:text-indigo-800 text-sm font-medium';
+                        loginLink.id = 'login-btn';
+                        loginLink.textContent = '登录';
+                        headerDiv.insertBefore(loginLink, creditsElement);
+                    }
+                }
+            }
+            
+            // 检查生成按钮状态
+            function checkGenerateButtonState() {
+                generateBtn.disabled = !(uploadedFiles.video && uploadedFiles.audio);
+            }
+            
+            // 处理视频上传
+            videoUpload.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    
+                    // 检查文件类型
+                    if (!file.type.match('video/mp4')) {
+                        alert('请上传MP4格式的视频文件，视频数字人功能仅支持该格式');
+                        return;
+                    }
+                    
+                    // 检查文件大小 (300MB = 300 * 1024 * 1024 bytes)
+                    if (file.size > 300 * 1024 * 1024) {
+                        alert('视频文件大小不能超过300MB');
+                        return;
+                    }
+                    
+                    // 显示上传进度条
+                    showProgress(videoProgress);
+                    
+                    // 预览视频
+                    const url = URL.createObjectURL(file);
+                    uploadedVideo.src = url;
+                    videoPreview.classList.remove('hidden');
+                    videoPlaceholder.classList.add('hidden');
+                    
+                    // 更新右侧预览
+                    sourcePreview.innerHTML = `<video src="${url}" class="w-full h-full object-contain" controls></video>`;
+                    
+                    // 存储文件信息
+                    uploadedFiles.video = file;
+                    hideProgress(videoProgress);
+                    
+                    // 加载视频元数据
+                    uploadedVideo.onloadedmetadata = function() {
+                        // 检查视频时长 (秒)
+                        if (uploadedVideo.duration < 2 || uploadedVideo.duration > 120) {
+                            alert('视频时长必须在2-120秒之间，请重新选择符合要求的视频');
+                            videoPreview.classList.add('hidden');
+                            videoPlaceholder.classList.remove('hidden');
+                            uploadedFiles.video = null;
+                            checkGenerateButtonState();
+                            return;
+                        }
+                        checkGenerateButtonState();
+                    };
+                }
+            });
+            
+            // 处理音频上传
+            audioUpload.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    
+                    // 检查文件类型
+                    if (!file.type.match('audio/wav|audio/mp3|audio/mpeg')) {
+                        alert('请上传WAV或MP3格式的音频文件，视频数字人功能仅支持这些格式');
+                        return;
+                    }
+                    
+                    // 检查文件大小 (30MB = 30 * 1024 * 1024 bytes)
+                    if (file.size > 30 * 1024 * 1024) {
+                        alert('音频文件大小不能超过30MB');
+                        return;
+                    }
+                    
+                    // 显示上传进度条
+                    showProgress(audioProgress);
+                    
+                    // 预览音频
+                    const url = URL.createObjectURL(file);
+                    uploadedAudio.src = url;
+                    audioPreview.classList.remove('hidden');
+                    audioPlaceholder.classList.add('hidden');
+                    audioName.textContent = file.name;
+                    
+                    // 存储文件信息
+                    uploadedFiles.audio = file;
+                    hideProgress(audioProgress);
+                    
+                    // 加载音频元数据
+                    uploadedAudio.onloadedmetadata = function() {
+                        // 检查音频时长 (秒)
+                        if (uploadedAudio.duration < 2 || uploadedAudio.duration > 120) {
+                            alert('音频时长必须在2-120秒之间，请重新选择符合要求的音频');
+                            audioPreview.classList.add('hidden');
+                            audioPlaceholder.classList.remove('hidden');
+                            uploadedFiles.audio = null;
+                            checkGenerateButtonState();
+                            return;
+                        }
+                        checkGenerateButtonState();
+                    };
+                }
+            });
+            
+            // 处理图片上传
+            imageUpload.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    
+                    // 检查文件类型
+                    if (!file.type.match('image/jpeg|image/png|image/bmp|image/webp')) {
+                        alert('请上传JPEG、PNG、BMP或WEBP格式的图片文件');
+                        return;
+                    }
+                    
+                    // 检查文件大小 (10MB = 10 * 1024 * 1024 bytes)
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert('图片文件大小不能超过10MB');
+                        return;
+                    }
+                    
+                    // 显示上传进度条
+                    showProgress(imageProgress);
+                    
+                    // 预览图片
+                    const url = URL.createObjectURL(file);
+                    uploadedImage.src = url;
+                    imagePreview.classList.remove('hidden');
+                    imagePlaceholder.classList.add('hidden');
+                    
+                    // 存储文件信息
+                    uploadedFiles.image = file;
+                    hideProgress(imageProgress);
+                }
+            });
+            
+            // 显示进度条
+            function showProgress(progressElement) {
+                progressElement.style.width = '100%';
+            }
+            
+            // 隐藏进度条
+            function hideProgress(progressElement) {
+                progressElement.style.width = '0%';
+            }
+            
+            // 生成按钮处理
+            generateBtn.addEventListener('click', function() {
+                if (!uploadedFiles.video || !uploadedFiles.audio) {
+                    alert('请上传人物视频和音频文件以生成视频数字人');
+                    return;
+                }
+                
+                // 检查用户是否登录
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    if (confirm('使用视频数字人功能需要先登录，是否前往登录页面？')) {
+                        window.location.href = '/login.html';
+                    }
+                    return;
+                }
+                
+                // 显示生成状态
+                generationStatus.classList.remove('hidden');
+                resultPlaceholder.classList.add('hidden');
+                
+                // 禁用生成按钮
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-2"></i>生成中...';
+                
+                // 调用API上传文件
+                uploadFiles();
+            });
+            
+            // 上传文件到服务器
+            async function uploadFiles() {
+                try {
+                    updateProgress('准备上传文件...', 10);
+                    
+                    // 创建FormData对象
+                    const formData = new FormData();
+                    formData.append('video', uploadedFiles.video);
+                    formData.append('audio', uploadedFiles.audio);
+                    if (uploadedFiles.image) {
+                        formData.append('image', uploadedFiles.image);
+                    }
+                    formData.append('videoExtension', videoExtension.checked);
+                    
+                    updateProgress('上传文件中...', 30);
+                    
+                    // 获取认证Token
+                    const token = localStorage.getItem('authToken');
+                    
+                    // 发送请求
+                    const response = await fetch('/api/digital-human/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+                    
+                    // 检查响应状态
+                    if (!response.ok) {
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            // 如果是JSON响应，解析它
+                            const data = await response.json();
+                            throw new Error(data.message || `上传失败 (${response.status})`);
+                        } else {
+                            // 如果不是JSON响应，使用状态文本
+                            throw new Error(`上传失败 (${response.status}): ${response.statusText}`);
+                        }
+                    }
+                    
+                    // 解析成功的响应
+                    const data = await response.json();
+                    
+                    // 保存任务ID
+                    taskId = data.taskId;
+                    
+                    updateProgress('任务已提交，开始处理...', 50);
+                    
+                    // 开始轮询任务状态
+                    checkTaskStatus();
+                    
+                } catch (error) {
+                    console.error('上传文件失败:', error);
+                    updateProgress('上传失败: ' + error.message, 0);
+                    
+                    // 恢复生成按钮
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<i class="ri-magic-line mr-2"></i>立即生成';
+                    
+                    alert('视频数字人生成失败: ' + error.message);
+                }
+            }
+            
+            // 检查任务状态
+            function checkTaskStatus() {
+                if (statusCheckInterval) {
+                    clearInterval(statusCheckInterval);
+                }
+                
+                statusCheckInterval = setInterval(async () => {
+                    try {
+                        if (!taskId) {
+                            clearInterval(statusCheckInterval);
+                            return;
+                        }
+                        
+                        // 获取认证Token
+                        const token = localStorage.getItem('authToken');
+                        
+                        const response = await fetch(`/api/digital-human/task/${taskId}`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        const data = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(data.message || '查询失败');
+                        }
+                        
+                        console.log('任务状态:', data);
+                        
+                        // 根据任务状态更新UI
+                        if (data.status === 'SUCCEEDED') {
+                            // 任务完成
+                            updateProgress('处理完成', 100);
+                            clearInterval(statusCheckInterval);
+                            
+                            // 显示结果视频
+                            resultVideo.src = data.videoUrl;
+                            resultPreview.classList.remove('hidden');
+                            
+                            // 显示操作按钮
+                            resultActions.classList.remove('hidden');
+                            
+                            // 创建或更新消费信息元素
+                            let costInfoElement = document.getElementById('cost-info');
+                            if (!costInfoElement) {
+                                costInfoElement = document.createElement('div');
+                                costInfoElement.id = 'cost-info';
+                                costInfoElement.className = 'mt-4 p-3 bg-indigo-50 rounded-md text-sm';
+                                resultActions.insertAdjacentElement('afterend', costInfoElement);
+                            }
+                            
+                            // 先显示占位信息
+                            costInfoElement.innerHTML = `
+                                <div class="flex items-start">
+                                    <i class="ri-loader-line animate-spin text-indigo-600 text-lg mr-2 mt-0.5"></i>
+                                    <div>
+                                        <h3 class="font-medium text-indigo-800">计算视频信息中...</h3>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // 获取视频时长和计算积分消费
+                            const updateCreditInfo = () => {
+                                // 优先使用API返回的时长，如果没有则使用视频元数据
+                                const videoDuration = data.videoDuration || Math.ceil(resultVideo.duration);
+                                const creditCost = videoDuration * 9; // 每秒9积分
+                                
+                                costInfoElement.innerHTML = `
+                                    <div class="flex items-start">
+                                        <i class="ri-information-line text-indigo-600 text-lg mr-2 mt-0.5"></i>
+                                        <div>
+                                            <h3 class="font-medium text-indigo-800">视频生成完成</h3>
+                                            <p class="text-indigo-700 mt-1">
+                                                视频时长: <strong>${Math.ceil(videoDuration)}秒</strong><br>
+                                                消费积分: <strong>${Math.ceil(videoDuration) * 9}积分</strong> (9积分/秒)
+                                            </p>
+                                        </div>
+                                    </div>
+                                `;
+                            };
+                            
+                            // 如果API返回了时长，直接使用
+                            if (data.videoDuration) {
+                                updateCreditInfo();
+                            } else {
+                                // 否则等待视频加载完成后获取时长
+                                resultVideo.onloadedmetadata = updateCreditInfo;
+                            }
+                            
+                            // 恢复生成按钮
+                            generateBtn.disabled = false;
+                            generateBtn.innerHTML = '<i class="ri-magic-line mr-2"></i>立即生成';
+                            
+                        } else if (data.status === 'FAILED') {
+                            // 任务失败
+                            updateProgress('处理失败: ' + data.message, 0);
+                            clearInterval(statusCheckInterval);
+                            
+                            // 恢复生成按钮
+                            generateBtn.disabled = false;
+                            generateBtn.innerHTML = '<i class="ri-magic-line mr-2"></i>立即生成';
+                            
+                            alert('视频处理失败: ' + data.message);
+                            
+                        } else if (data.status === 'PENDING' || data.status === 'RUNNING') {
+                            // 任务正在处理中
+                            let progress = data.status === 'PENDING' ? 50 : 70;
+                            updateProgress('处理中...', progress);
+                        }
+                        
+                    } catch (error) {
+                        console.error('查询任务状态失败:', error);
+                        updateProgress('查询状态失败', 0);
+                        
+                        // 恢复生成按钮
+                        generateBtn.disabled = false;
+                        generateBtn.innerHTML = '<i class="ri-magic-line mr-2"></i>立即生成';
+                        
+                        clearInterval(statusCheckInterval);
+                    }
+                }, 5000); // 每5秒查询一次
+            }
+            
+            // 更新进度
+            function updateProgress(text, percent) {
+                statusText.textContent = text;
+                progressBar.style.width = percent + '%';
+            }
+            
+            // 下载按钮
+            downloadBtn.addEventListener('click', function() {
+                if (resultVideo.src) {
+                    const a = document.createElement('a');
+                    a.href = resultVideo.src;
+                    a.download = '声动人像视频.mp4';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            });
+            
+            // 初始化检查生成按钮状态
+            checkGenerateButtonState();
+        });
+    </script>
+</body>
+</html> 
