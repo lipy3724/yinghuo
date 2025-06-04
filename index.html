@@ -83,31 +83,93 @@
             opacity: 0.8;
         }
         
-        /* 功能中心下拉菜单样式 */
+        /* 功能中心下拉菜单样式 - 现代化设计 */
         #features-dropdown {
             max-height: 80vh;
             overflow-y: auto;
-            border: 1px solid rgba(0,0,0,0.1);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 
+                        0 5px 10px rgba(0, 0, 0, 0.04),
+                        0 0 0 1px rgba(0, 0, 0, 0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            animation: dropdown-fade-in 0.2s ease-out;
+            padding: 1rem 0;
         }
         
-        /* 下拉菜单中的链接样式 */
+        /* 美化滚动条 */
+        #features-dropdown::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        #features-dropdown::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 4px 0;
+        }
+        
+        #features-dropdown::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.1);
+            border-radius: 100px;
+        }
+        
+        #features-dropdown::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.2);
+        }
+        
+        /* 下拉菜单中的链接样式 - 现代化设计 */
+        #features-dropdown ul {
+            margin: 0.5rem 0;
+        }
+        
         #features-dropdown ul li a {
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             display: block;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            color: #4b5563;
+            border-radius: 0;
+            position: relative;
+            overflow: hidden;
         }
         
         #features-dropdown ul li a:hover {
-            background-color: #f3f0ff;
+            background-color: rgba(99, 102, 241, 0.04);
             color: #6366f1;
-            padding-left: 0.75rem;
+            padding-left: 1.25rem;
         }
         
-        /* 分类标题样式 */
+        #features-dropdown ul li a:active {
+            background-color: rgba(99, 102, 241, 0.08);
+            transform: scale(0.98);
+        }
+        
+        /* 分类标题样式 - 现代化设计 */
         #features-dropdown h3 {
-            color: #4f46e5;
+            color: #6366f1;
             font-weight: 600;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 0.75rem 1rem 0.5rem;
+            margin-bottom: 0.25rem;
+            border-bottom: none;
+            font-size: 0.875rem;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* 分类容器样式 */
+        #features-dropdown .grid > div {
+            position: relative;
+        }
+        
+        #features-dropdown .grid > div:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 10%;
+            right: 0;
+            height: 80%;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.05), transparent);
         }
         
         /* 导航菜单项的悬停效果 */
@@ -115,9 +177,512 @@
             color: #6366f1;
         }
         
-        /* 隐藏侧边栏 */
+        /* 侧边栏样式 - 修改为可见 */
         .sidebar {
-            display: none;
+            display: block;
+            position: fixed;
+            top: 60px; /* 与导航栏高度一致 */
+            left: 0;
+            bottom: 0;
+            width: 16rem;
+            overflow-y: auto;
+            background-color: white;
+            border-right: 1px solid #e5e7eb;
+            z-index: 40;
+            box-shadow: 1px 0 5px rgba(0,0,0,0.05);
+        }
+        
+        /* 主内容区域样式 - 为侧边栏留出空间 */
+        .main-content {
+            margin-left: 16rem;
+            margin-top: 60px; /* 与导航栏高度一致 */
+            padding: 2rem;
+            height: calc(100vh - 60px); /* 减去导航栏高度 */
+            overflow-y: auto;
+        }
+        
+        /* 快捷访问按钮样式 */
+        .quick-access-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            transition: all 0.3s ease;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+            position: relative;
+            overflow: hidden;
+            border: none;
+        }
+        
+        .quick-access-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: all 0.6s ease;
+        }
+        
+        .quick-access-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(99, 102, 241, 0.25);
+        }
+        
+        .quick-access-btn:hover::before {
+            left: 100%;
+        }
+        
+        .quick-access-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* 快捷访问下拉菜单样式 - 现代化设计 */
+        #quick-access-dropdown {
+            position: absolute;
+            left: 16.5rem;
+            top: 80px;
+            width: 200px; /* 减小宽度 */
+            background-color: white;
+            border-radius: 12px; /* 更圆润的边角 */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 
+                        0 5px 10px rgba(0, 0, 0, 0.04),
+                        0 0 0 1px rgba(0, 0, 0, 0.03); /* 更精致的阴影 */
+            z-index: 50;
+            padding: 0;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* 更平滑的动画 */
+            opacity: 0;
+            transform: translateY(-10px) scale(0.98);
+            pointer-events: none;
+            overflow: hidden;
+            backdrop-filter: blur(8px); /* 毛玻璃效果 */
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        /* 添加小尖尖 - 更现代的设计 */
+        #quick-access-dropdown::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 20px;
+            width: 12px;
+            height: 12px;
+            background-color: white;
+            transform: rotate(45deg);
+            box-shadow: -1px 1px 3px rgba(0, 0, 0, 0.05);
+            border-radius: 2px;
+        }
+        
+        /* 确保小尖尖不会被滚动条遮挡 */
+        #quick-access-dropdown::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 12px;
+            width: 20px;
+            height: 32px;
+            background-color: white;
+            z-index: -1;
+        }
+        
+        #quick-access-dropdown.hidden {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.98);
+            pointer-events: none;
+        }
+        
+        #quick-access-dropdown:not(.hidden) {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        
+        /* 下拉菜单头部样式 - 更现代的设计 */
+        #quick-access-dropdown .dropdown-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.875rem 1rem; /* 增加内边距 */
+            margin-bottom: 0;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            position: sticky;
+            top: 0;
+            background-color: rgba(255,255,255,0.95);
+            z-index: 2;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        
+        #quick-access-dropdown .dropdown-header h3 {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 0.9375rem;
+            letter-spacing: -0.01em; /* 更现代的字体间距 */
+        }
+        
+        #quick-access-dropdown .dropdown-header #selected-count {
+            background-color: #f0f0f5;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            color: #6366f1;
+            margin-left: 0.5rem;
+            font-weight: 500;
+        }
+        
+        #quick-access-dropdown .dropdown-header #close-dropdown {
+            width: 1.75rem;
+            height: 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            transition: all 0.2s ease;
+            color: #6b7280;
+        }
+        
+        #quick-access-dropdown .dropdown-header #close-dropdown:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+        
+        /* 滚动区域样式 - 更现代的设计 */
+        .feature-list-scroll {
+            max-height: 450px;
+            overflow-y: auto;
+            padding: 0.5rem 0.75rem 1rem;
+            scroll-behavior: smooth; /* 平滑滚动 */
+        }
+        
+        /* 美化滚动条 - 更现代的设计 */
+        .feature-list-scroll::-webkit-scrollbar {
+            width: 3px;
+        }
+        
+        .feature-list-scroll::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 4px 0;
+        }
+        
+        .feature-list-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.1);
+            border-radius: 100px;
+        }
+        
+        .feature-list-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.2);
+        }
+        
+        /* 分类标题样式 - 更现代的设计 */
+        #quick-access-dropdown h4 {
+            color: #6366f1;
+            font-weight: 600;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: none;
+            font-size: 0.8125rem;
+            display: flex;
+            align-items: center;
+            letter-spacing: 0.02em;
+        }
+        
+        #quick-access-dropdown h4 i {
+            margin-right: 0.375rem;
+            font-size: 0.9375rem;
+        }
+        
+        /* 分类容器样式 - 更现代的设计 */
+        #quick-access-dropdown .mb-5 {
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+        
+        #quick-access-dropdown .mb-5:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: -0.75rem;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(0,0,0,0.05), transparent);
+        }
+        
+        /* 调整网格间距 - 更现代的设计 */
+        #quick-access-dropdown .grid.gap-1 {
+            gap: 0.25rem;
+        }
+        
+        /* 快捷访问下拉菜单项样式 - 更现代的设计 */
+        .feature-checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 0.3rem 0.625rem;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            margin-bottom: 0.125rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-checkbox-item:hover {
+            background-color: rgba(99, 102, 241, 0.04);
+        }
+        
+        .feature-checkbox-item:active {
+            background-color: rgba(99, 102, 241, 0.08);
+            transform: scale(0.98);
+        }
+        
+        /* 美化复选框 - 更现代的设计 */
+        .feature-checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 0.625rem;
+            cursor: pointer;
+            border-radius: 6px;
+            border: 1.5px solid #d1d5db;
+            appearance: none;
+            -webkit-appearance: none;
+            position: relative;
+            transition: all 0.2s ease;
+            background-color: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        .feature-checkbox-item input[type="checkbox"]:checked {
+            background-color: #6366f1;
+            border-color: #6366f1;
+            box-shadow: 0 1px 3px rgba(99, 102, 241, 0.3);
+        }
+        
+        .feature-checkbox-item input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 3px;
+            width: 5px;
+            height: 9px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            animation: checkmark 0.2s ease-in-out;
+        }
+        
+        @keyframes checkmark {
+            0% {
+                opacity: 0;
+                transform: rotate(45deg) scale(0.8);
+            }
+            50% {
+                opacity: 1;
+                transform: rotate(45deg) scale(1.2);
+            }
+            100% {
+                transform: rotate(45deg) scale(1);
+            }
+        }
+        
+        .feature-checkbox-item:hover input[type="checkbox"]:not(:checked) {
+            border-color: #a5a6f6;
+        }
+        
+        .feature-checkbox-item span {
+            font-size: 0.875rem;
+            color: #374151;
+            font-weight: 450;
+            letter-spacing: -0.01em;
+        }
+        
+        /* 更新Beta标签样式 - 更现代的设计 */
+        .beta-tag {
+            font-size: 0.625rem;
+            padding: 0.125rem 0.375rem;
+            background-color: rgba(245, 158, 11, 0.15);
+            color: #d97706;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+        
+        /* 添加New标签样式 - 更现代的设计 */
+        .new-tag {
+            font-size: 0.625rem;
+            padding: 0.125rem 0.375rem;
+            background-color: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+        
+        /* 侧边栏功能项样式 - 更现代的设计 */
+        .sidebar-feature-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background-color: white;
+            border-radius: 10px;
+            margin-bottom: 0.625rem;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(0,0,0,0.03);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        }
+        
+        .sidebar-feature-item:hover {
+            background-color: #f9f7ff;
+            border-color: rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.04);
+        }
+        
+        .sidebar-feature-item .feature-info {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .sidebar-feature-item .feature-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 10px;
+            margin-right: 0.875rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .sidebar-feature-item:hover .feature-icon {
+            transform: scale(1.05) rotate(-5deg);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        }
+        
+        .sidebar-feature-item .remove-btn {
+            color: #9ca3af;
+            cursor: pointer;
+            width: 1.75rem;
+            height: 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            transition: all 0.2s ease;
+            opacity: 0.6;
+        }
+        
+        .sidebar-feature-item:hover .remove-btn {
+            opacity: 1;
+        }
+        
+        .sidebar-feature-item .remove-btn:hover {
+            color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+        
+        /* 空状态提示样式优化 */
+        .empty-state {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: #9ca3af;
+            transition: all 0.3s ease;
+        }
+        
+        .empty-state i {
+            font-size: 2.5rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+            opacity: 0.8;
+        }
+        
+        .empty-state p {
+            font-size: 0.875rem;
+            line-height: 1.5;
+            max-width: 200px;
+            margin: 0 auto;
+        }
+        
+        /* 添加图标到分类标题 */
+        #features-dropdown h3::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #6366f1;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            opacity: 0.7;
+        }
+        
+        /* 为每个分类添加特定图标 */
+        #features-dropdown h3.image-processing::before {
+            background-color: #10b981; /* 绿色 */
+        }
+        
+        #features-dropdown h3.model-clothing::before {
+            background-color: #8b5cf6; /* 紫色 */
+        }
+        
+        #features-dropdown h3.ai-creation::before {
+            background-color: #3b82f6; /* 蓝色 */
+        }
+        
+        #features-dropdown h3.video-processing::before {
+            background-color: #ef4444; /* 红色 */
+        }
+        
+        #features-dropdown h3.amazon-assistant::before {
+            background-color: #f59e0b; /* 橙色 */
+        }
+        
+        /* 菜单项悬停效果增强 */
+        #features-dropdown ul li a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 1rem;
+            width: 0;
+            height: 1px;
+            background-color: #6366f1;
+            transition: width 0.2s ease;
+        }
+        
+        #features-dropdown ul li a:hover::after {
+            width: calc(100% - 2rem);
+        }
+        
+        /* 下拉菜单整体动画效果 */
+        @keyframes menu-appear {
+            from {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        #features-dropdown {
+            animation: menu-appear 0.2s ease-out forwards;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s;
+        }
+        
+        #features-dropdown.hidden {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+            visibility: hidden;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s 0.2s;
         }
     </style>
 </head>
@@ -158,7 +723,7 @@
                         <div class="grid grid-cols-4 gap-2 px-4">
                             <!-- 图像处理类 -->
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">图像处理</h3>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b image-processing">图像处理</h3>
                                 <ul class="space-y-1">
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/scene-generator')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">场景图生成</a></li>
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-removal.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">图像智能消除</a></li>
@@ -173,7 +738,7 @@
                             </div>
                             <!-- 模特/服饰类 -->
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">模特与服饰</h3>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b model-clothing">模特与服饰</h3>
                                 <ul class="space-y-1">
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/model-skin-changer.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">模特换肤</a></li>
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/clothing-simulation.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">模拟试衣</a></li>
@@ -182,7 +747,7 @@
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/virtual-model-shoes.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">鞋靴虚拟试穿</a></li>
                                 </ul>
                                 
-                                <h3 class="text-sm font-semibold text-gray-900 mt-4 mb-2 pb-1 border-b">AI创作</h3>
+                                <h3 class="text-sm font-semibold text-gray-900 mt-4 mb-2 pb-1 border-b ai-creation">AI创作</h3>
                                 <ul class="space-y-1">
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/text-to-image.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">文生图片</a></li>
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/prompt-editor.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">指令编辑</a></li>
@@ -190,7 +755,7 @@
                             </div>
                             <!-- 视频处理类 -->
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">视频处理</h3>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b video-processing">视频处理</h3>
                                 <ul class="space-y-1">
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/text-to-video.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">文生视频</a></li>
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-to-video.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">图生视频</a></li>
@@ -202,7 +767,7 @@
                             </div>
                             <!-- 亚马逊助手 -->
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b">亚马逊助手</h3>
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2 pb-1 border-b amazon-assistant">亚马逊助手</h3>
                                 <ul class="space-y-1">
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-listing.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">Listing写作与优化</a></li>
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-search-term.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">后台搜索词</a></li>
@@ -272,271 +837,296 @@
     <div class="sidebar">
         <div class="py-4 px-3">
             <ul class="space-y-2">
+                <!-- 添加快捷访问按钮 -->
                 <li>
-                    <a href="#" class="sidebar-item active flex items-center p-3 text-base font-medium rounded-lg">
-                        <i class="ri-home-line mr-3 text-lg"></i>
-                        <span>首页</span>
-                    </a>
+                    <button id="quick-access-btn" class="quick-access-btn w-full flex items-center justify-center p-3 text-base font-medium rounded-lg mb-3">
+                        <i class="ri-add-line mr-2 text-lg"></i>
+                        <span>添加快捷访问</span>
+                    </button>
                 </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/marketing-images.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-image-line mr-3 text-lg"></i>
-                        <span>AI营销图生成</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/translate')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-translate-2 mr-3 text-lg"></i>
-                        <span>图片翻译</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/cutout')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-image-edit-line mr-3 text-lg"></i>
-                        <span>商品换背景</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/scene-generator')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-landscape-line mr-3 text-lg"></i>
-                        <span>场景图生成</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-removal.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-flow-chart mr-3 text-lg"></i>
-                        <span>图像智能消除</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/model-skin-changer.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-question-answer-line mr-3 text-lg"></i>
-                        <span>模特换肤</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/clothing-simulation.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-file-text-line mr-3 text-lg"></i>
-                        <span>模拟试衣</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/clothing-segmentation.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-scissors-cut-line mr-3 text-lg"></i>
-                        <span>智能服饰分割</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/virtual-model')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-t-shirt-line mr-3 text-lg"></i>
-                        <span>智能虚拟模特试穿</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/virtual-model-shoes.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-footprint-line mr-3 text-lg"></i>
-                        <span>鞋靴虚拟试穿</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/text-to-image.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-image-add-line mr-3 text-lg"></i>
-                        <span>文生图片</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/text-to-video.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-movie-2-line mr-3 text-lg"></i>
-                        <span>文生视频</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-to-video.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-vidicon-line mr-3 text-lg"></i>
-                        <span>图生视频</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/multi-image-to-video.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-film-line mr-3 text-lg"></i>
-                        <span>多图转视频</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/video-style-repaint.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-brush-4-line mr-3 text-lg"></i>
-                        <span>视频风格重绘</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/digital-human-video.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-user-voice-line mr-3 text-lg"></i>
-                        <span>视频数字人</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/video-subtitle-remover.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-delete-back-2-line mr-3 text-lg"></i>
-                        <span>视频去除字幕</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/prompt-editor.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-pencil-ruler-line mr-3 text-lg"></i>
-                        <span>指令编辑</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/local-redraw.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-brush-line mr-3 text-lg"></i>
-                        <span>局部重绘</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/global-style.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-palette-fill mr-3 text-lg"></i>
-                        <span>全局风格化</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-colorization.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-paint-brush-line mr-3 text-lg"></i>
-                        <span>图像上色</span>
-                    </a>
-                </li>
-                <li>
-                    <a onclick="checkAuthAndRedirect('/diantu.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-landscape-line mr-3 text-lg"></i>
-                        <span>垫图</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-expansion.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-expand-right-line mr-3 text-lg"></i>
-                        <span>智能扩图</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-sharpen.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-focus-2-line mr-3 text-lg"></i>
-                        <span>模糊图片变清晰</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/image-upscaler.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-zoom-in-line mr-3 text-lg"></i>
-                        <span>图像高清放大</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-listing.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-amazon-line mr-3 text-lg"></i>
-                        <span>亚马逊Listing写作与优化</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-search-term.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-search-line mr-3 text-lg"></i>
-                        <span>亚马逊后台搜索词</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-review-analysis.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-chat-smile-line mr-3 text-lg"></i>
-                        <span>亚马逊客户评论分析</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-consumer-insights.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-user-search-line mr-3 text-lg"></i>
-                        <span>亚马逊消费者洞察专家</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-customer-email.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-mail-line mr-3 text-lg"></i>
-                        <span>亚马逊客户邮件回复</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/fba-claim-email.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-mail-send-line mr-3 text-lg"></i>
-                        <span>FBA索赔邮件</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-review-generator.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-star-smile-line mr-3 text-lg"></i>
-                        <span>亚马逊评论生成</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-review-response.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-message-3-line mr-3 text-lg"></i>
-                        <span>亚马逊评论回复</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/product-comparison.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-scales-line mr-3 text-lg"></i>
-                        <span>产品对比</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-brand-naming.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-price-tag-3-line mr-3 text-lg"></i>
-                        <span>亚马逊品牌起名</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-post-creator.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-article-line mr-3 text-lg"></i>
-                        <span>创建亚马逊Post</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-brand-info.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-store-line mr-3 text-lg"></i>
-                        <span>品牌信息收集和总结</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-video-script.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-video-line mr-3 text-lg"></i>
-                        <span>亚马逊广告视频脚本生成</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/product-improvement-analysis.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-line-chart-line mr-3 text-lg"></i>
-                        <span>选品的改款分析和建议</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-keyword-recommender.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-key-line mr-3 text-lg"></i>
-                        <span>亚马逊关键词推荐</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-case-creator.html')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-customer-service-line mr-3 text-lg"></i>
-                        <span>亚马逊客服case内容</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('#create-center')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-palette-line mr-3 text-lg"></i>
-                        <span>创作中心</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="javascript:void(0)" onclick="checkAuthAndRedirect('#my-templates')" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                        <i class="ri-draft-line mr-3 text-lg"></i>
-                        <span>我的模版</span>
-                    </a>
-                </li>
+                <!-- 快捷访问功能列表容器 -->
+                <div id="sidebar-features-container" class="mt-4">
+                    <!-- 这里将动态添加用户选择的功能 -->
+                    <div class="text-center text-gray-400 text-sm py-6 empty-state hidden">
+                        <i class="ri-function-line text-3xl mb-2 block"></i>
+                        <p>点击上方按钮添加您常用的功能</p>
+                    </div>
+                </div>
             </ul>
+        </div>
+    </div>
+
+    <!-- 快捷访问下拉菜单 -->
+    <div id="quick-access-dropdown" class="hidden">
+        <div class="dropdown-header">
+            <div class="flex items-center">
+                <h3>添加快捷访问</h3>
+                <span id="selected-count" class="text-gray-500">(0/10)</span>
+            </div>
+            <button id="close-dropdown" class="text-gray-400 hover:text-gray-600">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <!-- 滚动内容区域 -->
+        <div class="feature-list-scroll">
+            <div class="feature-list">
+                <!-- 图像处理类 -->
+                <div class="mb-5">
+                    <h4 class="flex items-center">
+                        <i class="ri-image-edit-line mr-1 text-indigo-500"></i>
+                        图像处理
+                    </h4>
+                    <div class="grid grid-cols-1 gap-1">
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="商品图" data-icon="ri-shopping-bag-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/marketing-images.html">
+                            <span>商品图</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="商品替换" data-icon="ri-image-edit-line" data-bg="bg-orange-100" data-color="text-orange-500" data-url="/cutout">
+                            <span>商品替换</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="场景裂变" data-icon="ri-landscape-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/scene-generator">
+                            <span>场景裂变</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="图片翻译" data-icon="ri-translate-2" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/translate">
+                        <span>图片翻译</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="手持商品" data-icon="ri-hand-coin-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/hand-holding.html">
+                            <span>手持商品</span>
+                            <span class="beta-tag">Beta</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="真人换模特" data-icon="ri-user-5-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/model-skin-changer.html">
+                            <span>真人换模特</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="人台换模特" data-icon="ri-t-shirt-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/clothing-simulation.html">
+                            <span>人台换模特</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="AI穿衣" data-icon="ri-t-shirt-2-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/virtual-model">
+                            <span>AI穿衣</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="模特换场景" data-icon="ri-landscape-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/model-scene-change.html">
+                            <span>模特换场景</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="AI穿戴" data-icon="ri-footprint-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/virtual-model-shoes.html">
+                            <span>AI穿戴</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="创意文字" data-icon="ri-text" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/text-effects.html">
+                            <span>创意文字</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="饰品文字" data-icon="ri-font-size" data-bg="bg-amber-100" data-color="text-amber-500" data-url="/decorative-text.html">
+                            <span>饰品文字</span>
+                            <span class="beta-tag">Beta</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="素材贴合" data-icon="ri-layout-grid-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/marketing-images.html">
+                            <span>素材贴合</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="场景素材" data-icon="ri-gallery-line" data-bg="bg-teal-100" data-color="text-teal-500" data-url="/scene-materials.html">
+                            <span>场景素材</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="相似图裂变" data-icon="ri-image-2-line" data-bg="bg-cyan-100" data-color="text-cyan-500" data-url="/similar-images.html">
+                            <span>相似图裂变</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="AI自由绘图" data-icon="ri-brush-line" data-bg="bg-rose-100" data-color="text-rose-500" data-url="/text-to-image.html">
+                            <span>AI自由绘图</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="一键换色" data-icon="ri-palette-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/global-style.html">
+                            <span>一键换色</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="自动抠图" data-icon="ri-scissors-cut-line" data-bg="bg-teal-100" data-color="text-teal-500" data-url="/cutout">
+                            <span>自动抠图</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="图像智能消除" data-icon="ri-eraser-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/image-removal.html">
+                            <span>图像智能消除</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="智能扩图" data-icon="ri-crop-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/image-expansion.html">
+                            <span>智能扩图</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="模糊图片变清晰" data-icon="ri-image-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/image-sharpen.html">
+                            <span>模糊图片变清晰</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="图像高清放大" data-icon="ri-zoom-in-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/image-upscaler.html">
+                            <span>图像高清放大</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="图像上色" data-icon="ri-paint-brush-line" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/image-colorization.html">
+                            <span>图像上色</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="局部重绘" data-icon="ri-brush-3-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/local-redraw.html">
+                            <span>局部重绘</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="全局风格化" data-icon="ri-palette-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/global-style.html">
+                            <span>全局风格化</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="垫图" data-icon="ri-collage-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/diantu.html">
+                            <span>垫图</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 模特与服饰类 -->
+                <div class="mb-5">
+                    <h4 class="flex items-center">
+                        <i class="ri-t-shirt-line mr-1 text-indigo-500"></i>
+                        模特与服饰
+                    </h4>
+                    <div class="grid grid-cols-1 gap-1">
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="模特换肤" data-icon="ri-user-5-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/model-skin-changer.html">
+                            <span>模特换肤</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="模拟试衣" data-icon="ri-t-shirt-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/clothing-simulation.html">
+                            <span>模拟试衣</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="智能服饰分割" data-icon="ri-scissors-cut-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/clothing-segmentation.html">
+                            <span>智能服饰分割</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="智能虚拟模特试穿" data-icon="ri-t-shirt-2-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/virtual-model">
+                            <span>智能虚拟模特试穿</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="鞋靴虚拟试穿" data-icon="ri-footprint-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/virtual-model-shoes.html">
+                            <span>鞋靴虚拟试穿</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- AI创作类 -->
+                <div class="mb-5">
+                    <h4 class="flex items-center">
+                        <i class="ri-brush-line mr-1 text-indigo-500"></i>
+                        AI创作
+                    </h4>
+                    <div class="grid grid-cols-1 gap-1">
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="文生图片" data-icon="ri-image-add-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/text-to-image.html">
+                            <span>文生图片</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="指令编辑" data-icon="ri-edit-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/prompt-editor.html">
+                            <span>指令编辑</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 视频处理类 -->
+                <div class="mb-5">
+                    <h4 class="flex items-center">
+                        <i class="ri-movie-line mr-1 text-indigo-500"></i>
+                        视频处理
+                    </h4>
+                    <div class="grid grid-cols-1 gap-1">
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="文生视频" data-icon="ri-movie-2-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/text-to-video.html">
+                        <span>文生视频</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="图生视频" data-icon="ri-vidicon-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/image-to-video.html">
+                        <span>图生视频</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="多图转视频" data-icon="ri-film-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/multi-image-to-video.html">
+                            <span>多图转视频</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="视频风格重绘" data-icon="ri-paint-brush-line" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/video-style-repaint.html">
+                            <span>视频风格重绘</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="视频数字人" data-icon="ri-user-voice-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/digital-human-video.html">
+                        <span>视频数字人</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="视频去除字幕" data-icon="ri-subtitles-off-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/video-subtitle-remover.html">
+                            <span>视频去除字幕</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="视频拼接" data-icon="ri-video-add-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/video-concat.html">
+                            <span>视频拼接</span>
+                            <span class="new-tag">New</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- 亚马逊助手 -->
+                <div class="mb-5">
+                    <h4 class="flex items-center">
+                        <i class="ri-amazon-line mr-1 text-indigo-500"></i>
+                        亚马逊助手
+                    </h4>
+                    <div class="grid grid-cols-1 gap-1">
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="Listing写作与优化" data-icon="ri-draft-line" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/amazon-listing.html">
+                            <span>Listing写作与优化</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="后台搜索词" data-icon="ri-search-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/amazon-search-term.html">
+                            <span>后台搜索词</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="客户评论分析" data-icon="ri-chat-poll-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/amazon-review-analysis.html">
+                            <span>客户评论分析</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="消费者洞察" data-icon="ri-spy-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/amazon-consumer-insights.html">
+                            <span>消费者洞察</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="客户邮件回复" data-icon="ri-mail-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/amazon-customer-email.html">
+                            <span>客户邮件回复</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="FBA索赔邮件" data-icon="ri-mail-star-line" data-bg="bg-amber-100" data-color="text-amber-500" data-url="/fba-claim-email.html">
+                            <span>FBA索赔邮件</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="评论生成" data-icon="ri-chat-new-line" data-bg="bg-rose-100" data-color="text-rose-500" data-url="/amazon-review-generator.html">
+                            <span>评论生成</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="评论回复" data-icon="ri-reply-line" data-bg="bg-teal-100" data-color="text-teal-500" data-url="/amazon-review-response.html">
+                            <span>评论回复</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="品牌起名" data-icon="ri-price-tag-3-line" data-bg="bg-orange-100" data-color="text-orange-500" data-url="/amazon-brand-naming.html">
+                            <span>品牌起名</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="创建Post" data-icon="ri-article-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/amazon-post-creator.html">
+                            <span>创建Post</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="广告视频脚本" data-icon="ri-video-chat-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/amazon-video-script.html">
+                            <span>广告视频脚本</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -754,11 +1344,18 @@
     </div>
 
     <script>
-        // 检查用户是否登录并更新UI
         document.addEventListener('DOMContentLoaded', function() {
             // 获取用户信息
             const token = localStorage.getItem('authToken');
             const userInfo = localStorage.getItem('user');
+            
+            // 快捷访问相关元素
+            const quickAccessBtn = document.getElementById('quick-access-btn');
+            const quickAccessDropdown = document.getElementById('quick-access-dropdown');
+            const closeDropdownBtn = document.getElementById('close-dropdown');
+            const sidebarFeaturesContainer = document.getElementById('sidebar-features-container');
+            const selectedCountEl = document.getElementById('selected-count');
+            const MAX_FEATURES = 10;
             
             if (token && userInfo) {
                 try {
@@ -792,8 +1389,8 @@
                 userMenuBtn.addEventListener('click', function() {
                 userDropdown.classList.toggle('hidden');
             });
-        }
-        
+            }
+            
             // 退出登录
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
@@ -804,21 +1401,260 @@
                 });
             }
             
-            // 功能中心下拉菜单
+            // 功能中心下拉菜单 - 改为悬停显示
             const featuresMenuBtn = document.getElementById('features-menu-btn');
             const featuresDropdown = document.getElementById('features-dropdown');
             
-            featuresMenuBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                featuresDropdown.classList.toggle('hidden');
+            // 悬停显示功能中心下拉菜单
+            featuresMenuBtn.addEventListener('mouseenter', function() {
+                featuresDropdown.classList.remove('hidden');
                 
                 // 关闭其他下拉菜单
                 creditsDropdown.classList.add('hidden');
                 if (userDropdown) userDropdown.classList.add('hidden');
             });
             
-            // 点击页面其他区域关闭所有下拉菜单
+            // 鼠标离开按钮和下拉菜单时隐藏
+            featuresMenuBtn.addEventListener('mouseleave', function(e) {
+                // 检查鼠标是否移动到下拉菜单上
+                if (!isMouseOverElement(e, featuresDropdown)) {
+                    featuresDropdown.classList.add('hidden');
+                }
+            });
+            
+            // 下拉菜单也需要监听鼠标事件
+            featuresDropdown.addEventListener('mouseenter', function() {
+                featuresDropdown.classList.remove('hidden');
+            });
+            
+            featuresDropdown.addEventListener('mouseleave', function() {
+                featuresDropdown.classList.add('hidden');
+            });
+            
+            // 辅助函数：检查鼠标是否在指定元素上
+            function isMouseOverElement(event, element) {
+                const rect = element.getBoundingClientRect();
+                const x = event.clientX;
+                const y = event.clientY;
+                
+                return (
+                    x >= rect.left &&
+                    x <= rect.right &&
+                    y >= rect.top &&
+                    y <= rect.bottom
+                );
+            }
+            
+            // 存储用户选择的功能
+            let selectedFeatures = [];
+            
+            // 从本地存储加载用户选择的功能
+            function loadSelectedFeatures() {
+                const saved = localStorage.getItem('quickAccessFeatures');
+                if (saved) {
+                    try {
+                        selectedFeatures = JSON.parse(saved);
+                        updateSelectedCount();
+                        renderSidebarFeatures();
+                        updateCheckboxes();
+                } catch (e) {
+                        console.error('加载快捷访问功能失败:', e);
+                        selectedFeatures = [];
+                    }
+                }
+                
+                // 显示或隐藏空状态提示
+                updateEmptyState();
+            }
+            
+            // 保存用户选择的功能到本地存储
+            function saveSelectedFeatures() {
+                localStorage.setItem('quickAccessFeatures', JSON.stringify(selectedFeatures));
+            }
+            
+            // 更新选中的功能数量显示
+            function updateSelectedCount() {
+                selectedCountEl.textContent = `(${selectedFeatures.length}/${MAX_FEATURES})`;
+                
+                // 根据选中数量更改样式
+                if (selectedFeatures.length >= MAX_FEATURES) {
+                    selectedCountEl.classList.add('text-red-500');
+                    selectedCountEl.classList.remove('text-gray-500');
+            } else {
+                    selectedCountEl.classList.add('text-gray-500');
+                    selectedCountEl.classList.remove('text-red-500');
+                }
+            }
+            
+            // 更新复选框状态
+            function updateCheckboxes() {
+                const checkboxes = document.querySelectorAll('.feature-checkbox-item input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    const feature = checkbox.dataset.feature;
+                    checkbox.checked = selectedFeatures.some(item => item.name === feature);
+                });
+            }
+            
+            // 更新空状态显示
+            function updateEmptyState() {
+                const emptyState = document.querySelector('#sidebar-features-container .empty-state');
+                if (selectedFeatures.length === 0) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
+                }
+            }
+            
+            // 渲染侧边栏功能列表
+            function renderSidebarFeatures() {
+                // 清空容器，但保留空状态提示
+                const emptyState = document.querySelector('#sidebar-features-container .empty-state');
+                sidebarFeaturesContainer.innerHTML = '';
+                sidebarFeaturesContainer.appendChild(emptyState);
+                
+                // 添加功能项
+                selectedFeatures.forEach((feature, index) => {
+                    const featureItem = document.createElement('div');
+                    featureItem.className = 'sidebar-feature-item';
+                    featureItem.setAttribute('data-index', index);
+                    
+                    featureItem.innerHTML = `
+                        <div class="feature-info">
+                            <div class="feature-icon ${feature.bg} ${feature.color}">
+                                <i class="${feature.icon}"></i>
+                            </div>
+                            <span>${feature.name}</span>
+                            ${feature.beta ? '<span class="beta-tag">Beta</span>' : ''}
+                        </div>
+                        <div class="remove-btn" data-feature="${feature.name}">
+                            <i class="ri-close-line"></i>
+                        </div>
+                    `;
+                    
+                    // 添加点击事件，点击功能项跳转到对应页面
+                    featureItem.querySelector('.feature-info').addEventListener('click', () => {
+                        checkAuthAndRedirect(feature.url);
+                    });
+                    
+                    // 添加删除按钮点击事件
+                    featureItem.querySelector('.remove-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        
+                        // 添加删除动画
+                        featureItem.classList.add('opacity-0', 'scale-95');
+                        featureItem.style.transition = 'all 0.2s ease';
+                        
+                        setTimeout(() => {
+                            removeFeature(feature.name);
+                        }, 200);
+                    });
+                    
+                    sidebarFeaturesContainer.appendChild(featureItem);
+                });
+                
+                // 更新空状态显示
+                updateEmptyState();
+            }
+            
+            // 添加功能到侧边栏
+            function addFeature(checkbox) {
+                const { feature, icon, bg, color, url } = checkbox.dataset;
+                const beta = checkbox.parentElement.querySelector('.beta-tag') !== null;
+                
+                // 检查是否已经添加
+                const existingIndex = selectedFeatures.findIndex(item => item.name === feature);
+                if (existingIndex !== -1) {
+                    return; // 已经添加过，不重复添加
+                }
+                
+                // 检查是否超过最大数量
+                if (selectedFeatures.length >= MAX_FEATURES) {
+                    // 显示优雅的提示
+                    const toast = document.createElement('div');
+                    toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-down';
+                    toast.innerHTML = `<div class="flex items-center"><i class="ri-error-warning-line mr-2"></i> 最多只能添加${MAX_FEATURES}个快捷访问功能</div>`;
+                    document.body.appendChild(toast);
+                    
+                    setTimeout(() => {
+                        toast.classList.add('animate-fade-out');
+                        setTimeout(() => {
+                            document.body.removeChild(toast);
+                        }, 300);
+                    }, 3000);
+                    
+                    checkbox.checked = false;
+                    return;
+                }
+                
+                // 添加到选中列表
+                selectedFeatures.push({
+                    name: feature,
+                    icon,
+                    bg,
+                    color,
+                    url,
+                    beta
+                });
+                
+                // 更新UI
+                updateSelectedCount();
+                renderSidebarFeatures();
+                saveSelectedFeatures();
+            }
+            
+            // 从侧边栏移除功能
+            function removeFeature(featureName) {
+                const index = selectedFeatures.findIndex(item => item.name === featureName);
+                if (index !== -1) {
+                    selectedFeatures.splice(index, 1);
+                    
+                    // 更新UI
+                    updateSelectedCount();
+                    renderSidebarFeatures();
+                    updateCheckboxes();
+                    saveSelectedFeatures();
+                }
+            }
+            
+            // 快捷访问按钮点击事件
+            if (quickAccessBtn) {
+                quickAccessBtn.addEventListener('click', function() {
+                    quickAccessDropdown.classList.toggle('hidden');
+                    
+                    // 添加按钮点击效果
+                    this.classList.add('scale-95');
+                    setTimeout(() => {
+                        this.classList.remove('scale-95');
+                    }, 200);
+                });
+            }
+            
+            // 关闭下拉菜单按钮点击事件
+            if (closeDropdownBtn) {
+                closeDropdownBtn.addEventListener('click', function() {
+                    quickAccessDropdown.classList.add('hidden');
+                });
+            }
+            
+            // 复选框点击事件
+            document.querySelectorAll('.feature-checkbox-item input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        addFeature(this);
+            } else {
+                        removeFeature(this.dataset.feature);
+                    }
+                });
+            });
+            
+            // 点击页面其他区域关闭下拉菜单
             document.addEventListener('click', function(e) {
+                if (!quickAccessBtn.contains(e.target) && 
+                    !quickAccessDropdown.contains(e.target) && 
+                    !quickAccessDropdown.classList.contains('hidden')) {
+                    quickAccessDropdown.classList.add('hidden');
+                }
+                
                 if (!creditsMenuBtn.contains(e.target)) {
                     creditsDropdown.classList.add('hidden');
                 }
@@ -827,10 +1663,44 @@
                     userDropdown.classList.add('hidden');
                 }
                 
-                if (!featuresMenuBtn.contains(e.target) && !featuresDropdown.contains(e.target)) {
-                    featuresDropdown.classList.add('hidden');
-                }
+                // 功能中心下拉菜单由悬停控制，不需要在这里处理
             });
+            
+            // 添加淡入淡出动画样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeInDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                @keyframes fadeOut {
+                    from {
+                        opacity: 1;
+                    }
+                    to {
+                        opacity: 0;
+                    }
+                }
+                
+                .animate-fade-in-down {
+                    animation: fadeInDown 0.3s ease-out forwards;
+                }
+                
+                .animate-fade-out {
+                    animation: fadeOut 0.3s ease-out forwards;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // 页面加载时初始化快捷访问功能
+            loadSelectedFeatures();
         });
         
         // 检查用户权限并重定向
