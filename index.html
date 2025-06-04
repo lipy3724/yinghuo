@@ -96,6 +96,7 @@
             -webkit-backdrop-filter: blur(8px);
             animation: dropdown-fade-in 0.2s ease-out;
             padding: 1rem 0;
+            margin-top: 0.5rem !important; /* 减小与按钮的距离 */
         }
         
         /* 美化滚动条 */
@@ -684,6 +685,20 @@
             visibility: hidden;
             transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s 0.2s;
         }
+        
+        /* 添加一个桥接区域，连接按钮和下拉菜单 */
+        .features-menu-wrapper {
+            position: relative;
+        }
+        
+        .features-menu-bridge {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 20px; /* 桥接区域高度 */
+            top: 100%;
+            background: transparent;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -713,12 +728,13 @@
                     <span>商品换背景</span>
                 </a>
                 <!-- 功能中心下拉菜单 -->
-                <div class="relative">
+                <div class="relative features-menu-wrapper">
                     <button class="text-gray-600 hover:text-gray-900 flex items-center" id="features-menu-btn">
                         <i class="ri-apps-line mr-1"></i>
                         <span>功能中心</span>
                         <i class="ri-arrow-down-s-line ml-1"></i>
                     </button>
+                    <div class="features-menu-bridge"></div>
                     <div id="features-dropdown" class="hidden absolute left-0 mt-2 w-[800px] bg-white rounded-md shadow-lg py-4 z-10">
                         <div class="grid grid-cols-4 gap-2 px-4">
                             <!-- 图像处理类 -->
@@ -1437,32 +1453,38 @@
             // 功能中心下拉菜单 - 改为悬停显示
             const featuresMenuBtn = document.getElementById('features-menu-btn');
             const featuresDropdown = document.getElementById('features-dropdown');
+            const featuresMenuWrapper = document.querySelector('.features-menu-wrapper');
             
-            // 悬停显示功能中心下拉菜单
-            featuresMenuBtn.addEventListener('mouseenter', function() {
+            let hideTimeout;
+            
+            // 显示下拉菜单
+            function showFeaturesDropdown() {
+                clearTimeout(hideTimeout);
                 featuresDropdown.classList.remove('hidden');
                 
                 // 关闭其他下拉菜单
                 creditsDropdown.classList.add('hidden');
                 if (userDropdown) userDropdown.classList.add('hidden');
-            });
+            }
             
-            // 鼠标离开按钮和下拉菜单时隐藏
-            featuresMenuBtn.addEventListener('mouseleave', function(e) {
-                // 检查鼠标是否移动到下拉菜单上
-                if (!isMouseOverElement(e, featuresDropdown)) {
+            // 隐藏下拉菜单
+            function hideFeaturesDropdown() {
+                hideTimeout = setTimeout(() => {
                     featuresDropdown.classList.add('hidden');
-                }
-            });
+                }, 150); // 添加150ms延迟
+            }
             
-            // 下拉菜单也需要监听鼠标事件
-            featuresDropdown.addEventListener('mouseenter', function() {
+            // 监听整个菜单区域的鼠标事件
+            featuresMenuWrapper.addEventListener('mouseenter', showFeaturesDropdown);
+            featuresMenuWrapper.addEventListener('mouseleave', hideFeaturesDropdown);
+            
+            // 下拉菜单内容区域的鼠标事件
+            featuresDropdown.addEventListener('mouseenter', () => {
+                clearTimeout(hideTimeout);
                 featuresDropdown.classList.remove('hidden');
             });
             
-            featuresDropdown.addEventListener('mouseleave', function() {
-                featuresDropdown.classList.add('hidden');
-            });
+            featuresDropdown.addEventListener('mouseleave', hideFeaturesDropdown);
             
             // 辅助函数：检查鼠标是否在指定元素上
             function isMouseOverElement(event, element) {
