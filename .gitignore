@@ -54,4 +54,7 @@ ngrok.zip
 *.bak
 *.backup
 server.js.bak
-server.js.backup temp_backup/
+server.js.backup
+
+# 临时备份文件夹
+temp_backup/

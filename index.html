@@ -83,6 +83,24 @@
             opacity: 0.8;
         }
         
+        .ri-arrow-up-s-line {
+            display: inline-block !important;
+            font-size: 1.1rem;
+            vertical-align: middle;
+            color: currentColor;
+            opacity: 0.8;
+        }
+        
+        /* 箭头切换过渡效果 */
+        .features-menu-wrapper .arrow-icon,
+        .credits-menu-wrapper .arrow-icon,
+        .user-menu-wrapper .arrow-icon,
+        .language-menu-wrapper .arrow-icon {
+            transition: transform 0.2s ease;
+            display: inline-block;
+            will-change: transform;
+        }
+        
         /* 功能中心下拉菜单样式 - 现代化设计 */
         #features-dropdown {
             max-height: 80vh;
@@ -94,9 +112,67 @@
                         0 0 0 1px rgba(0, 0, 0, 0.03);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            animation: dropdown-fade-in 0.2s ease-out;
             padding: 1rem 0;
-            margin-top: 0.5rem !important; /* 减小与按钮的距离 */
+            margin-top: 20px !important;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: none;
+            pointer-events: none;
+        }
+        
+        #features-dropdown.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: auto;
+        }
+        
+        /* 移除所有子元素的独立动画 */
+        #features-dropdown *,
+        #features-dropdown .grid,
+        #features-dropdown h3,
+        #features-dropdown ul,
+        #features-dropdown li,
+        #features-dropdown a {
+            transition: none !important;
+            backface-visibility: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* 确保内容在菜单隐藏时立即隐藏 */
+        #features-dropdown.hidden {
+            display: none;
+        }
+        
+        #features-dropdown .grid,
+        #features-dropdown h3,
+        #features-dropdown ul,
+        #features-dropdown li,
+        #features-dropdown a {
+            opacity: 1;
+        }
+        
+        #features-dropdown.hidden .grid,
+        #features-dropdown.hidden h3,
+        #features-dropdown.hidden ul,
+        #features-dropdown.hidden li,
+        #features-dropdown.hidden a {
+            opacity: 0;
+        }
+        
+        #features-dropdown .grid {
+            opacity: 0;
+            transform: translateY(5px);
+            transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+            will-change: transform, opacity;
+        }
+        
+        #features-dropdown.visible .grid {
+            opacity: 1;
+            transform: translateY(0);
         }
         
         /* 美化滚动条 */
@@ -689,15 +765,133 @@
         /* 添加一个桥接区域，连接按钮和下拉菜单 */
         .features-menu-wrapper {
             position: relative;
+            display: flex;
+            flex-direction: column;
         }
         
         .features-menu-bridge {
             position: absolute;
             left: 0;
             right: 0;
-            height: 20px; /* 桥接区域高度 */
+            height: 20px; /* 增加桥接区域高度 */
             top: 100%;
             background: transparent;
+            z-index: 9;
+        }
+        
+        /* 调整下拉菜单的位置 */
+        .features-menu-wrapper #features-dropdown {
+            position: absolute;
+            top: calc(100% + 8px); /* 调整菜单的垂直位置，减小了距离 */
+            left: -20px; /* 向左偏移，避免遮挡按钮 */
+        }
+        
+        /* 添加一个小箭头指示器 */
+        #features-dropdown::before {
+            content: '';
+            position: absolute;
+            top: -8px; /* 调整箭头位置 */
+            left: 40px; /* 箭头水平位置 */
+            width: 16px;
+            height: 16px;
+            background: white;
+            transform: rotate(45deg);
+            border-radius: 2px;
+            box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.04);
+            z-index: -1;
+        }
+        
+        /* 确保箭头下方有白色背景 */
+        #features-dropdown::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 32px; /* 与箭头位置对应 */
+            width: 32px;
+            height: 16px;
+            background: white;
+            z-index: 1;
+        }
+        
+        /* 调整内容区域的层级 */
+        #features-dropdown .grid {
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* 积分中心下拉菜单样式 */
+        #credits-dropdown {
+            max-height: 80vh;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 
+                        0 5px 10px rgba(0, 0, 0, 0.04),
+                        0 0 0 1px rgba(0, 0, 0, 0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        
+        #credits-dropdown.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        
+        /* 用户菜单下拉菜单样式 */
+        #user-dropdown {
+            max-height: 80vh;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 
+                        0 5px 10px rgba(0, 0, 0, 0.04),
+                        0 0 0 1px rgba(0, 0, 0, 0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        
+        #user-dropdown.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        
+        /* 语言选择下拉菜单样式 */
+        #language-dropdown {
+            max-height: 80vh;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08), 
+                        0 5px 10px rgba(0, 0, 0, 0.04),
+                        0 0 0 1px rgba(0, 0, 0, 0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        
+        #language-dropdown.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
         }
     </style>
 </head>
@@ -732,7 +926,7 @@
                     <button class="text-gray-600 hover:text-gray-900 flex items-center" id="features-menu-btn">
                         <i class="ri-apps-line mr-1"></i>
                         <span>功能中心</span>
-                        <i class="ri-arrow-down-s-line ml-1"></i>
+                        <i class="ri-arrow-down-s-line ml-1 arrow-icon"></i>
                     </button>
                     <div class="features-menu-bridge"></div>
                     <div id="features-dropdown" class="hidden absolute left-0 mt-2 w-[800px] bg-white rounded-md shadow-lg py-4 z-10">
@@ -796,6 +990,11 @@
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-brand-naming.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">品牌起名</a></li>
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-post-creator.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">创建Post</a></li>
                                     <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-video-script.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">广告视频脚本</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/product-comparison.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">产品对比</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-brand-info.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">品牌信息收集和总结</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/product-improvement-analysis.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">选品的改款分析和建议</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-keyword-recommender.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">亚马逊关键词推荐</a></li>
+                                    <li><a href="javascript:void(0)" onclick="checkAuthAndRedirect('/amazon-case-creator.html')" class="block px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded">亚马逊客服case内容</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -804,11 +1003,11 @@
             </div>
         </div>
         <div class="flex items-center space-x-6">
-            <div class="relative">
+            <div class="relative credits-menu-wrapper">
                 <button class="text-gray-600 hover:text-gray-900 flex items-center" id="credits-menu-btn">
                     <i class="ri-coin-line mr-1"></i>
                     <span>积分中心</span>
-                    <i class="ri-arrow-down-s-line ml-1"></i>
+                    <i class="ri-arrow-down-s-line ml-1 arrow-icon"></i>
                 </button>
                 <div id="credits-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
                     <a href="/credits.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分管理</a>
@@ -823,22 +1022,26 @@
                 <i class="ri-team-line mr-1"></i>
                 <span>商家AI交流群</span>
             </a>
-            <div class="relative">
-                <button class="text-gray-600 hover:text-gray-900 flex items-center">
+            <div class="relative language-menu-wrapper">
+                <button class="text-gray-600 hover:text-gray-900 flex items-center" id="language-menu-btn">
                     <span>简体中文</span>
-                    <i class="ri-arrow-down-s-line ml-1"></i>
+                    <i class="ri-arrow-down-s-line ml-1 arrow-icon"></i>
                 </button>
+                <div id="language-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">简体中文</a>
+                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">English</a>
+                </div>
             </div>
             <!-- 用户未登录时显示登录注册按钮 -->
             <a href="/login.html" id="login-btn" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                 登录/注册
             </a>
             <!-- 用户已登录时显示用户信息 -->
-            <div id="user-info" class="hidden relative">
+            <div id="user-info" class="hidden relative user-menu-wrapper">
                 <button id="user-menu-btn" class="flex items-center text-gray-700 hover:text-gray-900">
                     <i class="ri-user-3-line mr-1 text-lg"></i>
                     <span id="username-display">用户名</span>
-                    <i class="ri-arrow-down-s-line ml-1"></i>
+                    <i class="ri-arrow-down-s-line ml-1 arrow-icon"></i>
                 </button>
                 <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
                     <a href="/account.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">我的账户</a>
@@ -1039,7 +1242,7 @@
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="FBA索赔邮件" data-icon="ri-mail-star-line" data-bg="bg-amber-100" data-color="text-amber-500" data-url="/fba-claim-email.html">
-                            <span>FBA索赔邮件</span>
+                        <span>FBA索赔邮件</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="评论生成" data-icon="ri-chat-new-line" data-bg="bg-rose-100" data-color="text-rose-500" data-url="/amazon-review-generator.html">
@@ -1060,6 +1263,26 @@
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="广告视频脚本" data-icon="ri-video-chat-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/amazon-video-script.html">
                             <span>广告视频脚本</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="产品对比" data-icon="ri-scales-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/product-comparison.html">
+                            <span>产品对比</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="品牌信息收集和总结" data-icon="ri-file-info-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/amazon-brand-info.html">
+                            <span>品牌信息收集和总结</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="选品的改款分析和建议" data-icon="ri-tools-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/product-improvement-analysis.html">
+                            <span>选品的改款分析和建议</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="亚马逊关键词推荐" data-icon="ri-hashtag" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/amazon-keyword-recommender.html">
+                            <span>亚马逊关键词推荐</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="亚马逊客服case内容" data-icon="ri-customer-service-2-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/amazon-case-creator.html">
+                            <span>亚马逊客服case内容</span>
                         </label>
                     </div>
                 </div>
@@ -1423,21 +1646,185 @@
             }
 
             // 积分中心下拉菜单
-        const creditsMenuBtn = document.getElementById('credits-menu-btn');
-        const creditsDropdown = document.getElementById('credits-dropdown');
-        
-            creditsMenuBtn.addEventListener('click', function() {
+            const creditsMenuBtn = document.getElementById('credits-menu-btn');
+            const creditsDropdown = document.getElementById('credits-dropdown');
+            const creditsMenuWrapper = document.querySelector('.credits-menu-wrapper');
+            
+            let creditsHideTimeout;
+            let isMouseOverCreditsMenu = false;
+            
+            // 显示积分中心下拉菜单
+            function showCreditsDropdown() {
+                clearTimeout(creditsHideTimeout);
+                
+                // 立即改变箭头方向为向上
+                const arrowIcon = creditsMenuBtn.querySelector('.arrow-icon');
+                arrowIcon.style.transform = 'rotate(180deg)';
+                
+                // 先移除 hidden 类并设置显示
+                creditsDropdown.classList.remove('hidden');
+                creditsDropdown.style.display = '';
+                
+                // 强制重排，确保过渡效果正常工作
+                creditsDropdown.offsetHeight;
+                
+                // 添加可见类
+                requestAnimationFrame(() => {
+                    creditsDropdown.classList.add('visible');
+                });
+                
+                // 关闭其他下拉菜单
+                featuresDropdown.classList.add('hidden');
+                if (userDropdown) userDropdown.classList.add('hidden');
+            }
+            
+            // 隐藏积分中心下拉菜单
+            function hideCreditsDropdown() {
+                if (!isMouseOverCreditsMenu) {
+                    // 立即改变箭头方向为向下
+                    const arrowIcon = creditsMenuBtn.querySelector('.arrow-icon');
+                    arrowIcon.style.transform = 'rotate(0deg)';
+                    
+                    // 移除可见类，触发淡出动画
+                    creditsDropdown.classList.remove('visible');
+                    
+                    // 延长隐藏延迟，给用户更多时间移动到下拉菜单
+                    creditsHideTimeout = setTimeout(() => {
+                        if (!isMouseOverCreditsMenu) {
+                            creditsDropdown.classList.add('hidden');
+                            creditsDropdown.style.display = 'none';
+                        }
+                    }, 300); // 延长延迟时间，给用户更多反应时间
+                }
+            }
+            
+            // 优化鼠标事件处理
+            creditsMenuWrapper.addEventListener('mouseenter', () => {
+                isMouseOverCreditsMenu = true;
+                showCreditsDropdown();
+            });
+            
+            creditsMenuWrapper.addEventListener('mouseleave', () => {
+                isMouseOverCreditsMenu = false;
+                // 增加延迟，让用户有时间移动到下拉菜单
+                setTimeout(() => {
+                    if (!isMouseOverCreditsMenu) {
+                        hideCreditsDropdown();
+                    }
+                }, 100); // 添加短暂延迟
+            });
+            
+            // 下拉菜单的鼠标事件
+            creditsDropdown.addEventListener('mouseenter', () => {
+                isMouseOverCreditsMenu = true;
+                clearTimeout(creditsHideTimeout);
+            });
+            
+            creditsDropdown.addEventListener('mouseleave', () => {
+                isMouseOverCreditsMenu = false;
+                // 添加短延迟，防止意外鼠标移动导致菜单消失
+                setTimeout(() => {
+                    if (!isMouseOverCreditsMenu) {
+                        hideCreditsDropdown();
+                    }
+                }, 100);
+            });
+            
+            // 移除原来的点击事件
+            creditsMenuBtn.removeEventListener('click', function() {
                 creditsDropdown.classList.toggle('hidden');
             });
-        
+            
             // 用户菜单下拉
-        const userMenuBtn = document.getElementById('user-menu-btn');
-        const userDropdown = document.getElementById('user-dropdown');
-        
-        if (userMenuBtn) {
-                userMenuBtn.addEventListener('click', function() {
-                userDropdown.classList.toggle('hidden');
-            });
+            const userMenuBtn = document.getElementById('user-menu-btn');
+            const userDropdown = document.getElementById('user-dropdown');
+            const userMenuWrapper = document.querySelector('.user-menu-wrapper');
+            
+            let userHideTimeout;
+            let isMouseOverUserMenu = false;
+            
+            // 显示用户下拉菜单
+            function showUserDropdown() {
+                clearTimeout(userHideTimeout);
+                
+                // 立即改变箭头方向为向上
+                const arrowIcon = userMenuBtn.querySelector('.arrow-icon');
+                arrowIcon.style.transform = 'rotate(180deg)';
+                
+                // 先移除 hidden 类并设置显示
+                userDropdown.classList.remove('hidden');
+                userDropdown.style.display = '';
+                
+                // 强制重排，确保过渡效果正常工作
+                userDropdown.offsetHeight;
+                
+                // 添加可见类
+                requestAnimationFrame(() => {
+                    userDropdown.classList.add('visible');
+                });
+                
+                // 关闭其他下拉菜单
+                featuresDropdown.classList.add('hidden');
+                creditsDropdown.classList.add('hidden');
+            }
+            
+            // 隐藏用户下拉菜单
+            function hideUserDropdown() {
+                if (!isMouseOverUserMenu) {
+                    // 立即改变箭头方向为向下
+                    const arrowIcon = userMenuBtn.querySelector('.arrow-icon');
+                    arrowIcon.style.transform = 'rotate(0deg)';
+                    
+                    // 移除可见类，触发淡出动画
+                    userDropdown.classList.remove('visible');
+                    
+                    // 延长隐藏延迟，给用户更多时间移动到下拉菜单
+                    userHideTimeout = setTimeout(() => {
+                        if (!isMouseOverUserMenu) {
+                            userDropdown.classList.add('hidden');
+                            userDropdown.style.display = 'none';
+                        }
+                    }, 300); // 延长延迟时间，给用户更多反应时间
+                }
+            }
+            
+            if (userMenuBtn) {
+                // 优化鼠标事件处理
+                userMenuWrapper.addEventListener('mouseenter', () => {
+                    isMouseOverUserMenu = true;
+                    showUserDropdown();
+                });
+                
+                userMenuWrapper.addEventListener('mouseleave', () => {
+                    isMouseOverUserMenu = false;
+                    // 增加延迟，让用户有时间移动到下拉菜单
+                    setTimeout(() => {
+                        if (!isMouseOverUserMenu) {
+                            hideUserDropdown();
+                        }
+                    }, 100); // 添加短暂延迟
+                });
+                
+                // 下拉菜单的鼠标事件
+                userDropdown.addEventListener('mouseenter', () => {
+                    isMouseOverUserMenu = true;
+                    clearTimeout(userHideTimeout);
+                });
+                
+                userDropdown.addEventListener('mouseleave', () => {
+                    isMouseOverUserMenu = false;
+                    // 添加短延迟，防止意外鼠标移动导致菜单消失
+                    setTimeout(() => {
+                        if (!isMouseOverUserMenu) {
+                            hideUserDropdown();
+                        }
+                    }, 100);
+                });
+                
+                // 移除原来的点击事件
+                userMenuBtn.removeEventListener('click', function() {
+                    userDropdown.classList.toggle('hidden');
+                });
             }
             
             // 退出登录
@@ -1456,11 +1843,27 @@
             const featuresMenuWrapper = document.querySelector('.features-menu-wrapper');
             
             let hideTimeout;
+            let isMouseOverMenu = false;
             
             // 显示下拉菜单
             function showFeaturesDropdown() {
                 clearTimeout(hideTimeout);
+                
+                // 立即改变箭头方向为向上
+                const arrowIcon = featuresMenuBtn.querySelector('.arrow-icon');
+                arrowIcon.style.transform = 'rotate(180deg)';
+                
+                // 先移除 hidden 类并设置显示
                 featuresDropdown.classList.remove('hidden');
+                featuresDropdown.style.display = '';
+                
+                // 强制重排，确保过渡效果正常工作
+                featuresDropdown.offsetHeight;
+                
+                // 添加可见类
+                requestAnimationFrame(() => {
+                    featuresDropdown.classList.add('visible');
+                });
                 
                 // 关闭其他下拉菜单
                 creditsDropdown.classList.add('hidden');
@@ -1469,22 +1872,58 @@
             
             // 隐藏下拉菜单
             function hideFeaturesDropdown() {
-                hideTimeout = setTimeout(() => {
-                    featuresDropdown.classList.add('hidden');
-                }, 150); // 添加150ms延迟
+                if (!isMouseOverMenu) {
+                    // 立即改变箭头方向为向下
+                    const arrowIcon = featuresMenuBtn.querySelector('.arrow-icon');
+                    arrowIcon.style.transform = 'rotate(0deg)';
+                    
+                    // 移除可见类，触发淡出动画
+                    featuresDropdown.classList.remove('visible');
+                    
+                    // 延长隐藏延迟，给用户更多时间移动到下拉菜单
+                    hideTimeout = setTimeout(() => {
+                        if (!isMouseOverMenu) {
+                            featuresDropdown.classList.add('hidden');
+                            featuresDropdown.style.display = 'none';
+                        }
+                    }, 300); // 延长延迟时间，给用户更多反应时间
+                }
             }
             
-            // 监听整个菜单区域的鼠标事件
-            featuresMenuWrapper.addEventListener('mouseenter', showFeaturesDropdown);
-            featuresMenuWrapper.addEventListener('mouseleave', hideFeaturesDropdown);
-            
-            // 下拉菜单内容区域的鼠标事件
-            featuresDropdown.addEventListener('mouseenter', () => {
-                clearTimeout(hideTimeout);
-                featuresDropdown.classList.remove('hidden');
+            // 优化鼠标事件处理
+            featuresMenuWrapper.addEventListener('mouseenter', () => {
+                isMouseOverMenu = true;
+                showFeaturesDropdown();
             });
             
-            featuresDropdown.addEventListener('mouseleave', hideFeaturesDropdown);
+            featuresMenuWrapper.addEventListener('mouseleave', (e) => {
+                isMouseOverMenu = false;
+                // 增加延迟，让用户有时间移动到下拉菜单
+                setTimeout(() => {
+                    if (!isMouseOverMenu) {
+                        hideFeaturesDropdown();
+                    }
+                }, 100); // 添加短暂延迟
+            });
+            
+            // 下拉菜单的鼠标事件
+            featuresDropdown.addEventListener('mouseenter', () => {
+                isMouseOverMenu = true;
+                clearTimeout(hideTimeout);
+                if (!featuresDropdown.classList.contains('visible')) {
+                    showFeaturesDropdown();
+                }
+            });
+            
+            featuresDropdown.addEventListener('mouseleave', () => {
+                isMouseOverMenu = false;
+                // 添加短延迟，防止意外鼠标移动导致菜单消失
+                setTimeout(() => {
+                    if (!isMouseOverMenu) {
+                        hideFeaturesDropdown();
+                    }
+                }, 100);
+            });
             
             // 辅助函数：检查鼠标是否在指定元素上
             function isMouseOverElement(event, element) {
@@ -1756,6 +2195,92 @@
             
             // 页面加载时初始化快捷访问功能
             loadSelectedFeatures();
+            
+            // 语言菜单下拉
+            const languageMenuBtn = document.getElementById('language-menu-btn');
+            const languageDropdown = document.getElementById('language-dropdown');
+            const languageMenuWrapper = document.querySelector('.language-menu-wrapper');
+            
+            let languageHideTimeout;
+            let isMouseOverLanguageMenu = false;
+            
+            // 显示语言下拉菜单
+            function showLanguageDropdown() {
+                clearTimeout(languageHideTimeout);
+                
+                // 立即改变箭头方向为向上
+                const arrowIcon = languageMenuBtn.querySelector('.arrow-icon');
+                arrowIcon.style.transform = 'rotate(180deg)';
+                
+                // 先移除 hidden 类并设置显示
+                languageDropdown.classList.remove('hidden');
+                languageDropdown.style.display = '';
+                
+                // 强制重排，确保过渡效果正常工作
+                languageDropdown.offsetHeight;
+                
+                // 添加可见类
+                requestAnimationFrame(() => {
+                    languageDropdown.classList.add('visible');
+                });
+                
+                // 关闭其他下拉菜单
+                featuresDropdown.classList.add('hidden');
+                creditsDropdown.classList.add('hidden');
+                if (userDropdown) userDropdown.classList.add('hidden');
+            }
+            
+            // 隐藏语言下拉菜单
+            function hideLanguageDropdown() {
+                if (!isMouseOverLanguageMenu) {
+                    // 立即改变箭头方向为向下
+                    const arrowIcon = languageMenuBtn.querySelector('.arrow-icon');
+                    arrowIcon.style.transform = 'rotate(0deg)';
+                    
+                    // 移除可见类，触发淡出动画
+                    languageDropdown.classList.remove('visible');
+                    
+                    // 延长隐藏延迟，给用户更多时间移动到下拉菜单
+                    languageHideTimeout = setTimeout(() => {
+                        if (!isMouseOverLanguageMenu) {
+                            languageDropdown.classList.add('hidden');
+                            languageDropdown.style.display = 'none';
+                        }
+                    }, 300); // 延长延迟时间，给用户更多反应时间
+                }
+            }
+            
+            // 优化鼠标事件处理
+            languageMenuWrapper.addEventListener('mouseenter', () => {
+                isMouseOverLanguageMenu = true;
+                showLanguageDropdown();
+            });
+            
+            languageMenuWrapper.addEventListener('mouseleave', () => {
+                isMouseOverLanguageMenu = false;
+                // 增加延迟，让用户有时间移动到下拉菜单
+                setTimeout(() => {
+                    if (!isMouseOverLanguageMenu) {
+                        hideLanguageDropdown();
+                    }
+                }, 100); // 添加短暂延迟
+            });
+            
+            // 下拉菜单的鼠标事件
+            languageDropdown.addEventListener('mouseenter', () => {
+                isMouseOverLanguageMenu = true;
+                clearTimeout(languageHideTimeout);
+            });
+            
+            languageDropdown.addEventListener('mouseleave', () => {
+                isMouseOverLanguageMenu = false;
+                // 添加短延迟，防止意外鼠标移动导致菜单消失
+                setTimeout(() => {
+                    if (!isMouseOverLanguageMenu) {
+                        hideLanguageDropdown();
+                    }
+                }, 100);
+            });
         });
         
         // 检查用户权限并重定向
