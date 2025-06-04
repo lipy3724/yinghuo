@@ -1135,7 +1135,7 @@
         <!-- 热门作图部分 -->
         <div class="mb-10">
             <h2 class="text-2xl font-bold mb-6">热门作图</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 <!-- 模特试衣 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/clothing-simulation.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
@@ -1152,7 +1152,7 @@
                     </div>
                 </div>
                 
-                <!-- 鞋靴虚拟试穿 -->
+                <!-- 图像智能消除 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-removal.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
                         <img src="/public/images/clothing/Intelligent elimination.png" class="h-full w-full object-cover" alt="图像智能消除">
@@ -1216,6 +1216,118 @@
                     </div>
                 </div>
                 
+                <!-- 文生图片 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/text-to-image.html')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/clothing/wensheng.png" onerror="this.src='https://picsum.photos/400/300?random=9'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="文生图片">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-blue-100 rounded-lg mr-2">
+                                <i class="ri-image-add-line text-lg text-blue-500"></i>
+                            </div>
+                            <h3 class="font-semibold">文生图片</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">输入文本描述，AI自动生成精美图片内容</p>
+                    </div>
+                </div>
+                
+                <!-- 智能扩图 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-expansion.html')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/clothing/kuotu.png" onerror="this.src='https://picsum.photos/400/300?random=10'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="智能扩图">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-red-100 rounded-lg mr-2">
+                                <i class="ri-crop-line text-lg text-red-500"></i>
+                            </div>
+                            <h3 class="font-semibold">智能扩图</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">无缝扩展图像边界，保持自然过渡和高质量效果</p>
+                    </div>
+                </div>
+                
+                <!-- 局部重绘 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/local-redraw.html')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/clothing/jbchonghui.png" onerror="this.src='https://picsum.photos/400/300?random=11'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="局部重绘">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-pink-100 rounded-lg mr-2">
+                                <i class="ri-brush-3-line text-lg text-pink-500"></i>
+                            </div>
+                            <h3 class="font-semibold">局部重绘</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">精确选择区域重绘，AI智能填充，自然融合</p>
+                    </div>
+                </div>
+                
+                <!-- 全局风格化 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/global-style.html')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/clothing/qjfgh.png" onerror="this.src='https://picsum.photos/400/300?random=12'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="全局风格化">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-blue-100 rounded-lg mr-2">
+                                <i class="ri-palette-line text-lg text-blue-500"></i>
+                            </div>
+                            <h3 class="font-semibold">全局风格化</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">一键转换图像风格，多种艺术效果可选</p>
+                    </div>
+                </div>
+                
+                <!-- 商品换背景 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/cutout')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/clothing/huanbeijing.png" onerror="this.src='https://picsum.photos/400/300?random=13'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="商品换背景">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-orange-100 rounded-lg mr-2">
+                                <i class="ri-image-edit-line text-lg text-orange-500"></i>
+                            </div>
+                            <h3 class="font-semibold">商品换背景</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">智能抠图，一键替换商品背景，突显产品特色</p>
+                    </div>
+                </div>
+                
+                <!-- 智能服饰分割 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/clothing-segmentation.html')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/clothing/fushifenge.png" onerror="this.src='https://picsum.photos/400/300?random=14'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="智能服饰分割">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-purple-100 rounded-lg mr-2">
+                                <i class="ri-scissors-cut-line text-lg text-purple-500"></i>
+                            </div>
+                            <h3 class="font-semibold">智能服饰分割</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">精准分割服饰元素，自动生成透明背景图</p>
+                    </div>
+                </div>
+                
+                <!-- 指令编辑 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/prompt-editor.html')">
+                    <div class="h-48 bg-gray-50 flex items-center justify-center">
+                        <img src="/public/images/clothing/AIzhiling.png" onerror="this.src='https://picsum.photos/400/300?random=15'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="指令编辑">
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-center justify-center mb-2">
+                            <div class="w-8 h-8 flex items-center justify-center bg-indigo-100 rounded-lg mr-2">
+                                <i class="ri-edit-line text-lg text-indigo-500"></i>
+                            </div>
+                            <h3 class="font-semibold">指令编辑</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 text-center">高级AI指令编辑工具，精确控制生成结果</p>
+                    </div>
+                </div>
+                
                 <!-- 模糊图片变清晰 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-sharpen.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
@@ -1232,7 +1344,7 @@
                     </div>
                 </div>
                 
-                <!-- 批量抠图 -->
+                <!-- 图像上色 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-colorization.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
                         <img src="/public/images/clothing/Image coloring.png" class="h-full w-full object-cover" alt="图像上色">
@@ -1251,7 +1363,7 @@
                 <!-- 文生视频 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/text-to-video.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/features/text-to-video.jpg" onerror="this.src='https://picsum.photos/400/300?random=8'; console.log('请将图片放置到 /public/images/features/text-to-video.jpg 路径');" class="h-full w-full object-cover" alt="文生视频">
+                        <img src="/public/images/clothing/wensheng.png" onerror="this.src='https://picsum.photos/400/300?random=8'; console.log('请将图片放置到 /public/images/clothing/wensheng.png 路径');" class="h-full w-full object-cover" alt="文生视频">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
