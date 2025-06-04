@@ -98,6 +98,21 @@
             padding: 1rem 0;
         }
         
+        /* 添加桥接区域，防止鼠标移动时菜单消失 */
+        .dropdown-bridge {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            top: 100%;
+            z-index: 9;
+        }
+        
+        /* 功能中心按钮容器 */
+        .features-menu-container {
+            position: relative;
+        }
+        
         /* 美化滚动条 */
         #features-dropdown::-webkit-scrollbar {
             width: 4px;
@@ -714,11 +729,14 @@
                 </a>
                 <!-- 功能中心下拉菜单 -->
                 <div class="relative">
-                    <button class="text-gray-600 hover:text-gray-900 flex items-center" id="features-menu-btn">
-                        <i class="ri-apps-line mr-1"></i>
-                        <span>功能中心</span>
-                        <i class="ri-arrow-down-s-line ml-1"></i>
-                    </button>
+                    <div class="features-menu-container">
+                        <button class="text-gray-600 hover:text-gray-900 flex items-center" id="features-menu-btn">
+                            <i class="ri-apps-line mr-1"></i>
+                            <span>功能中心</span>
+                            <i class="ri-arrow-down-s-line ml-1"></i>
+                        </button>
+                        <div class="dropdown-bridge"></div>
+                    </div>
                     <div id="features-dropdown" class="hidden absolute left-0 mt-2 w-[800px] bg-white rounded-md shadow-lg py-4 z-10">
                         <div class="grid grid-cols-4 gap-2 px-4">
                             <!-- 图像处理类 -->
@@ -878,8 +896,82 @@
                     </h4>
                     <div class="grid grid-cols-1 gap-1">
                         <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="商品图" data-icon="ri-shopping-bag-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/marketing-images.html">
+                            <span>商品图</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="商品替换" data-icon="ri-image-edit-line" data-bg="bg-orange-100" data-color="text-orange-500" data-url="/cutout">
+                            <span>商品替换</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="场景裂变" data-icon="ri-landscape-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/scene-generator">
+                            <span>场景裂变</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="图片翻译" data-icon="ri-translate-2" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/translate">
+                        <span>图片翻译</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="手持商品" data-icon="ri-hand-coin-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/hand-holding.html">
+                            <span>手持商品</span>
+                            <span class="beta-tag">Beta</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="真人换模特" data-icon="ri-user-5-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/model-skin-changer.html">
+                            <span>真人换模特</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="人台换模特" data-icon="ri-t-shirt-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/clothing-simulation.html">
+                            <span>人台换模特</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="AI穿衣" data-icon="ri-t-shirt-2-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/virtual-model">
+                            <span>AI穿衣</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="模特换场景" data-icon="ri-landscape-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/model-scene-change.html">
+                            <span>模特换场景</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="AI穿戴" data-icon="ri-footprint-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/virtual-model-shoes.html">
+                            <span>AI穿戴</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="创意文字" data-icon="ri-text" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/text-effects.html">
+                            <span>创意文字</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="饰品文字" data-icon="ri-font-size" data-bg="bg-amber-100" data-color="text-amber-500" data-url="/decorative-text.html">
+                            <span>饰品文字</span>
+                            <span class="beta-tag">Beta</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="素材贴合" data-icon="ri-layout-grid-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/marketing-images.html">
+                            <span>素材贴合</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="场景素材" data-icon="ri-gallery-line" data-bg="bg-teal-100" data-color="text-teal-500" data-url="/scene-materials.html">
+                            <span>场景素材</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="相似图裂变" data-icon="ri-image-2-line" data-bg="bg-cyan-100" data-color="text-cyan-500" data-url="/similar-images.html">
+                            <span>相似图裂变</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="AI自由绘图" data-icon="ri-brush-line" data-bg="bg-rose-100" data-color="text-rose-500" data-url="/text-to-image.html">
+                            <span>AI自由绘图</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="一键换色" data-icon="ri-palette-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/global-style.html">
+                            <span>一键换色</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="自动抠图" data-icon="ri-scissors-cut-line" data-bg="bg-teal-100" data-color="text-teal-500" data-url="/cutout">
+                            <span>自动抠图</span>
+                        </label>
+                        <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="图像智能消除" data-icon="ri-eraser-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/image-removal.html">
-                            <span>图像智能消除</span>
+                        <span>图像智能消除</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="智能扩图" data-icon="ri-crop-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/image-expansion.html">
@@ -921,23 +1013,23 @@
                     <div class="grid grid-cols-1 gap-1">
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="模特换肤" data-icon="ri-user-5-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/model-skin-changer.html">
-                            <span>模特换肤</span>
+                        <span>模特换肤</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="模拟试衣" data-icon="ri-t-shirt-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/clothing-simulation.html">
-                            <span>模拟试衣</span>
+                        <span>模拟试衣</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="智能服饰分割" data-icon="ri-scissors-cut-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/clothing-segmentation.html">
-                            <span>智能服饰分割</span>
+                        <span>智能服饰分割</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="智能虚拟模特试穿" data-icon="ri-t-shirt-2-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/virtual-model">
-                            <span>智能虚拟模特试穿</span>
+                        <span>智能虚拟模特试穿</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="鞋靴虚拟试穿" data-icon="ri-footprint-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/virtual-model-shoes.html">
-                            <span>鞋靴虚拟试穿</span>
+                        <span>鞋靴虚拟试穿</span>
                         </label>
                     </div>
                 </div>
@@ -951,7 +1043,7 @@
                     <div class="grid grid-cols-1 gap-1">
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="文生图片" data-icon="ri-image-add-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/text-to-image.html">
-                            <span>文生图片</span>
+                        <span>文生图片</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="指令编辑" data-icon="ri-edit-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/prompt-editor.html">
@@ -977,11 +1069,11 @@
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="多图转视频" data-icon="ri-film-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/multi-image-to-video.html">
-                            <span>多图转视频</span>
+                        <span>多图转视频</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="视频风格重绘" data-icon="ri-paint-brush-line" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/video-style-repaint.html">
-                            <span>视频风格重绘</span>
+                        <span>视频风格重绘</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="视频数字人" data-icon="ri-user-voice-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/digital-human-video.html">
@@ -989,7 +1081,12 @@
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="视频去除字幕" data-icon="ri-subtitles-off-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/video-subtitle-remover.html">
-                            <span>视频去除字幕</span>
+                        <span>视频去除字幕</span>
+                        </label>
+                        <label class="feature-checkbox-item">
+                            <input type="checkbox" data-feature="视频拼接" data-icon="ri-video-add-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/video-concat.html">
+                            <span>视频拼接</span>
+                            <span class="new-tag">New</span>
                         </label>
                     </div>
                 </div>
@@ -1023,7 +1120,7 @@
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="FBA索赔邮件" data-icon="ri-mail-star-line" data-bg="bg-amber-100" data-color="text-amber-500" data-url="/fba-claim-email.html">
-                            <span>FBA索赔邮件</span>
+                        <span>FBA索赔邮件</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="评论生成" data-icon="ri-chat-new-line" data-bg="bg-rose-100" data-color="text-rose-500" data-url="/amazon-review-generator.html">
@@ -1056,7 +1153,7 @@
         <!-- 热门作图部分 -->
         <div class="mb-10">
             <h2 class="text-2xl font-bold mb-6">热门作图</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
                 <!-- 模特试衣 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/clothing-simulation.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
@@ -1073,26 +1170,26 @@
                     </div>
                 </div>
                 
-                <!-- 图像智能消除 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-removal.html')">
+                <!-- 鞋靴虚拟试穿 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/virtual-model-shoes.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/Intelligent elimination.png" class="h-full w-full object-cover" alt="图像智能消除">
+                        <img src="https://picsum.photos/400/300?random=7" class="h-full w-full object-cover" alt="鞋靴虚拟试穿">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
                             <div class="w-8 h-8 flex items-center justify-center bg-purple-100 rounded-lg mr-2">
-                                <i class="ri-eraser-line text-lg text-purple-500"></i>
+                                <i class="ri-footprint-line text-lg text-purple-500"></i>
                             </div>
-                            <h3 class="font-semibold">图像智能消除</h3>
+                            <h3 class="font-semibold">鞋靴试穿</h3>
                         </div>
-                        <p class="text-sm text-gray-600 text-center">智能去除图片中不需要的元素，完美修复画面</p>
+                        <p class="text-sm text-gray-600 text-center">智能鞋靴虚拟试穿，轻松搭配不同鞋靴，展现完美风格！</p>
                     </div>
                 </div>
                 
                 <!-- AI换模特 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/model-skin-changer.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/AI Changing Models.png" onerror="this.src='https://picsum.photos/400/300?random=2'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="AI换模特">
+                        <img src="https://picsum.photos/400/300?random=2" class="h-full w-full object-cover" alt="AI换模特">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
@@ -1105,106 +1202,26 @@
                     </div>
                 </div>
                 
-                <!-- AI营销图 -->
+                <!-- 商品图合成 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/marketing-images.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/AI-Marketing.png" onerror="this.src='https://picsum.photos/400/300?random=3'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="AI营销图">
+                        <img src="https://picsum.photos/400/300?random=3" class="h-full w-full object-cover" alt="商品图合成">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
                             <div class="w-8 h-8 flex items-center justify-center bg-green-100 rounded-lg mr-2">
                                 <i class="ri-layout-grid-line text-lg text-green-500"></i>
                             </div>
-                            <h3 class="font-semibold">AI营销图</h3>
+                            <h3 class="font-semibold">商品图合成</h3>
                         </div>
                         <p class="text-sm text-gray-600 text-center">上传商品图，AI生成打造您的专属商品图</p>
-                    </div>
-                </div>
-                
-                <!-- 图片翻译 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/translate')">
-                    <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/Image translation.png" onerror="this.src='https://picsum.photos/400/300?random=4'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="图片翻译">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 flex items-center justify-center bg-orange-100 rounded-lg mr-2">
-                                <i class="ri-translate-2 text-lg text-orange-500"></i>
-                            </div>
-                            <h3 class="font-semibold">图片翻译</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 text-center">上传图片，AI自动识别并翻译内容，支持多语言互译</p>
-                    </div>
-                </div>
-                
-                <!-- 文生图片 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/text-to-image.html')">
-                    <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/wensheng.png" onerror="this.src='https://picsum.photos/400/300?random=9'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="文生图片">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 flex items-center justify-center bg-blue-100 rounded-lg mr-2">
-                                <i class="ri-image-add-line text-lg text-blue-500"></i>
-                            </div>
-                            <h3 class="font-semibold">文生图片</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 text-center">输入文本描述，AI自动生成精美图片内容</p>
-                    </div>
-                </div>
-                
-                <!-- 智能扩图 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-expansion.html')">
-                    <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/kuotu.png" onerror="this.src='https://picsum.photos/400/300?random=10'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="智能扩图">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 flex items-center justify-center bg-red-100 rounded-lg mr-2">
-                                <i class="ri-crop-line text-lg text-red-500"></i>
-                            </div>
-                            <h3 class="font-semibold">智能扩图</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 text-center">无缝扩展图像边界，保持自然过渡和高质量效果</p>
-                    </div>
-                </div>
-                
-                <!-- 局部重绘 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/local-redraw.html')">
-                    <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/jbchonghui.png" onerror="this.src='https://picsum.photos/400/300?random=11'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="局部重绘">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 flex items-center justify-center bg-pink-100 rounded-lg mr-2">
-                                <i class="ri-brush-3-line text-lg text-pink-500"></i>
-                            </div>
-                            <h3 class="font-semibold">局部重绘</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 text-center">精确选择区域重绘，AI智能填充，自然融合</p>
-                    </div>
-                </div>
-                
-                <!-- 全局风格化 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/global-style.html')">
-                    <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/qjfgh.png" onerror="this.src='https://picsum.photos/400/300?random=12'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="全局风格化">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 flex items-center justify-center bg-blue-100 rounded-lg mr-2">
-                                <i class="ri-palette-line text-lg text-blue-500"></i>
-                            </div>
-                            <h3 class="font-semibold">全局风格化</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 text-center">一键转换图像风格，多种艺术效果可选</p>
                     </div>
                 </div>
                 
                 <!-- 商品换背景 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/cutout')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/huanbeijing.png" onerror="this.src='https://picsum.photos/400/300?random=13'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="商品换背景">
+                        <img src="https://picsum.photos/400/300?random=4" class="h-full w-full object-cover" alt="商品换背景">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
@@ -1213,78 +1230,46 @@
                             </div>
                             <h3 class="font-semibold">商品换背景</h3>
                         </div>
-                        <p class="text-sm text-gray-600 text-center">智能抠图，一键替换商品背景，突显产品特色</p>
+                        <p class="text-sm text-gray-600 text-center">上传图片，输入关键词，即可获得商品背景完美组合</p>
                     </div>
                 </div>
                 
-                <!-- 智能服饰分割 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/clothing-segmentation.html')">
+                <!-- AI海报创作 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/marketing-images.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/fushifenge.png" onerror="this.src='https://picsum.photos/400/300?random=14'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="智能服饰分割">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 flex items-center justify-center bg-purple-100 rounded-lg mr-2">
-                                <i class="ri-scissors-cut-line text-lg text-purple-500"></i>
-                            </div>
-                            <h3 class="font-semibold">智能服饰分割</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 text-center">精准分割服饰元素，自动生成透明背景图</p>
-                    </div>
-                </div>
-                
-                <!-- 指令编辑 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/prompt-editor.html')">
-                    <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/AIzhiling.png" onerror="this.src='https://picsum.photos/400/300?random=15'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="指令编辑">
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-center mb-2">
-                            <div class="w-8 h-8 flex items-center justify-center bg-indigo-100 rounded-lg mr-2">
-                                <i class="ri-edit-line text-lg text-indigo-500"></i>
-                            </div>
-                            <h3 class="font-semibold">指令编辑</h3>
-                        </div>
-                        <p class="text-sm text-gray-600 text-center">高级AI指令编辑工具，精确控制生成结果</p>
-                    </div>
-                </div>
-                
-                <!-- 模糊图片变清晰 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-sharpen.html')">
-                    <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/Blurred image.png" class="h-full w-full object-cover" alt="模糊图片变清晰">
+                        <img src="https://picsum.photos/400/300?random=5" class="h-full w-full object-cover" alt="AI海报创作">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
                             <div class="w-8 h-8 flex items-center justify-center bg-pink-100 rounded-lg mr-2">
-                                <i class="ri-focus-2-line text-lg text-pink-500"></i>
+                                <i class="ri-palette-line text-lg text-pink-500"></i>
                             </div>
-                            <h3 class="font-semibold">模糊图片变清晰</h3>
+                            <h3 class="font-semibold">AI海报创作</h3>
                         </div>
-                        <p class="text-sm text-gray-600 text-center">模糊图片一键变清晰，提升图像质量</p>
+                        <p class="text-sm text-gray-600 text-center">根据关键词，一键生成高品质素材图，版权无忧</p>
                     </div>
                 </div>
                 
-                <!-- 图像上色 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/image-colorization.html')">
+                <!-- 批量抠图 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/cutout')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/Image coloring.png" class="h-full w-full object-cover" alt="图像上色">
+                        <img src="https://picsum.photos/400/300?random=6" class="h-full w-full object-cover" alt="批量抠图">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
                             <div class="w-8 h-8 flex items-center justify-center bg-teal-100 rounded-lg mr-2">
-                                <i class="ri-paint-brush-line text-lg text-teal-500"></i>
+                                <i class="ri-scissors-cut-line text-lg text-teal-500"></i>
                             </div>
-                            <h3 class="font-semibold">图像上色</h3>
+                            <h3 class="font-semibold">批量抠图</h3>
                         </div>
-                        <p class="text-sm text-gray-600 text-center">黑白老照片秒变彩色，AI智能上色技术</p>
+                        <p class="text-sm text-gray-600 text-center">上传图片，即可获得平滑、干净的剪切效果</p>
                     </div>
                 </div>
                 
                 <!-- 文生视频 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/text-to-video.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/wensheng.png" onerror="this.src='https://picsum.photos/400/300?random=8'; console.log('请将图片放置到 /public/images/clothing/wensheng.png 路径');" class="h-full w-full object-cover" alt="文生视频">
+                        <img src="/public/images/features/text-to-video.jpg" onerror="this.src='https://picsum.photos/400/300?random=8'; console.log('请将图片放置到 /public/images/features/text-to-video.jpg 路径');" class="h-full w-full object-cover" alt="文生视频">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
@@ -1405,7 +1390,7 @@
                     console.error('解析用户信息出错:', e);
                 }
             }
-
+            
             // 积分中心下拉菜单
         const creditsMenuBtn = document.getElementById('credits-menu-btn');
         const creditsDropdown = document.getElementById('credits-dropdown');
@@ -1437,6 +1422,7 @@
             // 功能中心下拉菜单 - 改为悬停显示
             const featuresMenuBtn = document.getElementById('features-menu-btn');
             const featuresDropdown = document.getElementById('features-dropdown');
+            const dropdownBridge = document.querySelector('.dropdown-bridge');
             
             // 悬停显示功能中心下拉菜单
             featuresMenuBtn.addEventListener('mouseenter', function() {
@@ -1447,10 +1433,26 @@
                 if (userDropdown) userDropdown.classList.add('hidden');
             });
             
-            // 鼠标离开按钮和下拉菜单时隐藏
+            // 鼠标离开按钮时不立即隐藏，而是检查是否移动到下拉菜单或桥接区域
             featuresMenuBtn.addEventListener('mouseleave', function(e) {
-                // 检查鼠标是否移动到下拉菜单上
-                if (!isMouseOverElement(e, featuresDropdown)) {
+                // 检查鼠标是否移动到下拉菜单或桥接区域上
+                if (!isMouseOverElement(e, featuresDropdown) && !isMouseOverElement(e, dropdownBridge)) {
+                    setTimeout(() => {
+                        // 再次检查，防止鼠标已经移动到下拉菜单上
+                        if (!featuresDropdown.matches(':hover') && !dropdownBridge.matches(':hover')) {
+                            featuresDropdown.classList.add('hidden');
+                        }
+                    }, 100);
+                }
+            });
+            
+            // 桥接区域的鼠标事件
+            dropdownBridge.addEventListener('mouseenter', function() {
+                featuresDropdown.classList.remove('hidden');
+            });
+            
+            dropdownBridge.addEventListener('mouseleave', function(e) {
+                if (!isMouseOverElement(e, featuresDropdown) && !isMouseOverElement(e, featuresMenuBtn)) {
                     featuresDropdown.classList.add('hidden');
                 }
             });
@@ -1460,8 +1462,10 @@
                 featuresDropdown.classList.remove('hidden');
             });
             
-            featuresDropdown.addEventListener('mouseleave', function() {
-                featuresDropdown.classList.add('hidden');
+            featuresDropdown.addEventListener('mouseleave', function(e) {
+                if (!isMouseOverElement(e, featuresMenuBtn) && !isMouseOverElement(e, dropdownBridge)) {
+                    featuresDropdown.classList.add('hidden');
+                }
             });
             
             // 辅助函数：检查鼠标是否在指定元素上
