@@ -923,11 +923,11 @@
                 </a>
                 <!-- 功能中心下拉菜单 -->
                 <div class="relative features-menu-wrapper">
-                    <button class="text-gray-600 hover:text-gray-900 flex items-center" id="features-menu-btn">
-                        <i class="ri-apps-line mr-1"></i>
-                        <span>功能中心</span>
+                        <button class="text-gray-600 hover:text-gray-900 flex items-center" id="features-menu-btn">
+                            <i class="ri-apps-line mr-1"></i>
+                            <span>功能中心</span>
                         <i class="ri-arrow-down-s-line ml-1 arrow-icon"></i>
-                    </button>
+                        </button>
                     <div class="features-menu-bridge"></div>
                     <div id="features-dropdown" class="hidden absolute left-0 mt-2 w-[800px] bg-white rounded-md shadow-lg py-4 z-10">
                         <div class="grid grid-cols-4 gap-2 px-4">
@@ -1098,7 +1098,7 @@
                     <div class="grid grid-cols-1 gap-1">
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="图像智能消除" data-icon="ri-eraser-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/image-removal.html">
-                            <span>图像智能消除</span>
+                        <span>图像智能消除</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="智能扩图" data-icon="ri-crop-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/image-expansion.html">
@@ -1140,23 +1140,23 @@
                     <div class="grid grid-cols-1 gap-1">
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="模特换肤" data-icon="ri-user-5-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/model-skin-changer.html">
-                            <span>模特换肤</span>
+                        <span>模特换肤</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="模拟试衣" data-icon="ri-t-shirt-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/clothing-simulation.html">
-                            <span>模拟试衣</span>
+                        <span>模拟试衣</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="智能服饰分割" data-icon="ri-scissors-cut-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/clothing-segmentation.html">
-                            <span>智能服饰分割</span>
+                        <span>智能服饰分割</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="智能虚拟模特试穿" data-icon="ri-t-shirt-2-line" data-bg="bg-pink-100" data-color="text-pink-500" data-url="/virtual-model">
-                            <span>智能虚拟模特试穿</span>
+                        <span>智能虚拟模特试穿</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="鞋靴虚拟试穿" data-icon="ri-footprint-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/virtual-model-shoes.html">
-                            <span>鞋靴虚拟试穿</span>
+                        <span>鞋靴虚拟试穿</span>
                         </label>
                     </div>
                 </div>
@@ -1170,7 +1170,7 @@
                     <div class="grid grid-cols-1 gap-1">
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="文生图片" data-icon="ri-image-add-line" data-bg="bg-blue-100" data-color="text-blue-500" data-url="/text-to-image.html">
-                            <span>文生图片</span>
+                        <span>文生图片</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="指令编辑" data-icon="ri-edit-line" data-bg="bg-indigo-100" data-color="text-indigo-500" data-url="/prompt-editor.html">
@@ -1196,11 +1196,11 @@
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="多图转视频" data-icon="ri-film-line" data-bg="bg-green-100" data-color="text-green-500" data-url="/multi-image-to-video.html">
-                            <span>多图转视频</span>
+                        <span>多图转视频</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="视频风格重绘" data-icon="ri-paint-brush-line" data-bg="bg-yellow-100" data-color="text-yellow-500" data-url="/video-style-repaint.html">
-                            <span>视频风格重绘</span>
+                        <span>视频风格重绘</span>
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="视频数字人" data-icon="ri-user-voice-line" data-bg="bg-purple-100" data-color="text-purple-500" data-url="/digital-human-video.html">
@@ -1208,7 +1208,7 @@
                         </label>
                         <label class="feature-checkbox-item">
                             <input type="checkbox" data-feature="视频去除字幕" data-icon="ri-subtitles-off-line" data-bg="bg-red-100" data-color="text-red-500" data-url="/video-subtitle-remover.html">
-                            <span>视频去除字幕</span>
+                        <span>视频去除字幕</span>
                         </label>
                     </div>
                 </div>
@@ -1644,10 +1644,10 @@
                     console.error('解析用户信息出错:', e);
                 }
             }
-
+            
             // 积分中心下拉菜单
-            const creditsMenuBtn = document.getElementById('credits-menu-btn');
-            const creditsDropdown = document.getElementById('credits-dropdown');
+        const creditsMenuBtn = document.getElementById('credits-menu-btn');
+        const creditsDropdown = document.getElementById('credits-dropdown');
             const creditsMenuWrapper = document.querySelector('.credits-menu-wrapper');
             
             let creditsHideTimeout;
@@ -1734,10 +1734,10 @@
             creditsMenuBtn.removeEventListener('click', function() {
                 creditsDropdown.classList.toggle('hidden');
             });
-            
+        
             // 用户菜单下拉
-            const userMenuBtn = document.getElementById('user-menu-btn');
-            const userDropdown = document.getElementById('user-dropdown');
+        const userMenuBtn = document.getElementById('user-menu-btn');
+        const userDropdown = document.getElementById('user-dropdown');
             const userMenuWrapper = document.querySelector('.user-menu-wrapper');
             
             let userHideTimeout;
@@ -1787,8 +1787,8 @@
                     }, 300); // 延长延迟时间，给用户更多反应时间
                 }
             }
-            
-            if (userMenuBtn) {
+        
+        if (userMenuBtn) {
                 // 优化鼠标事件处理
                 userMenuWrapper.addEventListener('mouseenter', () => {
                     isMouseOverUserMenu = true;
@@ -1823,8 +1823,8 @@
                 
                 // 移除原来的点击事件
                 userMenuBtn.removeEventListener('click', function() {
-                    userDropdown.classList.toggle('hidden');
-                });
+                userDropdown.classList.toggle('hidden');
+            });
             }
             
             // 退出登录
@@ -1848,7 +1848,7 @@
             // 显示下拉菜单
             function showFeaturesDropdown() {
                 clearTimeout(hideTimeout);
-                
+            
                 // 立即改变箭头方向为向上
                 const arrowIcon = featuresMenuBtn.querySelector('.arrow-icon');
                 arrowIcon.style.transform = 'rotate(180deg)';
@@ -1902,7 +1902,7 @@
                 setTimeout(() => {
                     if (!isMouseOverMenu) {
                         hideFeaturesDropdown();
-                    }
+                }
                 }, 100); // 添加短暂延迟
             });
             
@@ -1921,7 +1921,7 @@
                 setTimeout(() => {
                     if (!isMouseOverMenu) {
                         hideFeaturesDropdown();
-                    }
+                }
                 }, 100);
             });
             
