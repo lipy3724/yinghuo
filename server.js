@@ -2346,7 +2346,7 @@ app.post('/api/upload-image-for-shoe-model', protect, upload.single('file'), asy
 });
 
 // 创建鞋靴模特试穿任务
-app.post('/api/create-shoe-model-task', protect, checkFeatureAccess(FEATURES.VIRTUAL_SHOE_MODEL), async (req, res) => {
+app.post('/api/create-shoe-model-task', protect, checkFeatureAccess('VIRTUAL_SHOE_MODEL'), async (req, res) => {
   try {
     console.log('接收到创建鞋靴模特试穿任务请求:', req.body);
     const { modelImageUrl, shoeImageUrl } = req.body;
@@ -2397,7 +2397,7 @@ app.post('/api/create-shoe-model-task', protect, checkFeatureAccess(FEATURES.VIR
       try {
         await FeatureUsage.create({
           userId: req.user.id,
-          featureType: 'VIRTUAL_SHOE_MODEL',
+          featureName: 'VIRTUAL_SHOE_MODEL',
           usageDate: new Date(),
           requestData: JSON.stringify({
             modelImage: modelImageUrl,
@@ -2527,7 +2527,7 @@ app.get('/api/check-task-status', protect, async (req, res) => {
             {
               where: {
                 userId: req.user.id,
-                featureType: 'VIRTUAL_SHOE_MODEL'
+                featureName: 'VIRTUAL_SHOE_MODEL'
               },
               order: [['createdAt', 'DESC']],
               limit: 1
@@ -2550,7 +2550,7 @@ app.get('/api/check-task-status', protect, async (req, res) => {
             {
               where: {
                 userId: req.user.id,
-                featureType: 'VIRTUAL_SHOE_MODEL'
+                featureName: 'VIRTUAL_SHOE_MODEL'
               },
               order: [['createdAt', 'DESC']],
               limit: 1
@@ -2750,13 +2750,16 @@ app.post('/api/image-to-oss', protect, upload.single('image'), async (req, res) 
       try {
         await ImageHistory.create({
           userId: req.user.id,
-          fileUrl: imageUrl,
-          fileName: req.file.originalname,
-          fileType: req.file.mimetype,
-          fileSize: req.file.size,
-          uploadDate: new Date(),
-          category: req.body.imageType === 'model' ? 'model_template' : 'shoe_image',
-          status: 'uploaded'
+          imageUrl: imageUrl,  // 确保这个字段有值
+          title: req.file.originalname,
+          originalImageUrl: imageUrl,
+          type: req.body.imageType === 'model' ? 'MODEL_TEMPLATE' : 'SHOE_IMAGE',
+          processType: '鞋靴虚拟试穿',
+          metadata: {
+            fileType: req.file.mimetype,
+            fileSize: req.file.size,
+            category: req.body.imageType
+          }
         });
       } catch (historyError) {
         console.error('记录上传历史失败:', historyError);

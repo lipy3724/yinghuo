@@ -33,6 +33,13 @@
             background-color: white;
             border-radius: 0.5rem;
             overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .feature-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            z-index: 10;
         }
         @keyframes firefly-glow {
             0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
@@ -905,10 +912,6 @@
             </a>
             <!-- 添加顶部导航功能菜单 -->
             <div class="ml-8 flex items-center space-x-6">
-                <a href="#" class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <i class="ri-home-line mr-1"></i>
-                    <span>首页</span>
-                </a>
                 <a href="javascript:void(0)" onclick="checkAuthAndRedirect('/marketing-images.html')" class="text-gray-600 hover:text-gray-900 flex items-center">
                     <i class="ri-image-line mr-1"></i>
                     <span>AI营销图</span>
@@ -1294,7 +1297,7 @@
     <div class="main-content">
         <!-- 热门作图部分 -->
         <div class="mb-10">
-            <h2 class="text-2xl font-bold mb-6">热门作图</h2>
+            <h2 class="text-2xl font-bold mb-6">热门功能</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 <!-- 模特试衣 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/clothing-simulation.html')">
@@ -1379,7 +1382,7 @@
                 <!-- 文生图片 -->
                 <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/text-to-image.html')">
                     <div class="h-48 bg-gray-50 flex items-center justify-center">
-                        <img src="/public/images/clothing/wensheng.png" onerror="this.src='https://picsum.photos/400/300?random=9'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="文生图片">
+                        <img src="/public/images/clothing/wenshengtupian.png" onerror="this.src='https://picsum.photos/400/300?random=9'; console.log('图片加载失败');" class="h-full w-full object-cover" alt="文生图片">
                     </div>
                     <div class="p-4">
                         <div class="flex items-center justify-center mb-2">
@@ -1540,70 +1543,213 @@
         
         <!-- 最流行部分 -->
         <div>
-            <h2 class="text-2xl font-bold mb-6">最流行</h2>
+            <h2 class="text-2xl font-bold mb-6">亚马逊助手</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                <!-- 亚马逊标题撰写 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center justify-center h-14 mb-4">
-                            <div class="w-12 h-12 bg-yellow-100 rounded-md flex items-center justify-center">
-                                <span class="text-2xl font-bold text-yellow-500">A</span>
-                            </div>
-                        </div>
-                        <h3 class="font-semibold text-center mb-3">亚马逊标题撰写</h3>
-                        <p class="text-sm text-gray-600 text-center">生成10个150-200字符的亚马逊标题，前74个字符安排高相关核心热词</p>
-                    </div>
-                </div>
-                
-                <!-- 亚马逊题五点撰写 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg">
-                    <div class="p-6">
-                        <div class="flex items-center justify-center h-14 mb-4">
-                            <div class="w-12 h-12 bg-yellow-100 rounded-md flex items-center justify-center">
-                                <span class="text-2xl font-bold text-yellow-500">A</span>
-                            </div>
-                        </div>
-                        <h3 class="font-semibold text-center mb-3">亚马逊题五点撰写</h3>
-                        <p class="text-sm text-gray-600 text-center">提供产品基础文案和提要理的关键词，生成标题和五点描述</p>
-                    </div>
-                </div>
-                
-                <!-- SEO博文一键生成 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg">
+                <!-- 亚马逊搜索词 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-search-term.html')">
                     <div class="p-6">
                         <div class="flex items-center justify-center h-14 mb-4">
                             <div class="w-12 h-12 bg-blue-100 rounded-md flex items-center justify-center text-blue-600">
-                                <i class="ri-article-line text-2xl"></i>
+                                <i class="ri-search-line text-2xl"></i>
                             </div>
                         </div>
-                        <h3 class="font-semibold text-center mb-3">SEO博文一键生成</h3>
-                        <p class="text-sm text-gray-600 text-center">一键生成SEO博文，吸引用户，提高点击率</p>
+                        <h3 class="font-semibold text-center mb-3">亚马逊搜索词</h3>
+                        <p class="text-sm text-gray-600 text-center">生成高质量亚马逊后台搜索词，提高产品搜索排名</p>
                     </div>
                 </div>
                 
-                <!-- Tiktok种草视频脚本 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg">
+                <!-- 亚马逊Listing优化 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-listing.html')">
                     <div class="p-6">
                         <div class="flex items-center justify-center h-14 mb-4">
                             <div class="w-12 h-12 bg-purple-100 rounded-md flex items-center justify-center text-purple-600">
-                                <i class="ri-vidicon-line text-2xl"></i>
+                                <i class="ri-file-list-3-line text-2xl"></i>
                             </div>
                         </div>
-                        <h3 class="font-semibold text-center mb-3">Tiktok种草视频脚本</h3>
-                        <p class="text-sm text-gray-600 text-center">消费者从自身角度讲解使用产品的正面真实体验</p>
+                        <h3 class="font-semibold text-center mb-3">亚马逊Listing优化</h3>
+                        <p class="text-sm text-gray-600 text-center">全面优化亚马逊Listing内容，提高转化率</p>
                     </div>
                 </div>
                 
-                <!-- 爆款短视频标题生成 -->
-                <div class="feature-card shadow bg-white overflow-hidden rounded-lg">
+                <!-- 亚马逊评论分析 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-review-analysis.html')">
                     <div class="p-6">
                         <div class="flex items-center justify-center h-14 mb-4">
                             <div class="w-12 h-12 bg-red-100 rounded-md flex items-center justify-center text-red-600">
-                                <i class="ri-movie-line text-2xl"></i>
+                                <i class="ri-chat-3-line text-2xl"></i>
                             </div>
                         </div>
-                        <h3 class="font-semibold text-center mb-3">爆款短视频标题生成</h3>
-                        <p class="text-sm text-gray-600 text-center">根据视频话题，自动生成爆款视频标题</p>
+                        <h3 class="font-semibold text-center mb-3">亚马逊评论分析</h3>
+                        <p class="text-sm text-gray-600 text-center">深入分析客户评论，提取有价值的产品改进建议</p>
+                    </div>
+                </div>
+                
+                <!-- 消费者洞察 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-consumer-insights.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-md flex items-center justify-center text-green-600">
+                                <i class="ri-spy-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">消费者洞察</h3>
+                        <p class="text-sm text-gray-600 text-center">分析目标客户群体需求和购买行为，挖掘市场机会</p>
+                    </div>
+                </div>
+                
+                <!-- 客户邮件回复 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-customer-email.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-md flex items-center justify-center text-blue-600">
+                                <i class="ri-mail-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">客户邮件回复</h3>
+                        <p class="text-sm text-gray-600 text-center">快速生成专业客户邮件回复，提升客户满意度</p>
+                    </div>
+                </div>
+                
+                <!-- FBA索赔邮件 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/fba-claim-email.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-amber-100 rounded-md flex items-center justify-center text-amber-600">
+                                <i class="ri-mail-star-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">FBA索赔邮件</h3>
+                        <p class="text-sm text-gray-600 text-center">高效生成FBA仓库损坏、丢失产品的索赔邮件</p>
+                    </div>
+                </div>
+                
+                <!-- 评论生成 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-review-generator.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-rose-100 rounded-md flex items-center justify-center text-rose-600">
+                                <i class="ri-chat-new-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">评论生成</h3>
+                        <p class="text-sm text-gray-600 text-center">为产品创建真实、自然的用户评论模板</p>
+                    </div>
+                </div>
+                
+                <!-- 评论回复 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-review-response.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-teal-100 rounded-md flex items-center justify-center text-teal-600">
+                                <i class="ri-reply-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">评论回复</h3>
+                        <p class="text-sm text-gray-600 text-center">专业回复客户评论，处理负面反馈，增强品牌形象</p>
+                    </div>
+                </div>
+                
+                <!-- 品牌起名 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-brand-naming.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-orange-100 rounded-md flex items-center justify-center text-orange-600">
+                                <i class="ri-price-tag-3-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">品牌起名</h3>
+                        <p class="text-sm text-gray-600 text-center">生成独特有吸引力的品牌名称，促进品牌识别</p>
+                    </div>
+                </div>
+                
+                <!-- 创建Post -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-post-creator.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-indigo-100 rounded-md flex items-center justify-center text-indigo-600">
+                                <i class="ri-article-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">创建Post</h3>
+                        <p class="text-sm text-gray-600 text-center">快速创建引人入胜的亚马逊品牌Post内容</p>
+                    </div>
+                </div>
+                
+                <!-- 广告视频脚本 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-video-script.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-red-100 rounded-md flex items-center justify-center text-red-600">
+                                <i class="ri-video-chat-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">广告视频脚本</h3>
+                        <p class="text-sm text-gray-600 text-center">生成专业产品广告视频脚本，提升转化率</p>
+                    </div>
+                </div>
+                
+                <!-- 产品对比 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/product-comparison.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-sky-100 rounded-md flex items-center justify-center text-sky-600">
+                                <i class="ri-scales-3-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">产品对比</h3>
+                        <p class="text-sm text-gray-600 text-center">全面对比分析竞品优劣势，找出差异化竞争点</p>
+                    </div>
+                </div>
+                
+                <!-- 品牌信息收集和总结 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-brand-info.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-lime-100 rounded-md flex items-center justify-center text-lime-600">
+                                <i class="ri-file-info-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">品牌信息收集</h3>
+                        <p class="text-sm text-gray-600 text-center">快速收集并总结竞争对手品牌信息，洞察市场动态</p>
+                    </div>
+                </div>
+                
+                <!-- 选品的改款分析和建议 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/product-improvement-analysis.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-violet-100 rounded-md flex items-center justify-center text-violet-600">
+                                <i class="ri-tools-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">改款分析建议</h3>
+                        <p class="text-sm text-gray-600 text-center">深入分析产品改进方向，提供具体可执行的改款建议</p>
+                    </div>
+                </div>
+                
+                <!-- 亚马逊关键词推荐 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-keyword-recommender.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-cyan-100 rounded-md flex items-center justify-center text-cyan-600">
+                                <i class="ri-key-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">关键词推荐</h3>
+                        <p class="text-sm text-gray-600 text-center">智能推荐高流量、相关性强的亚马逊搜索关键词</p>
+                    </div>
+                </div>
+                
+                <!-- 亚马逊客服case内容 -->
+                <div class="feature-card shadow bg-white overflow-hidden rounded-lg cursor-pointer" onclick="checkAuthAndRedirect('/amazon-case-creator.html')">
+                    <div class="p-6">
+                        <div class="flex items-center justify-center h-14 mb-4">
+                            <div class="w-12 h-12 bg-fuchsia-100 rounded-md flex items-center justify-center text-fuchsia-600">
+                                <i class="ri-customer-service-2-line text-2xl"></i>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-center mb-3">客服Case内容</h3>
+                        <p class="text-sm text-gray-600 text-center">生成专业亚马逊客服案例回复，解决常见售后问题</p>
                     </div>
                 </div>
             </div>
