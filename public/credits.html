@@ -9,38 +9,62 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f9fafb;
         }
         .form-group {
             margin-bottom: 1rem;
         }
         .form-control {
+            display: block;
             width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .form-control:focus {
+            color: #495057;
+            background-color: #fff;
+            border-color: #80bdff;
+            outline: 0;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
         .btn-primary {
+            color: #fff;
+            background-color: #6366f1;
+            border-color: #6366f1;
             padding: 0.5rem 1rem;
-            background-color: #4f46e5;
-            color: white;
-            border-radius: 0.375rem;
-            font-weight: 500;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
         }
         .btn-primary:hover {
-            background-color: #4338ca;
+            background-color: #4f46e5;
+            border-color: #4f46e5;
         }
         .alert {
-            padding: 0.75rem 1rem;
-            border-radius: 0.375rem;
+            position: relative;
+            padding: 0.75rem 1.25rem;
             margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
         }
         .alert-success {
-            background-color: #d1fae5;
-            color: #065f46;
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
         }
         .alert-danger {
-            background-color: #fee2e2;
-            color: #b91c1c;
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
         }
         .feature-card {
             padding: 1rem;
@@ -48,6 +72,54 @@
             border: 1px solid #e5e7eb;
             margin-bottom: 1rem;
             background-color: white;
+        }
+        /* 添加淡入淡出动画样式 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        .animate-fade-out {
+            animation: fadeOut 0.3s ease-out forwards;
+        }
+        /* 充值金额选项选中状态样式 */
+        .amount-option.active {
+            border-color: #6366f1 !important;
+            background-color: rgba(99, 102, 241, 0.05) !important;
+            box-shadow: 0 0 0 1px #6366f1;
+        }
+        /* 支付方式选中状态样式 */
+        .payment-method.active {
+            border-color: #6366f1 !important;
+            background-color: rgba(99, 102, 241, 0.05) !important;
+        }
+        /* 提交按钮悬停效果 */
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+        /* 自定义金额输入框聚焦效果 */
+        #custom-amount:focus {
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
         }
     </style>
 </head>
@@ -121,35 +193,64 @@
             </div>
 
             <!-- 充值表单 (默认隐藏) -->
-            <div id="recharge-form-container" class="hidden border border-gray-200 p-4 rounded-lg mb-6">
-                <h2 class="text-lg font-semibold mb-4">积分充值</h2>
-                <form id="recharge-form">
+            <div id="recharge-form-container" class="hidden bg-white rounded-xl shadow-lg p-6 mb-8 transform transition-all duration-300 ease-in-out">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-medium text-gray-800">积分充值</h2>
+                    <button type="button" id="cancel-recharge" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+                <form id="recharge-form" class="space-y-6">
                     <div class="form-group">
-                        <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">充值金额</label>
-                        <div class="grid grid-cols-5 gap-2">
-                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="800">99元/800积分</button>
-                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="3980">399元/3980积分</button>
-                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="6730">599元/6730积分</button>
-                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="12500">999元/12500积分</button>
-                            <button type="button" class="amount-option py-2 px-3 border border-gray-300 rounded text-center" data-amount="198">59元/198积分</button>
-                        </div>
-                        <div id="custom-amount-container" class="hidden mt-2">
-                            <input type="number" id="custom-amount" class="form-control" min="10" placeholder="请输入充值金额（最低10积分）">
+                        <label for="amount" class="block text-sm font-medium text-gray-700 mb-3">充值金额</label>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <button type="button" class="amount-option group relative overflow-hidden rounded-xl border border-transparent bg-gray-50 hover:bg-indigo-50 hover:border-indigo-100 transition-all py-4 px-3 text-center" data-amount="800">
+                                <div class="text-gray-800 font-medium mb-1">99元</div>
+                                <div class="text-indigo-600 font-bold">800积分</div>
+                                <div class="text-xs text-gray-500 mt-1">¥0.12/积分</div>
+                                <div class="absolute inset-0 border-2 border-indigo-500 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                            </button>
+                            <button type="button" class="amount-option group relative overflow-hidden rounded-xl border border-transparent bg-gray-50 hover:bg-indigo-50 hover:border-indigo-100 transition-all py-4 px-3 text-center" data-amount="3980">
+                                <div class="text-gray-800 font-medium mb-1">399元</div>
+                                <div class="text-indigo-600 font-bold">3980积分</div>
+                                <div class="text-xs text-gray-500 mt-1">¥0.10/积分</div>
+                                <div class="absolute inset-0 border-2 border-indigo-500 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                            </button>
+                            <button type="button" class="amount-option group relative overflow-hidden rounded-xl border border-transparent bg-gray-50 hover:bg-indigo-50 hover:border-indigo-100 transition-all py-4 px-3 text-center" data-amount="6730">
+                                <div class="text-gray-800 font-medium mb-1">599元</div>
+                                <div class="text-indigo-600 font-bold">6730积分</div>
+                                <div class="text-xs text-gray-500 mt-1">¥0.09/积分</div>
+                                <div class="absolute inset-0 border-2 border-indigo-500 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                            </button>
+                            <button type="button" class="amount-option group relative overflow-hidden rounded-xl border border-transparent bg-gray-50 hover:bg-indigo-50 hover:border-indigo-100 transition-all py-4 px-3 text-center" data-amount="12500">
+                                <div class="text-gray-800 font-medium mb-1">999元</div>
+                                <div class="text-indigo-600 font-bold">12500积分</div>
+                                <div class="text-xs text-gray-500 mt-1">¥0.08/积分</div>
+                                <div class="absolute inset-0 border-2 border-indigo-500 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                            </button>
+                            <button type="button" class="amount-option group relative overflow-hidden rounded-xl border border-transparent bg-gray-50 hover:bg-indigo-50 hover:border-indigo-100 transition-all py-4 px-3 text-center" data-amount="198">
+                                <div class="text-gray-800 font-medium mb-1">59元</div>
+                                <div class="text-indigo-600 font-bold">198积分</div>
+                                <div class="text-xs text-gray-500 mt-1">¥0.30/积分</div>
+                                <div class="absolute inset-0 border-2 border-indigo-500 rounded-xl opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                            </button>
                         </div>
                         <input type="hidden" id="amount" name="amount" value="">
                     </div>
                     <div class="form-group">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">支付方式</label>
-                        <div class="grid grid-cols-1 gap-2">
-                            <button type="button" class="payment-method py-2 px-3 border border-gray-300 rounded text-center active" data-method="alipay">
-                                <i class="ri-alipay-line mr-1"></i>支付宝
+                        <label class="block text-sm font-medium text-gray-700 mb-3">支付方式</label>
+                        <div class="grid grid-cols-1 gap-3">
+                            <button type="button" class="payment-method flex items-center justify-center py-3 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors active" data-method="alipay">
+                                <i class="ri-alipay-line text-blue-500 text-xl mr-2"></i>
+                                <span class="font-medium">支付宝</span>
                             </button>
                         </div>
                         <input type="hidden" id="payment-method" name="paymentMethod" value="alipay">
                     </div>
-                    <div class="flex justify-end space-x-2">
-                        <button type="button" id="cancel-recharge" class="py-2 px-4 border border-gray-300 rounded">取消</button>
-                        <button type="submit" class="btn-primary">确认充值</button>
+                    <div class="pt-4">
+                        <button type="submit" class="w-full py-3 px-6 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white font-medium rounded-xl shadow-sm hover:shadow transition-all transform hover:-translate-y-0.5">
+                            确认充值
+                        </button>
                     </div>
                 </form>
             </div>
@@ -572,217 +673,221 @@
             });
         }
         
-        // 创建支付宝订单并处理结果
-        async function createAlipayOrder(amount) {
-            try {
-                // 显示充值状态
-                const rechargeStatus = document.createElement('div');
-                rechargeStatus.id = 'recharge-status';
-                rechargeStatus.className = 'alert alert-success mb-4';
-                rechargeStatus.innerText = '正在创建订单...';
-                
-                // 插入状态显示
-                const formContainer = document.getElementById('recharge-form-container');
-                formContainer.insertBefore(rechargeStatus, formContainer.firstChild);
-                
-                const response = await fetch('/api/credits/alipay/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ amount })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success && result.data.paymentUrl) {
-                    // 保存订单信息到本地存储，以便在支付完成后查询
-                    localStorage.setItem('pendingOrderNumber', result.data.orderNumber);
-                    localStorage.setItem('pendingOrderAmount', amount);
-                    
-                    // 如果有过期时间，也保存下来
-                    if (result.data.expireTime) {
-                        localStorage.setItem('orderExpireTime', new Date(result.data.expireTime).getTime());
-                    }
-                    
-                    console.log('订单创建成功，订单号:', result.data.orderNumber);
-                    rechargeStatus.innerText = '订单创建成功，正在跳转到支付页面...';
-                    
-                    // 跳转到支付页面
-                    window.location.href = result.data.paymentUrl;
-                } else {
-                    rechargeStatus.innerText = result.message || '创建订单失败，请稍后重试';
-                    rechargeStatus.className = 'alert alert-danger mb-4';
-                    console.error('创建订单失败:', result);
-                }
-            } catch (error) {
-                const rechargeStatus = document.getElementById('recharge-status') || 
-                    document.createElement('div');
-                
-                if (!rechargeStatus.parentNode) {
-                    rechargeStatus.id = 'recharge-status';
-                    rechargeStatus.className = 'alert alert-danger mb-4';
-                    const formContainer = document.getElementById('recharge-form-container');
-                    formContainer.insertBefore(rechargeStatus, formContainer.firstChild);
-                }
-                
-                rechargeStatus.innerText = '创建订单请求出错，请稍后重试';
-                rechargeStatus.className = 'alert alert-danger mb-4';
-                console.error('创建订单请求出错:', error);
-            }
-        }
-        
-        // 调用充值API
-        async function callRechargeApi(finalAmount, paymentMethod) {
-            try {
-                const response = await fetch('/api/credits/recharge', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ 
-                        amount: finalAmount, 
-                        paymentMethod,
-                        transactionId: 'demo_' + Date.now() // 模拟交易ID
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    showMessage('积分充值成功');
-                    
-                    // 更新显示的积分
-                    userCredits = data.data.credits;
-                    document.getElementById('user-credits').textContent = userCredits;
-                    
-                    // 更新充值时间
-                    const date = new Date(data.data.lastRechargeTime);
-                    document.getElementById('last-recharge-time').textContent = date.toLocaleString('zh-CN');
-                    
-                    // 隐藏充值表单
-                    document.getElementById('recharge-form-container').classList.add('hidden');
-                    document.getElementById('recharge-form').reset();
-                } else {
-                    showMessage(data.message || '充值失败，请重试', 'error');
-                }
-            } catch (error) {
-                console.error('充值出错:', error);
-                showMessage('充值出错，请稍后重试: ' + error.message, 'error');
-            }
-        }
-        
         // 页面加载完成后执行
-        document.addEventListener('DOMContentLoaded', async function() {
+        document.addEventListener('DOMContentLoaded', function() {
             // 检查用户是否已登录
             if (!checkAuth()) return;
             
-            // 加载功能价格列表
-            await loadPricing();
-            
-            // 加载用户积分和使用记录
-            await loadCreditsInfo();
-            
             // 检查用户是否有开发者权限
-            await checkDeveloperAccess();
+            checkDeveloperAccess();
             
-            // 刷新按钮点击事件
-            document.getElementById('refresh-usage').addEventListener('click', function() {
-                loadCreditsInfo();
-                showMessage('使用记录已刷新');
-            });
+            // 加载用户积分信息
+            loadCreditsInfo();
             
-            // 充值按钮点击事件
-            document.getElementById('recharge-btn').addEventListener('click', function() {
-                document.getElementById('recharge-form-container').classList.remove('hidden');
-            });
+            // 加载功能价格列表
+            loadPricing();
             
-            // 取消充值按钮点击事件
-            document.getElementById('cancel-recharge').addEventListener('click', function() {
-                document.getElementById('recharge-form-container').classList.add('hidden');
-                document.getElementById('recharge-form').reset();
-            });
+            // 初始化充值表单
+            initRechargeForm();
             
-            // 金额选项点击事件
-            document.querySelectorAll('.amount-option').forEach(button => {
-                button.addEventListener('click', function() {
-                    // 移除所有按钮的激活状态
-                    document.querySelectorAll('.amount-option').forEach(btn => {
-                        btn.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+            // 初始化开发者模式
+            initDevMode();
+            
+            // 绑定刷新使用记录按钮
+            document.getElementById('refresh-usage').addEventListener('click', loadCreditsInfo);
+        });
+        
+        // 初始化充值表单
+        function initRechargeForm() {
+            const rechargeBtn = document.getElementById('recharge-btn');
+            const rechargeFormContainer = document.getElementById('recharge-form-container');
+            const cancelRechargeBtn = document.getElementById('cancel-recharge');
+            const rechargeForm = document.getElementById('recharge-form');
+            const amountOptions = document.querySelectorAll('.amount-option');
+            const amountInput = document.getElementById('amount');
+            const paymentMethods = document.querySelectorAll('.payment-method');
+            const paymentMethodInput = document.getElementById('payment-method');
+            
+            // 显示充值表单
+            if (rechargeBtn) {
+                rechargeBtn.addEventListener('click', function() {
+                    rechargeFormContainer.classList.remove('hidden');
+                    rechargeFormContainer.classList.add('animate-fade-in');
+                });
+            }
+            
+            // 隐藏充值表单
+            if (cancelRechargeBtn) {
+                cancelRechargeBtn.addEventListener('click', function() {
+                    rechargeFormContainer.classList.add('animate-fade-out');
+                    setTimeout(() => {
+                        rechargeFormContainer.classList.add('hidden');
+                        rechargeFormContainer.classList.remove('animate-fade-out');
+                        // 重置表单
+                        resetRechargeForm();
+                    }, 300);
+                });
+            }
+            
+            // 选择充值金额
+            amountOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    // 移除所有选中状态
+                    amountOptions.forEach(opt => {
+                        opt.classList.remove('bg-indigo-50', 'border-indigo-200');
+                        opt.classList.add('bg-gray-50', 'border-transparent');
                     });
                     
-                    // 添加当前按钮的激活状态
-                    this.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+                    // 添加选中状态
+                    this.classList.remove('bg-gray-50', 'border-transparent');
+                    this.classList.add('bg-indigo-50', 'border-indigo-200');
                     
+                    // 设置金额
                     const amount = this.getAttribute('data-amount');
+                    amountInput.value = amount;
+                });
+            });
+            
+            // 选择支付方式
+            paymentMethods.forEach(method => {
+                method.addEventListener('click', function() {
+                    // 移除所有选中状态
+                    paymentMethods.forEach(m => m.classList.remove('active', 'border-indigo-500', 'bg-indigo-50'));
                     
-                    if (amount === 'custom') {
-                        // 显示自定义金额输入框
-                        document.getElementById('custom-amount-container').classList.remove('hidden');
-                        document.getElementById('amount').value = '';
-                    } else {
-                        // 隐藏自定义金额输入框
-                        document.getElementById('custom-amount-container').classList.add('hidden');
-                        document.getElementById('amount').value = amount;
+                    // 添加选中状态
+                    this.classList.add('active', 'border-indigo-500', 'bg-indigo-50');
+                    
+                    // 设置支付方式
+                    const paymentMethod = this.getAttribute('data-method');
+                    paymentMethodInput.value = paymentMethod;
+                });
+            });
+            
+            // 提交充值表单
+            if (rechargeForm) {
+                rechargeForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    // 获取充值金额
+                    let amount = amountInput.value;
+                    
+                    // 验证充值金额
+                    if (!amount || isNaN(amount) || amount < 10) {
+                        showMessage('请选择充值金额', 'error');
+                        return;
+                    }
+                    
+                    // 获取支付方式
+                    const paymentMethod = paymentMethodInput.value;
+                    
+                    // 显示加载状态
+                    const submitBtn = rechargeForm.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="ri-loader-2-line animate-spin mr-1"></i> 创建订单中...';
+                    submitBtn.disabled = true;
+                    
+                    try {
+                        // 创建支付订单
+                        const response = await fetch('/api/credits/alipay/create', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                            },
+                            body: JSON.stringify({
+                                amount: parseInt(amount),
+                                paymentMethod
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok && data.success && data.data.paymentUrl) {
+                            // 保存订单信息到本地存储，以便在支付完成后查询
+                            localStorage.setItem('pendingOrderNumber', data.data.orderNumber);
+                            localStorage.setItem('pendingOrderAmount', amount);
+                            
+                            // 如果有过期时间，也保存下来
+                            if (data.data.expireTime) {
+                                localStorage.setItem('orderExpireTime', new Date(data.data.expireTime).getTime());
+                            }
+                            
+                            showMessage('订单创建成功，正在跳转到支付页面...');
+                            
+                            // 跳转到支付页面
+                            window.location.href = data.data.paymentUrl;
+                        } else {
+                            // 订单创建失败
+                            showMessage(data.message || '创建支付订单失败，请稍后重试', 'error');
+                        }
+                    } catch (error) {
+                        console.error('创建支付订单出错:', error);
+                        showMessage('创建支付订单出错，请稍后重试', 'error');
+                    } finally {
+                        // 恢复按钮状态
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.disabled = false;
                     }
                 });
+            }
+        }
+        
+        // 重置充值表单
+        function resetRechargeForm() {
+            const rechargeForm = document.getElementById('recharge-form');
+            const amountOptions = document.querySelectorAll('.amount-option');
+            const amountInput = document.getElementById('amount');
+            
+            if (rechargeForm) {
+                rechargeForm.reset();
+            }
+            
+            // 移除所有选中状态
+            amountOptions.forEach(opt => {
+                opt.classList.remove('bg-indigo-50', 'border-indigo-200');
+                opt.classList.add('bg-gray-50', 'border-transparent');
             });
             
-            // 自定义金额输入框变化事件
-            document.getElementById('custom-amount').addEventListener('input', function() {
-                document.getElementById('amount').value = this.value;
-            });
+            // 重置金额输入
+            amountInput.value = '';
+        }
+        
+        // 初始化开发者模式
+        function initDevMode() {
+            const devModeButton = document.getElementById('dev-mode-button');
+            const devModeToggle = document.getElementById('dev-mode-toggle');
+            const devContainer = document.getElementById('developer-mode-container');
             
-            // 支付方式选择事件
-            document.querySelectorAll('.payment-method').forEach(button => {
-                button.addEventListener('click', function() {
-                    // 支付方式已经固定为支付宝，无需选择
+            if (devModeButton) {
+                devModeButton.addEventListener('click', function() {
+                    if (devContainer.classList.contains('hidden')) {
+                        devContainer.classList.remove('hidden');
+                        populateDevModeFeatureSelect();
+                    } else {
+                        devContainer.classList.add('hidden');
+                    }
                 });
-            });
+            }
             
-            // 充值表单提交事件
-            document.getElementById('recharge-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const amount = document.getElementById('amount').value;
-                const paymentMethod = 'alipay'; // 固定为支付宝
-                
-                // 验证金额
-                let finalAmount = parseInt(amount);
-                if (amount === '' && document.getElementById('custom-amount').value) {
-                    finalAmount = parseInt(document.getElementById('custom-amount').value);
-                }
-                
-                if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
-                    showMessage('请输入有效的充值金额，最低10积分', 'error');
-                    return;
-                }
-                
-                // 显示加载状态
-                showMessage('正在创建支付订单，请稍候...', 'success');
-                
-                // 支付宝支付处理
-                createAlipayOrder(finalAmount);
-            });
+            if (devModeToggle) {
+                devModeToggle.addEventListener('click', function() {
+                    if (devContainer.classList.contains('hidden')) {
+                        devContainer.classList.remove('hidden');
+                        populateDevModeFeatureSelect();
+                    } else {
+                        devContainer.classList.add('hidden');
+                    }
+                });
+            }
             
-            // 开发者模式切换
-            document.getElementById('dev-mode-toggle').addEventListener('click', function() {
-                const devContainer = document.getElementById('developer-mode-container');
-                
-                if (devContainer.classList.contains('hidden')) {
-                    devContainer.classList.remove('hidden');
-                    populateDevModeFeatureSelect();
-                } else {
-                    devContainer.classList.add('hidden');
+            if (devContainer) {
+                const closeDevModeBtn = document.getElementById('close-dev-mode');
+                if (closeDevModeBtn) {
+                    closeDevModeBtn.addEventListener('click', function() {
+                        devContainer.classList.add('hidden');
+                    });
                 }
-            });
-            
-            // 关闭开发者模式按钮
-            document.getElementById('close-dev-mode').addEventListener('click', function() {
-                document.getElementById('developer-mode-container').classList.add('hidden');
-            });
+            }
             
             // 填充功能选择下拉框
             function populateDevModeFeatureSelect() {
@@ -908,7 +1013,7 @@
                     resultBox.classList.add('hidden');
                 }, 3000);
             }
-        });
+        }
     </script>
 </body>
 </html> 
