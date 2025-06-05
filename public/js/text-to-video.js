@@ -1,6 +1,7 @@
 // 全局变量
 let selectedResolution = '1280*720';
-let selectedModel = 'wanx2.1-t2v-turbo';
+let selectedModel = 'wanx2.1-t2v-turbo'; // 默认使用Turbo模型，不再提供选择
+let selectedQuality = '720P'; // 新增：默认选择720P分辨率
 let tasks = [];
 let pollingIntervals = {};
 let currentUser = null;
@@ -63,36 +64,85 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuthStatus();
     loadUserTasks();
     
-    // 视频比例选择
-    document.querySelectorAll('.resolution-btn').forEach(btn => {
+    // 视频分辨率选择
+    document.querySelectorAll('.resolution-quality-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.resolution-btn').forEach(b => {
+            const quality = btn.dataset.quality;
+            
+            // 更新按钮样式
+            document.querySelectorAll('.resolution-quality-btn').forEach(b => {
                 b.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
             });
             btn.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
-            selectedResolution = btn.dataset.resolution;
             
-            // plus模型不支持1:1比例，自动切换
-            if (selectedModel === 'wanx2.1-t2v-plus') {
-                // 检查当前是否是Plus模型不支持的分辨率
-                showToast('选择了视频比例: ' + btn.textContent.trim(), 'info');
+            // 设置选中的分辨率
+            selectedQuality = quality;
+            console.log('选择了分辨率质量:', selectedQuality);
+            
+            // 显示对应的视频比例选项
+            const ratio480Container = document.getElementById('ratio-480p-container');
+            const ratio720Container = document.getElementById('ratio-720p-container');
+            
+            if (quality === '480P') {
+                ratio480Container.style.display = 'grid';
+                ratio720Container.style.display = 'none';
+                
+                // 默认选中480P的16:9
+                const defaultRatioBtn = document.querySelector('#ratio-480p-container .resolution-btn[data-resolution="832*480"]');
+                if (defaultRatioBtn) {
+                    // 先重置所有按钮样式
+                    document.querySelectorAll('#ratio-480p-container .resolution-btn').forEach(b => {
+                        b.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+                    });
+                    // 设置选中样式
+                    defaultRatioBtn.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+                    selectedResolution = defaultRatioBtn.dataset.resolution;
+                    console.log('默认选择了480P的比例:', selectedResolution);
+                }
+            } else {
+                ratio480Container.style.display = 'none';
+                ratio720Container.style.display = 'grid';
+                
+                // 默认选中720P的16:9
+                const defaultRatioBtn = document.querySelector('#ratio-720p-container .resolution-btn[data-resolution="1280*720"]');
+                if (defaultRatioBtn) {
+                    // 先重置所有按钮样式
+                    document.querySelectorAll('#ratio-720p-container .resolution-btn').forEach(b => {
+                        b.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+                    });
+                    // 设置选中样式
+                    defaultRatioBtn.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+                    selectedResolution = defaultRatioBtn.dataset.resolution;
+                    console.log('默认选择了720P的比例:', selectedResolution);
+                }
+                
+                // 确保1:1和4:3按钮在正确位置
+                document.querySelector('#ratio-720p-container .resolution-btn:nth-child(3)').style.gridColumn = '1';
+                document.querySelector('#ratio-720p-container .resolution-btn:nth-child(4)').style.gridColumn = '2';
             }
+            
+            showToast(`已选择${quality}视频分辨率`, 'info');
         });
     });
     
-    // 模型选择
-    document.querySelectorAll('.model-btn').forEach(btn => {
+    // 视频比例选择
+    document.querySelectorAll('.resolution-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.model-btn').forEach(b => {
+            // 找到当前按钮所在的容器
+            const container = btn.closest('#ratio-720p-container, #ratio-480p-container');
+            if (!container) return;
+            
+            // 只重置当前容器内的按钮样式
+            container.querySelectorAll('.resolution-btn').forEach(b => {
                 b.classList.remove('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
             });
-            btn.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
-            selectedModel = btn.dataset.model;
             
-            // Plus模型限制检查
-            if (selectedModel === 'wanx2.1-t2v-plus') {
-                showToast('Plus模型支持所有比例', 'info');
-            }
+            // 设置当前按钮的选中样式
+            btn.classList.add('bg-indigo-100', 'border-indigo-500', 'text-indigo-700');
+            selectedResolution = btn.dataset.resolution;
+            
+            console.log('选择了视频比例:', btn.textContent.trim().split('\n')[0], '分辨率:', selectedResolution, '质量:', selectedQuality);
+            showToast('选择了视频比例: ' + btn.textContent.trim().split('\n')[0], 'info');
         });
     });
     
@@ -125,7 +175,7 @@ function generateVideo() {
     }
     
     // 积分检查
-    const costPerSecond = selectedModel === 'wanx2.1-t2v-turbo' ? 24 : 70; // 0.24元或0.70元转换为积分
+    const costPerSecond = 13.2; // Turbo模型固定为13.2积分/秒，5秒视频总计66积分
     const estimatedCost = costPerSecond * 5; // 假设5秒视频
     console.log('用户积分:', userCredits, '需要积分:', estimatedCost);
     
@@ -143,10 +193,18 @@ function generateVideo() {
     const requestBody = {
         prompt: prompt,
         model: selectedModel,
-        size: selectedResolution
+        size: selectedResolution, // 确保使用用户选择的分辨率
+        quality: selectedQuality  // 添加分辨率质量参数
     };
     
-    console.log('发送视频生成请求:', requestBody);
+    // 记录详细的参数信息，便于调试
+    console.log('发送视频生成请求:', {
+        prompt: prompt,
+        model: selectedModel,
+        size: selectedResolution,
+        quality: selectedQuality,
+        详细说明: `选择了${selectedQuality}分辨率，视频比例为${selectedResolution}`
+    });
     console.log('请求URL:', '/api/text-to-video/create');
     console.log('请求方法: POST');
     
@@ -196,6 +254,7 @@ function generateVideo() {
         }
         
         console.log('获取到任务ID:', taskId);
+        console.log('请求的分辨率参数:', selectedResolution, '质量:', selectedQuality);
         loadingMessage.textContent = '视频生成任务已提交，正在处理中...';
         
         // 将任务添加到任务列表
@@ -205,6 +264,7 @@ function generateVideo() {
             status: 'PENDING',
             model: selectedModel,
             size: selectedResolution,
+            quality: selectedQuality, // 添加分辨率质量信息
             createdAt: new Date().toISOString()
         };
         
@@ -340,6 +400,20 @@ function startPollingTaskStatus(taskId) {
                 console.log(`任务状态变化: ${prevStatus} -> ${taskStatus}`);
                 // 状态变化时，立即进行下一次查询
                 pollingState.lastPollTime = 0;
+                
+                // 如果状态变为成功，检查是否有积分信息
+                if (prevStatus !== taskStatus && taskStatus === 'SUCCEEDED') {
+                    // 检查响应中是否包含积分信息
+                    if (data.output && data.output.credits !== undefined) {
+                        console.log(`收到更新后的积分信息: ${data.output.credits}`);
+                        userCredits = data.output.credits;
+                        userCreditsElement.textContent = `积分: ${userCredits}`;
+                    } else {
+                        // 如果没有积分信息，主动刷新积分
+                        console.log('未收到积分信息，主动刷新积分');
+                        fetchUserCredits();
+                    }
+                }
             }
             
             // 更新视频URL（如果有）
@@ -581,8 +655,8 @@ function createTaskElement(task) {
             <div class="flex-1 pr-4">
                 <p class="font-medium">${task.prompt}</p>
                 <div class="flex mt-2 text-sm text-gray-500">
-                    <span class="mr-4">${task.model === 'wanx2.1-t2v-turbo' ? 'Turbo模型' : 'Plus模型'}</span>
                     <span class="mr-4">${aspectRatio}</span>
+                    <span class="mr-4">${task.quality || '720P'}</span>
                     <span>${formattedDate}</span>
                 </div>
             </div>

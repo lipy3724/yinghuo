@@ -50,42 +50,63 @@
                 
                 <div class="mb-6">
                     <label for="prompt" class="block text-sm font-medium text-gray-700 mb-1">提示词</label>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-medium text-gray-700">输入视频描述</span>
+                        <a href="#" class="text-xs text-indigo-600 hover:text-indigo-800" id="prompt-guide-link">提示词详细教程</a>
+                    </div>
                     <textarea id="prompt" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="请输入详细的视频场景描述，例如：一只小猫在月光下奔跑"></textarea>
                     <p class="mt-1 text-xs text-gray-500">详细、具体的描述可以获得更好的效果</p>
                 </div>
                 
+                <!-- 视频分辨率选择 -->
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">视频比例</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">视频分辨率</label>
                     <div class="grid grid-cols-2 gap-2">
-                        <button class="resolution-btn px-4 py-2 border rounded-md text-center bg-indigo-100 border-indigo-500 text-indigo-700" data-resolution="1280*720">
-                            16:9
+                        <button class="resolution-quality-btn px-4 py-3 border rounded-md text-center" data-quality="480P">
+                            480P
                         </button>
-                        <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="720*1280">
-                            9:16
-                        </button>
-                        <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="960*960">
-                            1:1
-                        </button>
-                        <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="832*1088">
-                            3:4
-                        </button>
-                        <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="1088*832">
-                            4:3
+                        <button class="resolution-quality-btn px-4 py-3 border rounded-md text-center bg-indigo-100 border-indigo-500 text-indigo-700" data-quality="720P">
+                            720P
                         </button>
                     </div>
                 </div>
                 
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">模型选择</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button class="model-btn px-4 py-2 border rounded-md text-center flex flex-col items-center justify-center bg-indigo-100 border-indigo-500 text-indigo-700" data-model="wanx2.1-t2v-turbo">
-                            <span class="font-medium">Turbo 模型</span>
-                            <span class="text-xs mt-1">生成速度快 (0.24元/秒)</span>
-                        </button>
-                        <button class="model-btn px-4 py-2 border rounded-md text-center flex flex-col items-center justify-center" data-model="wanx2.1-t2v-plus">
-                            <span class="font-medium">Plus 模型</span>
-                            <span class="text-xs mt-1">高质量画面 (0.70元/秒)</span>
-                        </button>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">视频比例</label>
+                    <div id="aspect-ratio-container">
+                        <!-- 720P的比例选项 (默认) -->
+                        <div id="ratio-720p-container">
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center bg-indigo-100 border-indigo-500 text-indigo-700" data-resolution="1280*720">
+                                16:9<br>(1280*720)
+                            </button>
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="720*1280">
+                                9:16<br>(720*1280)
+                            </button>
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="960*960">
+                                1:1<br>(960*960)
+                            </button>
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="1088*832">
+                                4:3<br>(1088*832)
+                            </button>
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="832*1088">
+                                3:4<br>(832*1088)
+                            </button>
+                        </div>
+                        
+                        <!-- 480P的比例选项 (初始隐藏) -->
+                        <div id="ratio-480p-container" style="display:none;">
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center bg-indigo-100 border-indigo-500 text-indigo-700" data-resolution="832*480">
+                                16:9<br>(832*480)
+                            </button>
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="480*832">
+                                9:16<br>(480*832)
+                            </button>
+                            <button class="resolution-btn px-4 py-2 border rounded-md text-center" data-resolution="624*624">
+                                1:1<br>(624*624)
+                            </button>
+                            <!-- 添加一个空白按钮占位，使布局与720P一致 -->
+                            <div></div>
+                        </div>
                     </div>
                 </div>
                 
@@ -95,7 +116,7 @@
                         生成视频
                     </button>
                     <p class="mt-2 text-center text-sm text-gray-500">
-                        视频生成需要5-10分钟，请耐心等待
+                        视频生成需要5-10分钟，消耗66积分
                     </p>
                 </div>
             </div>
@@ -139,7 +160,92 @@
             <p class="text-sm text-gray-500 mt-2">视频生成需要5-10分钟</p>
         </div>
     </div>
+    
+    <!-- 提示词教程模态框 -->
+    <div id="prompt-tutorial-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-tutorial">&times;</span>
+            <div class="tutorial-content">
+                <h2 class="text-2xl font-bold mb-4">文生视频/图生视频提示词教程</h2>
+                
+                <p class="text-lg font-medium text-gray-700">提示词公式</p>
+                <p>提示词用来描述视频中所包含的内容和运动过程，它是控制视频画面内容与效果的关键因素。提示词描述越完整、精确和丰富，生成视频的品质越高，且越贴近期望生成的内容。为了帮助您更快上手，我们针对不同的使用需求提供了四种提示词使用公式：</p>
+                
+                <h3 class="text-xl font-medium">基础公式</h3>
+                <p><strong>面向用户：</strong>适用于初次尝试AI视频的新用户，及将AI视频作为灵感启发的用户，简单自由的提示词可生成更具有想象力的视频。</p>
+                
+                <div class="formula">
+                    <p class="font-medium">提示词 = 主体 + 场景 + 运动</p>
+                </div>
+                
+                <ul class="list-disc ml-6 mb-4 text-gray-700">
+                    <li><strong>主体：</strong>主体是视频内容的主要表现对象，可以是人、动物、植物、物品或非物理真实存在的想象物体。</li>
+                    <li><strong>场景：</strong>场景是主体所处的环境，包含背景、前景，可以是物理存在的真实空间或想象出来的虚构场景。</li>
+                    <li><strong>运动：</strong>运动包含主体的具体运动和非主体的运动状态，可以是静止、小幅度运动、大幅度运动、局部运动或整体动势。</li>
+                </ul>
+                
+                <h3 class="text-xl font-medium">进阶公式</h3>
+                <p><strong>面向用户：</strong>适用于有一定AI视频使用经验的用户，在基础公式之上添加更丰富细致的描述可有效提升视频质感、生动性与故事性。</p>
+                
+                <div class="formula">
+                    <p class="font-medium">提示词 = 主体（主体描述）+ 场景（场景描述）+ 运动（运动描述）+ 镜头语言 + 氛围词 + 风格化</p>
+                </div>
+                
+                <ul class="list-disc ml-6 mb-4 text-gray-700">
+                    <li>
+                        <strong>主体描述：</strong>主体描述是对主体外观特征细节的描述，可通过形容词或短句列举。
+                        <p class="example">例如："一位身着少数民族服饰的黑发苗族少女"、"一位来自异世界的飞天仙子，身着破旧却华丽的服饰，背后展开一对由废墟碎片构成的奇异翅膀"</p>
+                    </li>
+                    <li><strong>场景描述：</strong>场景描述是对主体所处环境特征细节的描述，可通过形容词或短句列举。</li>
+                    <li>
+                        <strong>运动描述：</strong>运动描述是对运动特征细节的描述，包含运动的幅度、速率和运动作用的效果。
+                        <p class="example">例如："猛烈地摇摆"、"缓慢地移动"、"打碎了玻璃"</p>
+                    </li>
+                    <li><strong>镜头语言：</strong>镜头语言包含景别、视角、镜头、运镜等。</li>
+                    <li>
+                        <strong>氛围词：</strong>氛围词是对预期画面氛围的描述。
+                        <p class="example">例如："梦幻"、"孤独"、"宏伟"</p>
+                    </li>
+                    <li>
+                        <strong>风格化：</strong>风格化是对画面风格语言的描述。
+                        <p class="example">例如："赛博朋克"、"勾线插画"、"废土风格"</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <script src="/js/text-to-video.js"></script>
+    
+    <!-- 添加提示词教程模态框的JavaScript -->
+    <script>
+        // 获取模态框元素
+        const modal = document.getElementById('prompt-tutorial-modal');
+        // 获取打开模态框的按钮
+        const tutorialLink = document.getElementById('prompt-guide-link');
+        // 获取关闭按钮
+        const closeBtn = document.getElementById('close-tutorial');
+        
+        // 点击链接打开模态框
+        tutorialLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        });
+        
+        // 点击关闭按钮关闭模态框
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // 恢复背景滚动
+        });
+        
+        // 点击模态框外部关闭模态框
+        window.addEventListener('click', function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto'; // 恢复背景滚动
+            }
+        });
+    </script>
 </body>
 </html> 
