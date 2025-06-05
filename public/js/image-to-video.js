@@ -152,7 +152,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 提示词教程链接
     document.getElementById('prompt-guide-link').addEventListener('click', (e) => {
         e.preventDefault();
-        alert('提示词教程功能开发中');
+        document.getElementById('prompt-tutorial-modal').style.display = 'block';
+        document.body.style.overflow = 'hidden'; // 防止背景滚动
     });
     
     // 辅助函数

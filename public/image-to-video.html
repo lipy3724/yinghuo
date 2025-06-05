@@ -86,6 +86,73 @@
                 flex-direction: row;
             }
         }
+        
+        /* 提示词教程模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 30px auto;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 800px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .close-button:hover {
+            color: #000;
+        }
+        
+        /* 提示词教程内容样式 */
+        .tutorial-content h2 {
+            color: #4f46e5;
+            margin-bottom: 1rem;
+        }
+        
+        .tutorial-content h3 {
+            color: #4338ca;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .tutorial-content p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        
+        .tutorial-content .formula {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid #6366f1;
+        }
+        
+        .tutorial-content .example {
+            color: #4b5563;
+            font-style: italic;
+            margin-left: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -220,7 +287,92 @@
         </div>
     </div>
 
+    <!-- 提示词教程模态框 -->
+    <div id="prompt-tutorial-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-tutorial">&times;</span>
+            <div class="tutorial-content">
+                <h2 class="text-2xl font-bold mb-4">文生视频/图生视频提示词教程</h2>
+                
+                <p class="text-lg font-medium text-gray-700">提示词公式</p>
+                <p>提示词用来描述视频中所包含的内容和运动过程，它是控制视频画面内容与效果的关键因素。提示词描述越完整、精确和丰富，生成视频的品质越高，且越贴近期望生成的内容。为了帮助您更快上手，我们针对不同的使用需求提供了四种提示词使用公式：</p>
+                
+                <h3 class="text-xl font-medium">基础公式</h3>
+                <p><strong>面向用户：</strong>适用于初次尝试AI视频的新用户，及将AI视频作为灵感启发的用户，简单自由的提示词可生成更具有想象力的视频。</p>
+                
+                <div class="formula">
+                    <p class="font-medium">提示词 = 主体 + 场景 + 运动</p>
+                </div>
+                
+                <ul class="list-disc ml-6 mb-4 text-gray-700">
+                    <li><strong>主体：</strong>主体是视频内容的主要表现对象，可以是人、动物、植物、物品或非物理真实存在的想象物体。</li>
+                    <li><strong>场景：</strong>场景是主体所处的环境，包含背景、前景，可以是物理存在的真实空间或想象出来的虚构场景。</li>
+                    <li><strong>运动：</strong>运动包含主体的具体运动和非主体的运动状态，可以是静止、小幅度运动、大幅度运动、局部运动或整体动势。</li>
+                </ul>
+                
+                <h3 class="text-xl font-medium">进阶公式</h3>
+                <p><strong>面向用户：</strong>适用于有一定AI视频使用经验的用户，在基础公式之上添加更丰富细致的描述可有效提升视频质感、生动性与故事性。</p>
+                
+                <div class="formula">
+                    <p class="font-medium">提示词 = 主体（主体描述）+ 场景（场景描述）+ 运动（运动描述）+ 镜头语言 + 氛围词 + 风格化</p>
+                </div>
+                
+                <ul class="list-disc ml-6 mb-4 text-gray-700">
+                    <li>
+                        <strong>主体描述：</strong>主体描述是对主体外观特征细节的描述，可通过形容词或短句列举。
+                        <p class="example">例如："一位身着少数民族服饰的黑发苗族少女"、"一位来自异世界的飞天仙子，身着破旧却华丽的服饰，背后展开一对由废墟碎片构成的奇异翅膀"</p>
+                    </li>
+                    <li><strong>场景描述：</strong>场景描述是对主体所处环境特征细节的描述，可通过形容词或短句列举。</li>
+                    <li>
+                        <strong>运动描述：</strong>运动描述是对运动特征细节的描述，包含运动的幅度、速率和运动作用的效果。
+                        <p class="example">例如："猛烈地摇摆"、"缓慢地移动"、"打碎了玻璃"</p>
+                    </li>
+                    <li><strong>镜头语言：</strong>镜头语言包含景别、视角、镜头、运镜等。</li>
+                    <li>
+                        <strong>氛围词：</strong>氛围词是对预期画面氛围的描述。
+                        <p class="example">例如："梦幻"、"孤独"、"宏伟"</p>
+                    </li>
+                    <li>
+                        <strong>风格化：</strong>风格化是对画面风格语言的描述。
+                        <p class="example">例如："赛博朋克"、"勾线插画"、"废土风格"</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <!-- 引用外部Javascript文件 -->
     <script src="/js/image-to-video.js"></script>
+    
+    <!-- 添加提示词教程模态框的JavaScript -->
+    <script>
+        // 获取模态框元素
+        const modal = document.getElementById('prompt-tutorial-modal');
+        // 获取打开模态框的按钮
+        const tutorialLink = document.getElementById('prompt-guide-link');
+        // 获取关闭按钮
+        const closeBtn = document.getElementById('close-tutorial');
+        
+        // 点击链接打开模态框
+        tutorialLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        });
+        
+        // 点击关闭按钮关闭模态框
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // 恢复背景滚动
+        });
+        
+        // 点击模态框外部关闭模态框
+        window.addEventListener('click', function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto'; // 恢复背景滚动
+            }
+        });
+    </script>
 </body>
 </html> 

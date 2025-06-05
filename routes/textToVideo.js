@@ -82,7 +82,7 @@ router.post('/create', protect, async (req, res) => {
     }
     
     // 费用计算 - 积分制
-    const costPerSecond = model === 'wanx2.1-t2v-turbo' ? 24 : 70; // 0.24元/秒 或 0.70元/秒 (转为积分)
+    const costPerSecond = model === 'wanx2.1-t2v-turbo' ? 13.2 : 70; // 改为13.2积分/秒，使5秒视频总计为66积分
     const estimatedCost = costPerSecond * 5; // 假设生成5秒视频
     
     // 查询用户积分
@@ -121,7 +121,7 @@ router.post('/create', protect, async (req, res) => {
           prompt: prompt
         },
         parameters: {
-          resolution: "720P",
+          size: size, // 使用前端传递的size参数，与阿里云API文档一致
           duration: 5,
           prompt_extend: true
         }
@@ -434,6 +434,13 @@ router.get('/status/:taskId', protect, async (req, res) => {
       // 更新本地任务状态
       const userTaskIndex = userTasks[userId].findIndex(task => task.id === taskId);
       if (userTaskIndex !== -1) {
+        // 保存旧状态，用于判断是否是首次成功
+        const previousStatus = userTasks[userId][userTaskIndex].status;
+        const isFirstSuccess = normalizedStatus === 'SUCCEEDED' && previousStatus !== 'SUCCEEDED';
+        
+        console.log(`任务状态变化: ${previousStatus} -> ${normalizedStatus}, 是否首次成功: ${isFirstSuccess}`);
+        
+        // 更新任务状态
         userTasks[userId][userTaskIndex].status = normalizedStatus;
         
         // 如果任务完成，记录视频URL
@@ -461,19 +468,26 @@ router.get('/status/:taskId', protect, async (req, res) => {
           }
           
           // 如果是首次成功（状态从非SUCCEEDED变为SUCCEEDED），扣除积分
-          if (userTasks[userId][userTaskIndex].status !== 'SUCCEEDED') {
+          if (isFirstSuccess) {
             // 获取任务消耗的积分
             const taskCost = userTasks[userId][userTaskIndex].cost || 0;
+            console.log(`准备扣除积分: 任务ID=${taskId}, 积分=${taskCost}, 用户ID=${userId}`);
             
             if (taskCost > 0) {
               try {
                 // 查询用户最新积分
                 const user = await User.findByPk(userId);
                 if (user) {
+                  const oldCredits = user.credits;
                   // 扣除积分
                   user.credits -= taskCost;
                   await user.save();
-                  console.log(`任务完成，扣除用户积分 ${taskCost}`);
+                  console.log(`任务完成，扣除用户积分: ${oldCredits} -> ${user.credits}, 扣除了${taskCost}积分`);
+                  
+                  // 将更新后的积分添加到响应中
+                  responseData.output.credits = user.credits;
+                } else {
+                  console.error(`未找到用户(ID=${userId})，无法扣除积分`);
                 }
               } catch (creditError) {
                 console.error('扣除积分失败:', creditError);
