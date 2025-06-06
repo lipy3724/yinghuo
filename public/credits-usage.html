@@ -114,7 +114,7 @@
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="bg-indigo-50 rounded-lg p-4">
-                    <p class="text-sm text-gray-600">累计消费积分</p>
+                    <p class="text-sm text-gray-600">时段消费积分</p>
                     <p class="text-2xl font-bold text-indigo-600" id="total-credits-used">0</p>
                 </div>
                 <div class="bg-green-50 rounded-lg p-4">
@@ -142,37 +142,6 @@
                     <ul class="space-y-3" id="feature-list">
                         <!-- 功能列表将通过JS动态生成 -->
                     </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="font-medium text-lg mb-4">积分使用明细</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
-                        <tr>
-                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
-                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">功能</th>
-                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
-                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">消费积分</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200" id="usage-list">
-                        <!-- 使用记录将通过JS动态生成 -->
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4 flex justify-between">
-                <div>
-                    <p class="text-sm text-gray-500">显示 <span id="current-page-start">1</span>-<span id="current-page-end">10</span> 条，共 <span id="total-records">0</span> 条</p>
-                </div>
-                <div class="flex space-x-2">
-                    <button id="prev-page" class="px-3 py-1 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">&lt; 上一页</button>
-                    <div class="px-3 py-1 bg-white border border-gray-200 rounded text-gray-700">
-                        <span id="current-page">1</span>/<span id="total-pages">1</span>
-                    </div>
-                    <button id="next-page" class="px-3 py-1 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">下一页 &gt;</button>
                 </div>
             </div>
         </div>
@@ -305,10 +274,6 @@
             }
         }
         
-        // 当前分页状态
-        let currentPage = 1;
-        const pageSize = 10;
-        
         // 设置全局数据变量
         let usageData = {
             summary: {
@@ -335,7 +300,7 @@
             // 更新本地数据
             usageData = data;
             
-            // 更新概览数据
+            // 更新概览数据 - 使用totalCreditsUsed作为所选时间范围内累计消费积分
             document.getElementById('total-credits-used').textContent = usageData.summary?.totalCreditsUsed || 0;
             document.getElementById('total-usage-count').textContent = usageData.summary?.totalUsageCount || 0;
             document.getElementById('feature-count').textContent = usageData.summary?.featureCount || 0;
@@ -348,39 +313,10 @@
             
             // 渲染功能列表
             renderFeatureList();
-            
-            // 渲染使用明细
-            renderUsageList();
-            
-            // 设置总记录数
-            usageData.totalRecords = usageData.usageRecords?.length || 0;
-            
-            // 更新分页信息
-            updatePagination();
-            
-            // 绑定分页按钮事件
-            document.getElementById('prev-page').addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderUsageList();
-                    updatePagination();
-                }
-            });
-            
-            document.getElementById('next-page').addEventListener('click', () => {
-                const totalPages = Math.ceil(usageData.totalRecords / pageSize);
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderUsageList();
-                    updatePagination();
-                }
-            });
         }
         
         // 绑定时间筛选事件
         document.getElementById('time-filter').addEventListener('change', (e) => {
-            // 重置分页
-            currentPage = 1;
             // 重新加载数据
             loadUsageData();
         });
@@ -588,75 +524,6 @@
                     `;
                     featureListEl.appendChild(listItem);
                 });
-        }
-        
-        // 渲染使用明细
-        function renderUsageList() {
-            const usageListEl = document.getElementById('usage-list');
-            usageListEl.innerHTML = '';
-            
-            // 检查是否有记录
-            if (!usageData.usageRecords || usageData.usageRecords.length === 0) {
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `
-                    <td colspan="4" class="px-6 py-10 text-center text-gray-500">
-                        <div class="flex flex-col items-center justify-center">
-                            <i class="ri-file-list-3-line text-4xl mb-2 text-gray-300"></i>
-                            <p>您尚未使用任何功能</p>
-                            <p class="text-sm mt-1">使用功能后，消费的积分将在此处显示</p>
-                        </div>
-                    </td>
-                `;
-                usageListEl.appendChild(emptyRow);
-                
-                // 隐藏分页
-                document.querySelector('.mt-4.flex.justify-between').classList.add('hidden');
-                return;
-            } else {
-                // 显示分页
-                document.querySelector('.mt-4.flex.justify-between').classList.remove('hidden');
-            }
-            
-            // 计算当前页的记录
-            const startIndex = (currentPage - 1) * pageSize;
-            const endIndex = Math.min(startIndex + pageSize, usageData.usageRecords.length);
-            const currentRecords = usageData.usageRecords.slice(startIndex, endIndex);
-            
-            currentRecords.forEach((record, index) => {
-                const row = document.createElement('tr');
-                row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.date}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${record.feature}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${record.description}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600">${record.credits}</td>
-                `;
-                usageListEl.appendChild(row);
-            });
-        }
-        
-        // 更新分页信息
-        function updatePagination() {
-            const totalRecords = usageData.totalRecords;
-            
-            // 如果没有记录，直接返回
-            if (totalRecords === 0) return;
-            
-            const totalPages = Math.ceil(totalRecords / pageSize);
-            const startIndex = (currentPage - 1) * pageSize + 1;
-            const endIndex = Math.min(currentPage * pageSize, totalRecords);
-            
-            document.getElementById('current-page-start').textContent = startIndex;
-            document.getElementById('current-page-end').textContent = endIndex;
-            document.getElementById('total-records').textContent = totalRecords;
-            
-            // 更新当前页码和总页数
-            document.getElementById('current-page').textContent = currentPage;
-            document.getElementById('total-pages').textContent = totalPages;
-            
-            // 禁用/启用分页按钮
-            document.getElementById('prev-page').disabled = currentPage === 1;
-            document.getElementById('next-page').disabled = currentPage === totalPages;
         }
         
         // 页面加载时检查登录状态

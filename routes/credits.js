@@ -423,6 +423,95 @@ router.post('/track-usage', protect, async (req, res) => {
       
       usageType = 'paid';
       creditCost = featureConfig.creditCost;
+      
+      // 对于场景图生成功能，将任务信息保存到全局变量中
+      if (featureName === 'scene-generator') {
+        const taskId = `scene-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+        global.sceneGeneratorTasks[taskId] = {
+          userId: userId,
+          creditCost: creditCost,
+          hasChargedCredits: true,
+          timestamp: new Date()
+        };
+        
+        // 同时将任务信息保存到数据库中
+        try {
+          // 解析现有详情
+          const details = JSON.parse(usage.details || '{}');
+          // 准备任务列表
+          const tasks = details.tasks || [];
+          // 添加新任务
+          tasks.push({
+            taskId: taskId,
+            creditCost: creditCost,
+            timestamp: new Date()
+          });
+          
+          // 更新usage记录 - 同时记录credits字段
+          const currentCredits = usage.credits || 0;
+          usage.credits = currentCredits + creditCost;
+          usage.details = JSON.stringify({
+            ...details,
+            tasks: tasks
+          });
+          
+          // 使用await等待保存完成，确保数据被写入数据库
+          try {
+            await usage.save();
+            console.log(`场景图生成任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          } catch (saveError) {
+            console.error('保存场景图生成任务详情失败:', saveError);
+          }
+        } catch (e) {
+          console.error('处理场景图生成任务详情时解析JSON失败:', e);
+        }
+        
+        console.log(`保存场景图生成任务信息: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+      }
+      // 对于图像智能消除功能，将任务信息保存到全局变量中
+      else if (featureName === 'image-removal') {
+        const taskId = `removal-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+        global.imageRemovalTasks[taskId] = {
+          userId: userId,
+          creditCost: creditCost,
+          hasChargedCredits: true,
+          timestamp: new Date()
+        };
+        
+        // 同时将任务信息保存到数据库中
+        try {
+          // 解析现有详情
+          const details = JSON.parse(usage.details || '{}');
+          // 准备任务列表
+          const tasks = details.tasks || [];
+          // 添加新任务
+          tasks.push({
+            taskId: taskId,
+            creditCost: creditCost,
+            timestamp: new Date()
+          });
+          
+          // 更新usage记录 - 同时记录credits字段
+          const currentCredits = usage.credits || 0;
+          usage.credits = currentCredits + creditCost;
+          usage.details = JSON.stringify({
+            ...details,
+            tasks: tasks
+          });
+          
+          // 使用await等待保存完成，确保数据被写入数据库
+          try {
+            await usage.save();
+            console.log(`图像智能消除任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          } catch (saveError) {
+            console.error('保存图像智能消除任务详情失败:', saveError);
+          }
+        } catch (e) {
+          console.error('处理图像智能消除任务详情时解析JSON失败:', e);
+        }
+        
+        console.log(`保存图像智能消除任务信息: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+      }
     }
     
     // 仅对实际使用功能(非page_view)增加使用次数
@@ -480,22 +569,22 @@ router.get('/usage', protect, async (req, res) => {
       usageData.push(0); // 初始化为0
     }
     
-    // 获取用户的功能使用记录
+    // 获取用户的所有功能使用记录，不限时间范围
     const usages = await FeatureUsage.findAll({
       where: { userId },
-      attributes: ['featureName', 'usageCount', 'lastUsedAt', 'resetDate']
+      attributes: ['featureName', 'usageCount', 'lastUsedAt', 'resetDate', 'credits', 'details']
     });
     
     // 创建功能使用统计数据
     const featureUsageStats = {};
-    let totalCreditsUsed = 0;
+    let totalCreditsUsed = 0; // 时间段内的积分消费
+    let totalAllTimeCreditsUsed = 0; // 所有时间的总积分消费
     let totalUsageCount = 0;
     
-    // 获取用户使用记录
-    // 实际项目中应该有一个UsageHistory表记录每次使用的详细信息
-    // 这里简化处理，仅基于FeatureUsage数据生成模拟记录
+    // 创建单独的功能使用记录
     const usageRecords = [];
     
+    // 处理每个功能的使用记录
     usages.forEach(usage => {
       const featureName = usage.featureName;
       const config = FEATURES[featureName];
@@ -503,57 +592,905 @@ router.get('/usage', protect, async (req, res) => {
       // 跳过未配置的功能
       if (!config) return;
       
-      // 模拟功能使用记录（在真实环境中应该从数据库查询）
+      // 计算功能使用的积分总额
+      let totalFeatureCreditCost = 0;
+      let allTimeFeatureCreditCost = 0; // 该功能的所有时间积分消费
+      
+      // 首先计算该功能的总积分消费（不受时间范围限制）
+      if (usage.credits) {
+        allTimeFeatureCreditCost = usage.credits;
+      }
+      
+      // 处理不同类型的功能，生成单独的使用记录
+      if (featureName === 'DIGITAL_HUMAN_VIDEO') {
+        // 处理视频数字人功能，从全局变量或数据库中获取每次使用的记录
+        const taskIds = Object.keys(global.digitalHumanTasks || {});
+        
+        // 计算所有时间的总积分消费（如果已经有值，使用现有值）
+        if (!allTimeFeatureCreditCost && usage.credits) {
+          allTimeFeatureCreditCost = usage.credits;
+        } else if (!allTimeFeatureCreditCost) {
+          // 计算所有任务的积分总和
+          const allTasks = taskIds.filter(tid => 
+            global.digitalHumanTasks[tid].userId === userId && 
+            global.digitalHumanTasks[tid].hasChargedCredits
+          );
+          
+          allTimeFeatureCreditCost = allTasks.reduce((total, tid) => {
+            const task = global.digitalHumanTasks[tid];
+            return total + (task.creditCost || 0);
+          }, 0);
+        }
+        
+        // 筛选时间范围内的任务
+        const userTasks = taskIds.filter(tid => 
+          global.digitalHumanTasks[tid].userId === userId && 
+          global.digitalHumanTasks[tid].hasChargedCredits &&
+          new Date(global.digitalHumanTasks[tid].timestamp) >= startDate
+        );
+        
+        // 将每次任务作为单独的使用记录
+        userTasks.forEach(tid => {
+          const task = global.digitalHumanTasks[tid];
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          
+          totalFeatureCreditCost += creditCost;
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `生成${task.videoDuration || 1}秒视频`,
+            credits: creditCost
+          });
+          
+          // 更新对应日期的使用量
+          const dateIndex = dateLabels.findIndex(date => 
+            date === taskDate.toISOString().split('T')[0].substring(5)
+          );
+          if (dateIndex !== -1) {
+            usageData[dateIndex] += creditCost;
+          }
+        });
+      }
+      else if (featureName === 'MULTI_IMAGE_TO_VIDEO') {
+        // 处理多图转视频功能，从全局变量中获取每次使用的记录
+        const taskIds = Object.keys(global.multiImageToVideoTasks || {});
+        const userTasks = taskIds.filter(tid => 
+          global.multiImageToVideoTasks[tid].userId === userId && 
+          global.multiImageToVideoTasks[tid].hasChargedCredits &&
+          new Date(global.multiImageToVideoTasks[tid].timestamp) >= startDate
+        );
+        
+        // 将每次任务作为单独的使用记录
+        userTasks.forEach(tid => {
+          const task = global.multiImageToVideoTasks[tid];
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          
+          totalFeatureCreditCost += creditCost;
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `多图生成${task.videoDuration || 10}秒视频`,
+            credits: creditCost
+          });
+          
+          // 更新对应日期的使用量
+          const dateIndex = dateLabels.findIndex(date => 
+            date === taskDate.toISOString().split('T')[0].substring(5)
+          );
+          if (dateIndex !== -1) {
+            usageData[dateIndex] += creditCost;
+          }
+        });
+      } 
+      else if (featureName === 'VIDEO_SUBTITLE_REMOVER') {
+        // 处理视频字幕擦除功能，完全从数据库details字段获取任务记录
+        let tasks = [];
+        let totalCreditCost = 0;
+        
+        // 优先使用直接记录在FeatureUsage表中的credits字段，这个字段在重启后也会保留
+        if (usage.credits) {
+          // 将总积分消费赋值给allTimeFeatureCreditCost
+          allTimeFeatureCreditCost = usage.credits;
+          
+          // 然后再处理时间段内的积分消费
+          if (usage.details) {
+            try {
+              const details = JSON.parse(usage.details);
+              if (details.tasks && Array.isArray(details.tasks)) {
+                // 过滤出时间范围内的任务
+                tasks = details.tasks.filter(task => 
+                  new Date(task.timestamp) >= startDate
+                );
+                console.log(`从数据库获取到${tasks.length}条视频字幕擦除任务记录`);
+                
+                // 计算时间范围内的积分消费
+                if (tasks.length > 0) {
+                  totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+              }
+            } catch (parseError) {
+              console.error('解析视频字幕擦除details字段失败:', parseError);
+            }
+          }
+        } else {
+          // 从数据库details字段获取任务记录
+          if (usage.details) {
+            try {
+              const details = JSON.parse(usage.details);
+              if (details.tasks && Array.isArray(details.tasks)) {
+                // 计算所有时间的总积分消费
+                if (details.tasks.length > 0) {
+                  allTimeFeatureCreditCost = details.tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+                
+                // 过滤出时间范围内的任务
+                tasks = details.tasks.filter(task => 
+                  new Date(task.timestamp) >= startDate
+                );
+                console.log(`从数据库获取到${tasks.length}条视频字幕擦除任务记录`);
+                
+                // 计算时间范围内的积分消费
+                if (tasks.length > 0) {
+                  totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+              }
+            } catch (parseError) {
+              console.error('解析视频字幕擦除details字段失败:', parseError);
+            }
+          }
+        }
+        
+        // 只有在数据库没有记录的情况下，才从全局变量获取（这种情况应该很少发生）
+        if (tasks.length === 0 && !usage.credits) {
+          console.log('数据库中没有视频字幕擦除任务记录，尝试从全局变量获取');
+          const taskIds = Object.keys(global.videoSubtitleTasks || {});
+          
+          // 获取所有任务用于计算总积分
+          const allTasks = taskIds
+            .filter(tid => 
+              global.videoSubtitleTasks[tid].userId === userId && 
+              global.videoSubtitleTasks[tid].hasChargedCredits
+            )
+            .map(tid => global.videoSubtitleTasks[tid]);
+          
+          // 计算所有时间的总积分消费
+          if (allTasks.length > 0) {
+            allTimeFeatureCreditCost = allTasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+          }
+          
+          // 筛选时间范围内的任务
+          const timeRangeTasks = taskIds
+            .filter(tid => 
+              global.videoSubtitleTasks[tid].userId === userId && 
+              global.videoSubtitleTasks[tid].hasChargedCredits &&
+              new Date(global.videoSubtitleTasks[tid].timestamp) >= startDate
+            )
+            .map(tid => global.videoSubtitleTasks[tid]);
+          
+          tasks = timeRangeTasks;
+          
+          // 计算时间范围内的积分消费
+          if (tasks.length > 0) {
+            totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+          }
+        }
+        
+        // 将每次任务作为单独的使用记录
+        tasks.forEach(task => {
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || task.completedAt || now);
+          const duration = task.videoDuration || 0;
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `处理${duration}秒视频`,
+            credits: creditCost
+          });
+          
+          // 更新对应日期的使用量
+          const dateIndex = dateLabels.findIndex(date => 
+            date === taskDate.toISOString().split('T')[0].substring(5)
+          );
+          if (dateIndex !== -1) {
+            usageData[dateIndex] += creditCost;
+          }
+        });
+        
+        // 如果没有任何任务记录，但有使用次数，创建通用记录
+        if (tasks.length === 0 && usage.usageCount > 0) {
+          console.log(`没有找到视频字幕擦除任务记录，但有${usage.usageCount}次使用记录，创建通用记录`);
+          
+          // 使用功能的积分设置计算总积分
+        const paidUsageCount = Math.max(0, usage.usageCount - config.freeUsage);
+          // 视频字幕擦除是动态计算积分的，使用默认值30积分/次
+          const defaultCreditCost = 30;
+          
+          // 确保计算了所有时间的总积分消费
+          if (allTimeFeatureCreditCost === 0 && paidUsageCount > 0) {
+            allTimeFeatureCreditCost = paidUsageCount * defaultCreditCost;
+          }
+          
+          // 计算时间范围内的积分消费
+          if (totalFeatureCreditCost === 0 && paidUsageCount > 0) {
+            totalFeatureCreditCost = paidUsageCount * defaultCreditCost;
+          }
+          
+          // 创建通用记录
+          for (let i = 0; i < paidUsageCount; i++) {
+            // 为每次使用模拟一个时间点，从最后使用时间往前推
+            const recordDate = new Date(usage.lastUsedAt || now);
+            recordDate.setMinutes(recordDate.getMinutes() - i * 30); // 每次使用间隔30分钟
+            
+            // 只添加在查询时间范围内的记录
+            if (recordDate >= startDate) {
+              usageRecords.push({
+                date: recordDate.toLocaleString('zh-CN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }).replace(/\//g, '-'),
+                feature: getLocalFeatureName(featureName),
+                description: `视频字幕擦除 (通用记录)`,
+                credits: defaultCreditCost
+              });
+              
+              // 更新对应日期的使用量
+              const dateIndex = dateLabels.findIndex(date => 
+                date === recordDate.toISOString().split('T')[0].substring(5)
+              );
+              if (dateIndex !== -1) {
+                usageData[dateIndex] += defaultCreditCost;
+              }
+            }
+          }
+        }
+      }
+      else if (featureName === 'VIDEO_STYLE_REPAINT') {
+        // 处理视频风格重绘功能，从数据库details字段或全局变量中获取每次使用的记录
+        let tasks = [];
+        
+        // 首先尝试从数据库details字段获取任务记录
+        if (usage.details) {
+          try {
+            const details = JSON.parse(usage.details);
+            if (details.tasks && Array.isArray(details.tasks)) {
+              // 过滤出时间范围内的任务
+              tasks = details.tasks.filter(task => 
+                new Date(task.timestamp) >= startDate
+              );
+            }
+          } catch (parseError) {
+            console.error('解析视频风格重绘details字段失败:', parseError);
+          }
+        }
+        
+        // 如果数据库中没有记录，尝试从全局变量获取
+        if (tasks.length === 0) {
+          const taskIds = Object.keys(global.videoStyleRepaintTasks || {});
+          const globalTasks = taskIds
+            .filter(tid => 
+              global.videoStyleRepaintTasks[tid].userId === userId && 
+              global.videoStyleRepaintTasks[tid].hasChargedCredits &&
+              new Date(global.videoStyleRepaintTasks[tid].timestamp) >= startDate
+            )
+            .map(tid => ({
+              ...global.videoStyleRepaintTasks[tid],
+              taskId: tid
+            }));
+          
+          tasks = globalTasks;
+        }
+        
+        // 将每次任务作为单独的使用记录
+        tasks.forEach(task => {
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          const duration = task.videoDuration || 0;
+          const resolution = task.resolution || 540;
+          const rate = resolution <= 540 ? 3 : 6;
+          
+          totalFeatureCreditCost += creditCost;
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `${resolution}P风格重绘${duration}秒视频 (${rate}积分/秒)`,
+            credits: creditCost
+          });
+          
+          // 更新对应日期的使用量
+          const dateIndex = dateLabels.findIndex(date => 
+            date === taskDate.toISOString().split('T')[0].substring(5)
+          );
+          if (dateIndex !== -1) {
+            usageData[dateIndex] += creditCost;
+          }
+        });
+      }
+      else if (featureName === 'scene-generator') {
+        // 处理场景图生成功能，从数据库details字段或全局变量中获取每次使用的记录
+        let tasks = [];
+        
+        // 优先使用直接记录在FeatureUsage表中的credits字段，这个字段在重启后也会保留
+        if (usage.credits) {
+          // 记录所有时间的总积分消费
+          allTimeFeatureCreditCost = usage.credits;
+          
+          // 从数据库details字段获取时间范围内的任务记录
+          if (usage.details) {
+            try {
+              const details = JSON.parse(usage.details);
+              if (details.tasks && Array.isArray(details.tasks)) {
+                // 过滤出时间范围内的任务
+                tasks = details.tasks.filter(task => 
+                  new Date(task.timestamp) >= startDate
+                );
+                console.log(`从数据库获取到${tasks.length}条场景图生成任务记录`);
+                
+                // 计算时间范围内的积分消费
+                if (tasks.length > 0) {
+                  totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+              }
+            } catch (parseError) {
+              console.error('解析场景图生成details字段失败:', parseError);
+            }
+          }
+        } else {
+          // 从数据库details字段获取任务记录
+          if (usage.details) {
+            try {
+              const details = JSON.parse(usage.details);
+              if (details.tasks && Array.isArray(details.tasks)) {
+                // 计算所有时间的总积分消费
+                if (details.tasks.length > 0) {
+                  allTimeFeatureCreditCost = details.tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+                
+                // 过滤出时间范围内的任务
+                tasks = details.tasks.filter(task => 
+                  new Date(task.timestamp) >= startDate
+                );
+                console.log(`从数据库获取到${tasks.length}条场景图生成任务记录`);
+                
+                // 计算时间范围内的积分消费
+                if (tasks.length > 0) {
+                  totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+              }
+            } catch (parseError) {
+              console.error('解析场景图生成details字段失败:', parseError);
+            }
+          }
+        }
+        
+        // 如果数据库中没有记录，尝试从全局变量获取
+        if (tasks.length === 0) {
+          console.log('数据库中没有场景图生成任务记录，尝试从全局变量获取');
+          const taskIds = Object.keys(global.sceneGeneratorTasks || {});
+          
+          // 获取所有任务用于计算总积分
+          const allTasks = taskIds
+            .filter(tid => 
+              global.sceneGeneratorTasks[tid].userId === userId && 
+              global.sceneGeneratorTasks[tid].hasChargedCredits
+            )
+            .map(tid => global.sceneGeneratorTasks[tid]);
+          
+          // 计算所有时间的总积分消费
+          if (allTasks.length > 0) {
+            allTimeFeatureCreditCost = allTasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+          }
+          
+          // 筛选时间范围内的任务
+          const timeRangeTasks = taskIds
+            .filter(tid => 
+              global.sceneGeneratorTasks[tid].userId === userId && 
+              global.sceneGeneratorTasks[tid].hasChargedCredits &&
+              new Date(global.sceneGeneratorTasks[tid].timestamp) >= startDate
+            )
+            .map(tid => ({
+              ...global.sceneGeneratorTasks[tid],
+              taskId: tid
+            }));
+          
+          tasks = timeRangeTasks;
+          
+          // 计算时间范围内的积分消费
+          if (tasks.length > 0) {
+            totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+          }
+        }
+        
+        // 将每次任务作为单独的使用记录
+        tasks.forEach(task => {
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `生成场景图片`,
+            credits: creditCost
+          });
+          
+          // 更新对应日期的使用量
+          const dateIndex = dateLabels.findIndex(date => 
+            date === taskDate.toISOString().split('T')[0].substring(5)
+          );
+          if (dateIndex !== -1) {
+            usageData[dateIndex] += creditCost;
+          }
+        });
+        
+        // 如果没有任何任务记录，但有使用次数，创建通用记录
+        if (tasks.length === 0 && usage.usageCount > 0) {
+          console.log(`没有找到场景图生成任务记录，但有${usage.usageCount}次使用记录，创建通用记录`);
+          
+          // 使用功能的积分设置计算总积分
+          const paidUsageCount = Math.max(0, usage.usageCount - config.freeUsage);
+          const defaultCreditCost = 20; // 场景图生成默认20积分/次
+          if (totalFeatureCreditCost === 0 && paidUsageCount > 0) {
+            totalFeatureCreditCost = paidUsageCount * defaultCreditCost;
+          }
+          
+          // 创建通用记录
+          for (let i = 0; i < paidUsageCount; i++) {
+            // 为每次使用模拟一个时间点，从最后使用时间往前推
+            const recordDate = new Date(usage.lastUsedAt || now);
+            recordDate.setMinutes(recordDate.getMinutes() - i * 30); // 每次使用间隔30分钟
+            
+            // 只添加在查询时间范围内的记录
+            if (recordDate >= startDate) {
+          usageRecords.push({
+                date: recordDate.toLocaleString('zh-CN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+                description: `场景图生成 (通用记录)`,
+                credits: defaultCreditCost
+              });
+              
+              // 更新对应日期的使用量
+              const dateIndex = dateLabels.findIndex(date => 
+                date === recordDate.toISOString().split('T')[0].substring(5)
+              );
+              if (dateIndex !== -1) {
+                usageData[dateIndex] += defaultCreditCost;
+              }
+            }
+          }
+        }
+      }
+      else if (featureName === 'image-removal') {
+        // 处理图像智能消除功能，从数据库details字段或全局变量中获取每次使用的记录
+        let tasks = [];
+        
+        // 优先使用直接记录在FeatureUsage表中的credits字段，这个字段在重启后也会保留
+        if (usage.credits) {
+          // 记录所有时间的总积分消费
+          allTimeFeatureCreditCost = usage.credits;
+          
+          // 从数据库details字段获取时间范围内的任务记录
+          if (usage.details) {
+            try {
+              const details = JSON.parse(usage.details);
+              if (details.tasks && Array.isArray(details.tasks)) {
+                // 过滤出时间范围内的任务
+                tasks = details.tasks.filter(task => 
+                  new Date(task.timestamp) >= startDate
+                );
+                console.log(`从数据库获取到${tasks.length}条图像智能消除任务记录`);
+                
+                // 计算时间范围内的积分消费
+                if (tasks.length > 0) {
+                  totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+              }
+            } catch (parseError) {
+              console.error('解析图像智能消除details字段失败:', parseError);
+            }
+          }
+        } else {
+          // 从数据库details字段获取任务记录
+          if (usage.details) {
+            try {
+              const details = JSON.parse(usage.details);
+              if (details.tasks && Array.isArray(details.tasks)) {
+                // 计算所有时间的总积分消费
+                if (details.tasks.length > 0) {
+                  allTimeFeatureCreditCost = details.tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+                
+                // 过滤出时间范围内的任务
+                tasks = details.tasks.filter(task => 
+                  new Date(task.timestamp) >= startDate
+                );
+                console.log(`从数据库获取到${tasks.length}条图像智能消除任务记录`);
+                
+                // 计算时间范围内的积分消费
+                if (tasks.length > 0) {
+                  totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+                }
+              }
+            } catch (parseError) {
+              console.error('解析图像智能消除details字段失败:', parseError);
+            }
+          }
+        }
+        
+        // 如果数据库中没有记录，尝试从全局变量获取
+        if (tasks.length === 0) {
+          console.log('数据库中没有图像智能消除任务记录，尝试从全局变量获取');
+          const taskIds = Object.keys(global.imageRemovalTasks || {});
+          
+          // 获取所有任务用于计算总积分
+          const allTasks = taskIds
+            .filter(tid => 
+              global.imageRemovalTasks[tid].userId === userId && 
+              global.imageRemovalTasks[tid].hasChargedCredits
+            )
+            .map(tid => global.imageRemovalTasks[tid]);
+          
+          // 计算所有时间的总积分消费
+          if (allTasks.length > 0) {
+            allTimeFeatureCreditCost = allTasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+          }
+          
+          // 筛选时间范围内的任务
+          const timeRangeTasks = taskIds
+            .filter(tid => 
+              global.imageRemovalTasks[tid].userId === userId && 
+              global.imageRemovalTasks[tid].hasChargedCredits &&
+              new Date(global.imageRemovalTasks[tid].timestamp) >= startDate
+            )
+            .map(tid => ({
+              ...global.imageRemovalTasks[tid],
+              taskId: tid
+            }));
+          
+          tasks = timeRangeTasks;
+          
+          // 计算时间范围内的积分消费
+          if (tasks.length > 0) {
+            totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+          }
+        }
+        
+        // 将每次任务作为单独的使用记录
+        tasks.forEach(task => {
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `图像智能消除`,
+            credits: creditCost
+          });
+          
+          // 更新对应日期的使用量
+          const dateIndex = dateLabels.findIndex(date => 
+            date === taskDate.toISOString().split('T')[0].substring(5)
+          );
+          if (dateIndex !== -1) {
+            usageData[dateIndex] += creditCost;
+          }
+        });
+        
+        // 如果没有任何任务记录，但有使用次数，创建通用记录
+        if (tasks.length === 0 && usage.usageCount > 0) {
+          console.log(`没有找到图像智能消除任务记录，但有${usage.usageCount}次使用记录，创建通用记录`);
+          
+          // 使用功能的积分设置计算总积分
+          const paidUsageCount = Math.max(0, usage.usageCount - config.freeUsage);
+          const defaultCreditCost = 15; // 图像智能消除默认15积分/次
+          
+          // 确保计算了所有时间的总积分消费
+          if (allTimeFeatureCreditCost === 0 && paidUsageCount > 0) {
+            allTimeFeatureCreditCost = paidUsageCount * defaultCreditCost;
+          }
+          
+          // 计算时间范围内的积分消费
+          if (totalFeatureCreditCost === 0 && paidUsageCount > 0) {
+            totalFeatureCreditCost = paidUsageCount * defaultCreditCost;
+          }
+          
+          // 创建通用记录
+          for (let i = 0; i < paidUsageCount; i++) {
+            // 为每次使用模拟一个时间点，从最后使用时间往前推
+            const recordDate = new Date(usage.lastUsedAt || now);
+            recordDate.setMinutes(recordDate.getMinutes() - i * 30); // 每次使用间隔30分钟
+            
+            // 只添加在查询时间范围内的记录
+            if (recordDate >= startDate) {
+              usageRecords.push({
+                date: recordDate.toLocaleString('zh-CN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }).replace(/\//g, '-'),
+                feature: getLocalFeatureName(featureName),
+                description: `图像智能消除 (通用记录)`,
+                credits: defaultCreditCost
+              });
+              
+              // 更新对应日期的使用量
+              const dateIndex = dateLabels.findIndex(date => 
+                date === recordDate.toISOString().split('T')[0].substring(5)
+              );
+              if (dateIndex !== -1) {
+                usageData[dateIndex] += defaultCreditCost;
+              }
+            }
+          }
+        }
+      }
+      else if (featureName === 'IMAGE_SHARPENING') {
+        // 处理模糊图片变清晰功能，从全局变量中获取每次使用的记录
+        const taskIds = Object.keys(global.imageSharpeningTasks || {});
+        const userTasks = taskIds
+          .filter(tid => 
+            global.imageSharpeningTasks[tid].userId === userId && 
+            global.imageSharpeningTasks[tid].hasChargedCredits &&
+            new Date(global.imageSharpeningTasks[tid].timestamp) >= startDate
+          )
+          .map(tid => (
+            {...global.imageSharpeningTasks[tid], taskId: tid}
+          ));
+        
+        // 将每次任务作为单独的使用记录
+        userTasks.forEach(task => {
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          
+          totalFeatureCreditCost += creditCost;
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `使用了模糊图片变清晰功能`,
+            credits: creditCost
+          });
+        });
+      }
+      else if (featureName === 'DIANTU') {
+        // 处理垫图功能，从全局变量中获取每次使用的记录
+        const taskIds = Object.keys(global.diantuTasks || {});
+        const userTasks = taskIds
+          .filter(tid => 
+            global.diantuTasks[tid].userId === userId && 
+            global.diantuTasks[tid].hasChargedCredits &&
+            new Date(global.diantuTasks[tid].timestamp) >= startDate
+          )
+          .map(tid => (
+            {...global.diantuTasks[tid], taskId: tid}
+          ));
+        
+        // 将每次任务作为单独的使用记录
+        userTasks.forEach(task => {
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          
+          totalFeatureCreditCost += creditCost;
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `使用了垫图功能`,
+            credits: creditCost
+          });
+        });
+      }
+      else if (featureName === 'TEXT_TO_IMAGE') {
+        // 处理文生图片功能，从数据库details字段或全局变量中获取每次使用的记录
+        let tasks = [];
+        
+        // 首先尝试从数据库details字段获取任务记录
+        if (usage.details) {
+          try {
+            const details = JSON.parse(usage.details);
+            if (details.tasks && Array.isArray(details.tasks)) {
+              // 过滤出时间范围内的任务
+              tasks = details.tasks.filter(task => 
+                new Date(task.timestamp) >= startDate
+              );
+              console.log(`从数据库获取到${tasks.length}条文生图片任务记录`);
+            }
+          } catch (parseError) {
+            console.error('解析details字段失败:', parseError);
+          }
+        }
+        
+        // 如果数据库中没有记录，尝试从全局变量获取
+        if (tasks.length === 0) {
+          const taskIds = Object.keys(global.textToImageTasks || {});
+          const globalTasks = taskIds
+            .filter(tid => 
+              global.textToImageTasks[tid].userId === userId && 
+              global.textToImageTasks[tid].hasChargedCredits &&
+              new Date(global.textToImageTasks[tid].timestamp) >= startDate
+            )
+            .map(tid => ({
+              ...global.textToImageTasks[tid],
+              taskId: tid
+            }));
+          
+          tasks = globalTasks;
+          console.log(`从全局变量获取到${tasks.length}条文生图片任务记录`);
+        }
+        
+        // 将每次任务作为单独的使用记录
+        tasks.forEach(task => {
+          const creditCost = task.creditCost || 0;
+          const taskDate = new Date(task.timestamp || now);
+          
+          totalFeatureCreditCost += creditCost;
+          
+          // 添加单独的使用记录
+          usageRecords.push({
+            date: taskDate.toLocaleString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).replace(/\//g, '-'),
+            feature: getLocalFeatureName(featureName),
+            description: `使用了文生图片功能${task.prompt ? ' - ' + task.prompt.substring(0, 20) + (task.prompt.length > 20 ? '...' : '') : ''}`,
+            credits: creditCost
+          });
+          
+          // 更新对应日期的使用量
+          const dateIndex = dateLabels.findIndex(date => 
+            date === taskDate.toISOString().split('T')[0].substring(5)
+          );
+          if (dateIndex !== -1) {
+            usageData[dateIndex] += creditCost;
+          }
+        });
+      }
+      else {
+        // 其他功能，如果没有详细记录，则使用通用方法处理
       if (usage.lastUsedAt && new Date(usage.lastUsedAt) >= startDate) {
-        // 添加此功能的使用记录
         const lastUsedDate = new Date(usage.lastUsedAt);
         
-        // 计算功能消费的积分总额 - 修正计算逻辑
-        // 只有超过免费使用次数的部分才会消耗积分
+          // 计算功能消费的积分
+          let creditCost = 0;
         const paidUsageCount = Math.max(0, usage.usageCount - config.freeUsage);
         
-        // 处理不同类型的积分消耗计算
-        let creditCost = 0;
         if (typeof config.creditCost === 'function') {
-          // 对于动态计算积分的功能，使用默认值
-          // 这里简化处理，实际应该从使用记录中获取
+            // 动态计算积分的功能，使用默认值
           creditCost = paidUsageCount > 0 ? paidUsageCount * 10 : 0; // 默认10积分/次
         } else {
           // 固定积分消耗
           creditCost = paidUsageCount * config.creditCost;
         }
         
-        totalCreditsUsed += creditCost;
-        totalUsageCount += usage.usageCount;
-        
-        // 如果这个功能有使用记录，添加到统计数据中 (即使creditCost为0)
-        if (usage.usageCount > 0) {
-          // 功能消费占比
-          featureUsageStats[featureName] = {
-            name: getLocalFeatureName(featureName),
-            credits: creditCost,
-            count: usage.usageCount
-          };
+          totalFeatureCreditCost = creditCost;
           
-          // 为图表更新对应日期的使用量
-          // 这里简化处理，将使用量记录在最后使用日期
-          const dateIndex = dateLabels.findIndex(date => 
-            date === lastUsedDate.toISOString().split('T')[0].substring(5)
-          );
-          if (dateIndex !== -1) {
-            usageData[dateIndex] += creditCost;
-          }
+          // 对于这类功能，每次使用按照单次计算积分
+          const singleUseCost = typeof config.creditCost === 'function' ? 10 : config.creditCost;
           
-          // 添加使用记录 (即使creditCost为0也添加)
+          // 生成单独的使用记录
+          for (let i = 0; i < paidUsageCount; i++) {
+            // 为每次使用模拟一个时间点，从最后使用时间往前推
+            const recordDate = new Date(lastUsedDate);
+            recordDate.setMinutes(recordDate.getMinutes() - i * 30); // 每次使用间隔30分钟
+            
+            // 只添加在查询时间范围内的记录
+            if (recordDate >= startDate) {
           usageRecords.push({
-            date: lastUsedDate.toISOString().replace('T', ' ').substring(0, 16),
+                date: recordDate.toLocaleString('zh-CN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }).replace(/\//g, '-'),
             feature: getLocalFeatureName(featureName),
-            description: `功能使用 (${usage.usageCount}次)`,
-            credits: creditCost
-          });
+                description: `功能使用`,
+                credits: singleUseCost
+              });
+              
+              // 更新对应日期的使用量
+              const dateIndex = dateLabels.findIndex(date => 
+                date === recordDate.toISOString().split('T')[0].substring(5)
+              );
+              if (dateIndex !== -1) {
+                usageData[dateIndex] += singleUseCost;
+              }
+            }
+          }
         }
       }
+      
+      // 如果这个功能有使用记录，添加到统计数据中
+      if (totalFeatureCreditCost > 0) {
+        featureUsageStats[featureName] = {
+          name: getLocalFeatureName(featureName),
+          credits: totalFeatureCreditCost,
+          count: usage.usageCount
+        };
+      }
+      
+      // 更新总计数据 - 分开时间段内的积分和所有时间的积分
+      totalCreditsUsed += totalFeatureCreditCost;
+      totalAllTimeCreditsUsed += allTimeFeatureCreditCost;
+      totalUsageCount += usage.usageCount;
     });
+    
+    // 按日期降序排序
+    usageRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
     
     // 计算功能使用百分比
     const featureUsage = [];
@@ -580,6 +1517,7 @@ router.get('/usage', protect, async (req, res) => {
       'VIDEO_SUBTITLE_REMOVER': 'rgb(220, 120, 30)',  // 视频去除字幕
       'MULTI_IMAGE_TO_VIDEO': 'rgb(155, 89, 182)',    // 多图转视频
       'DIGITAL_HUMAN_VIDEO': 'rgb(41, 128, 185)',     // 视频数字人
+      'VIDEO_STYLE_REPAINT': 'rgb(255, 0, 0)',         // 视频风格重绘
       'amazon_video_script': 'rgb(75, 192, 192)',     // 亚马逊广告视频脚本生成
       'product_improvement_analysis': 'rgb(255, 159, 64)', // 选品的改款分析和建议
       'amazon_brand_info': 'rgb(54, 162, 235)',      // 品牌信息收集和总结
@@ -589,9 +1527,14 @@ router.get('/usage', protect, async (req, res) => {
       'amazon_review_analysis': 'rgb(255, 159, 64)', // 亚马逊客户评论分析
       'amazon_consumer_insights': 'rgb(54, 162, 235)', // 亚马逊消费者洞察专家
       'amazon_customer_email': 'rgb(255, 99, 132)',  // 亚马逊客户邮件回复
+      'fba_claim_email': 'rgb(75, 192, 192)',    // FBA索赔邮件
+      'amazon_review_generator': 'rgb(153, 102, 255)', // 亚马逊评论生成
+      'amazon_review_response': 'rgb(255, 159, 64)', // 亚马逊评论回复
+      'product_comparison': 'rgb(255, 159, 64)',     // 产品对比
       'amazon_post_creator': 'rgb(75, 192, 192)',    // 创建亚马逊Post
       'amazon_keyword_recommender': 'rgb(153, 102, 255)', // 亚马逊关键词推荐
-      'product_comparison': 'rgb(255, 159, 64)',     // 产品对比
+      'amazon_case_creator': 'rgb(255, 159, 64)',     // 亚马逊客服case内容
+      'DIANTU': '垫图',
     };
     
     Object.keys(featureUsageStats).forEach(key => {
@@ -627,6 +1570,7 @@ router.get('/usage', protect, async (req, res) => {
       data: {
         summary: {
           totalCreditsUsed,
+          totalAllTimeCreditsUsed,
           totalUsageCount,
           featureCount: Object.keys(featureUsageStats).length
         },
@@ -678,6 +1622,7 @@ function getLocalFeatureName(featureName) {
     'MULTI_IMAGE_TO_VIDEO': '多图转视频',
     'DIGITAL_HUMAN_VIDEO': '视频数字人',
     'VIDEO_STYLE_REPAINT': '视频风格重绘',
+    'DIANTU': '垫图',
     'amazon_video_script': '亚马逊广告视频脚本生成',
     'product_improvement_analysis': '选品的改款分析和建议',
     'amazon_brand_info': '品牌信息收集和总结',
