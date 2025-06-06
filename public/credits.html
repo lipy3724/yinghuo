@@ -775,8 +775,8 @@
                     if (!amount || isNaN(amount) || amount < 10) {
                         showMessage('请选择充值金额', 'error');
                         return;
-                    }
-                    
+        }
+        
                     // 获取支付方式
                     const paymentMethod = paymentMethodInput.value;
                     
@@ -789,24 +789,24 @@
                     try {
                         // 创建支付订单
                         const response = await fetch('/api/credits/alipay/create', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                            },
-                            body: JSON.stringify({
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ 
                                 amount: parseInt(amount),
                                 paymentMethod
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        
+                    })
+                });
+                
+                const data = await response.json();
+                
                         if (response.ok && data.success && data.data.paymentUrl) {
                             // 保存订单信息到本地存储，以便在支付完成后查询
                             localStorage.setItem('pendingOrderNumber', data.data.orderNumber);
                             localStorage.setItem('pendingOrderAmount', amount);
-                            
+                    
                             // 如果有过期时间，也保存下来
                             if (data.data.expireTime) {
                                 localStorage.setItem('orderExpireTime', new Date(data.data.expireTime).getTime());
@@ -816,11 +816,11 @@
                             
                             // 跳转到支付页面
                             window.location.href = data.data.paymentUrl;
-                        } else {
+                } else {
                             // 订单创建失败
                             showMessage(data.message || '创建支付订单失败，请稍后重试', 'error');
-                        }
-                    } catch (error) {
+                }
+            } catch (error) {
                         console.error('创建支付订单出错:', error);
                         showMessage('创建支付订单出错，请稍后重试', 'error');
                     } finally {
@@ -871,13 +871,13 @@
             
             if (devModeToggle) {
                 devModeToggle.addEventListener('click', function() {
-                    if (devContainer.classList.contains('hidden')) {
-                        devContainer.classList.remove('hidden');
-                        populateDevModeFeatureSelect();
-                    } else {
-                        devContainer.classList.add('hidden');
-                    }
-                });
+                if (devContainer.classList.contains('hidden')) {
+                    devContainer.classList.remove('hidden');
+                    populateDevModeFeatureSelect();
+                } else {
+                    devContainer.classList.add('hidden');
+                }
+            });
             }
             
             if (devContainer) {
@@ -885,7 +885,7 @@
                 if (closeDevModeBtn) {
                     closeDevModeBtn.addEventListener('click', function() {
                         devContainer.classList.add('hidden');
-                    });
+            });
                 }
             }
             
