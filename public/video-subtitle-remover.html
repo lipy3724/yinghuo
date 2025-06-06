@@ -111,7 +111,15 @@
                             视频时长: 计算中...
                         </div>
 
-                        <div id="original-video-container" class="mb-8">
+                        <div id="original-video-container" class="mb-4">
+                        </div>
+                        
+                        <!-- 添加固定在底部的按钮 - 移到这里 -->
+                        <div class="mt-24">
+                            <button id="process-btn" class="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 flex items-center justify-center text-sm">
+                                <i class="ri-film-line mr-1"></i>
+                                开始处理
+                            </button>
                         </div>
                     </div>
                     
@@ -159,18 +167,21 @@
                                 <p class="mb-1">- 每次处理视频将消耗您账户中的积分</p>
                                 <p class="mb-1">- 硬字幕（内嵌字幕）去除效果比软字幕更好</p>
                                 <p class="mb-1">- 成功率与视频清晰度、字幕类型和背景复杂度有关</p>
+                                
+                                <p class="font-medium mt-4">输入限制：</p>
+                                <p class="mb-1">- 视频格式：MP4。</p>
+                                <p class="mb-1">- 视频大小：不超过1GB。</p>
+                                <p class="mb-1">- 视频分辨率：不超过1080P。</p>
+                                <p class="mb-1">- URL地址中不能包含中文字符。</p>
+                                <p class="mb-1">- 支持常规中文/英文字幕，比如纯色电影字幕。不支持复杂的花体字幕，字体笔画过于纤细的字幕。</p>
+                                
+                                <p class="font-medium mt-4">安全声明：</p>
+                                <p class="mb-1">- 请确保上传的图片或文件来源符合相应的法律法规。</p>
+                                <p class="mb-1">- 通过体验调试上传的临时文件有效期为1小时，在24小时后会被系统自动清理删除。</p>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- 添加固定在底部的按钮 -->
-            <div class="w-full lg:w-1/5 p-3 bg-white border-t border-gray-200">
-                <button id="process-btn" class="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 flex items-center justify-center text-sm">
-                    <i class="ri-film-line mr-1"></i>
-                    开始处理
-                </button>
             </div>
         </div>
     </div>
