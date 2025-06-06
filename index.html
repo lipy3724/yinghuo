@@ -42,24 +42,98 @@
             z-index: 10;
         }
         @keyframes firefly-glow {
-            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
-            50% { text-shadow: 0 0 10px rgba(99, 102, 241, 0.8), 0 0 15px rgba(99, 102, 241, 0.3); }
-            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.5); }
+            0% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.2); }
+            50% { text-shadow: 0 0 8px rgba(99, 102, 241, 0.3); }
+            100% { text-shadow: 0 0 3px rgba(99, 102, 241, 0.2); }
         }
         .logo-text {
-            animation: firefly-glow 3s infinite;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 1px 1px rgba(99, 102, 241, 0.2));
         }
         .logo-dot {
             display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: #6366f1;
+            width: 6px;
+            height: 6px;
+            background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%);
             border-radius: 50%;
             margin-left: 2px;
-            margin-right: 4px;
+            margin-right: 2px;
             position: relative;
-            top: -2px;
+            top: -1px;
+            box-shadow: 0 0 4px rgba(99, 102, 241, 0.4);
         }
+        
+        /* 添加logo容器样式，增加间距和对齐 */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 5;
+            transition: transform 0.2s ease;
+        }
+        
+        /* 添加logo的hover效果 - 简化版 */
+        .logo-container:hover .logo-text {
+            filter: drop-shadow(0 1px 2px rgba(99, 102, 241, 0.3));
+        }
+        
+        .logo-container:hover .logo-dot {
+            box-shadow: 0 0 6px rgba(99, 102, 241, 0.5);
+        }
+        
+        /* Logo链接样式 - 简化版 */
+        .logo-link {
+            position: relative;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-link:hover {
+            background-color: rgba(249, 250, 251, 0.8);
+        }
+        
+        .logo-link:after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            width: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #8b5cf6, transparent);
+            transform: translateX(-50%);
+            transition: width 0.2s ease;
+            opacity: 0;
+        }
+        
+        .logo-link:hover:after {
+            width: 60%;
+            opacity: 0.6;
+        }
+        
+        /* 优化英文名称样式 */
+        .logo-subtitle {
+            font-size: 0.7rem;
+            color: #6b7280;
+            font-weight: 400;
+            letter-spacing: 0.05em;
+            margin-left: 4px;
+            opacity: 0.8;
+            transition: all 0.2s ease;
+        }
+        
+        a:hover .logo-subtitle {
+            color: #6366f1;
+            opacity: 0.9;
+        }
+        
         /* 导航栏高度 */
         .navbar {
             height: 60px;
@@ -906,9 +980,11 @@
     <!-- 导航栏 -->
     <nav class="navbar flex items-center justify-between px-4">
         <div class="flex items-center">
-            <a href="#" class="flex items-center">
+            <a href="#" class="flex items-center logo-link">
+                <div class="logo-container">
                 <span class="font-bold text-2xl text-indigo-600 mr-1 logo-text">萤火<span class="logo-dot"></span>AI</span>
-                <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
+                </div>
+                <span class="logo-subtitle">Yinghuo.Ai</span>
             </a>
             <!-- 添加顶部导航功能菜单 -->
             <div class="ml-8 flex items-center space-x-6">

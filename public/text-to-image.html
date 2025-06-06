@@ -95,6 +95,86 @@
             display: flex;
             flex-direction: column;
         }
+        
+        /* 提示词教程模态框样式 */
+        #prompt-tutorial-modal {
+            transition: opacity 0.3s ease;
+            display: none; /* 默认隐藏 */
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 42rem;
+            max-height: 80vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+        
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .tutorial-content {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(80vh - 60px);
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        /* 隐藏滚动条但保留滚动功能 */
+        .tutorial-content::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        
+        .formula {
+            background-color: #eef2ff;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 6px;
+        }
+        
+        .example {
+            font-size: 0.9em;
+            color: #6b7280;
+            margin-top: 4px;
+            margin-bottom: 8px;
+            padding-left: 8px;
+            border-left: 2px solid #e5e7eb;
+        }
+        
+        #prompt-tutorial-modal strong {
+            color: #4338ca;
+        }
+        
+        #prompt-tutorial-modal ul li {
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -120,7 +200,10 @@
                 <div class="bg-white rounded-lg shadow-md p-4">
                     <form id="generateForm" class="space-y-4">
                         <div>
-                            <label for="prompt" class="block text-sm font-medium text-gray-700 mb-1">提示词 (Prompt)</label>
+                            <div class="flex justify-between items-center mb-1">
+                                <label for="prompt" class="block text-sm font-medium text-gray-700">提示词 (Prompt)</label>
+                                <a href="#" class="text-xs text-indigo-600 hover:text-indigo-800" id="prompt-guide-link">提示词详细教程</a>
+                            </div>
                             <textarea id="prompt" name="prompt" rows="5" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="输入详细的图像描述，如：一个穿着红色连衣裙的女孩站在海边的沙滩上，微风吹拂着她的头发"></textarea>
                         </div>
                         <div>
@@ -235,6 +318,44 @@
                 <button id="saveImage" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center">
                     <i class="ri-save-line mr-1"></i> 保存
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示词教程模态框 -->
+    <div id="prompt-tutorial-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-tutorial">&times;</span>
+            <div class="tutorial-content">
+                <h2 class="text-2xl font-bold mb-4">使用说明</h2>
+                <p class="mb-4 text-gray-700">提示词用来描述图像中所包含的内容，它是控制画面内容与效果的关键因素。提示词描述越完整、精确和丰富，生成的图像的品质越高，且越贴近期望生成的内容。为了帮助您更快上手，我们针对不同的使用需求提供了两种提示词使用公式。</p>
+                
+                <div class="mb-6">
+                    <h3 class="text-xl font-medium">基础</h3>
+                    <div class="formula">
+                        <p class="font-medium">提示词 = 主体 + 场景 + 风格</p>
+                    </div>
+                    <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                        <li><strong>主体：</strong>主体是图片内容的主要表现对象，可以是人、动物、植物、物品或非物理真实存在的想象之物。</li>
+                        <li><strong>场景：</strong>场景是主体所处的环境，包括室内或室外、季节、天气、光线等可以是物理存在的真实空间或想象出来的虚构场景。</li>
+                        <li><strong>风格：</strong>选择或定义图像的艺术风格，如写实，抽象等，有助于模型生成具有特定视觉效果的图像。</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-xl font-medium">进阶</h3>
+                    <div class="formula">
+                        <p class="font-medium">提示词 = 主体（主体描述）+ 场景（场景描述）+ 风格（定义风格）+ 镜头语言 + 氛围词 + 细节修饰</p>
+                    </div>
+                    <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                        <li><strong>主体描述：</strong>确定主体清晰地描述图像中的主体，包括其特征、动作等。例如，"一个可爱的10岁中国小女孩，穿着红色衣服"。</li>
+                        <li><strong>场景描述：</strong>场景描述是对主体所处环境特征细节的描述，可通过形容词或短句列举。</li>
+                        <li><strong>定义风格：</strong>定义风格是明确地描述图像所应具有的特定艺术风格、表现手法或视觉特征。例如，"水彩风格"、"漫画风格"常见风格化详见下方提示词词典。</li>
+                        <li><strong>镜头语言：</strong>镜头语言包含景别、视角等</li>
+                        <li><strong>氛围词：</strong>氛围词是对预期画面氛围的描述，例如"梦幻"、"孤独"、"宏伟"</li>
+                        <li><strong>细节修饰：</strong>细节修饰是对画面进一步的精细化和优化，以增强图像的细节表现力、丰富度和美感。例如"光源的位置"、"道具搭配"、"环境细节"，"高分辨率"等。</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -746,6 +867,35 @@
             a.click();
             document.body.removeChild(a);
         }
+
+        // 获取模态框元素
+        const modal = document.getElementById('prompt-tutorial-modal');
+        // 获取打开模态框的按钮
+        const tutorialLink = document.getElementById('prompt-guide-link');
+        // 获取关闭按钮
+        const closeBtn = document.getElementById('close-tutorial');
+        
+        // 点击链接打开模态框
+        tutorialLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            modal.style.display = 'block';
+            // 不要完全禁用背景滚动，因为我们需要模态框内容可滚动
+            document.body.style.overflow = 'hidden';
+        });
+        
+        // 点击关闭按钮关闭模态框
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // 恢复背景滚动
+        });
+        
+        // 点击模态框外部关闭模态框，但不包括模态框内容区域
+        window.addEventListener('click', function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto'; // 恢复背景滚动
+            }
+        });
     </script>
 </body>
 </html>
