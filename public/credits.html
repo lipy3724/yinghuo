@@ -161,37 +161,6 @@
                 </div>
             </div>
 
-            <!-- 开发者模式 (默认隐藏) -->
-            <div id="developer-mode-container" class="hidden border border-gray-200 p-4 rounded-lg mb-6 bg-gray-50">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold text-gray-800">开发者模式</h2>
-                    <button id="close-dev-mode" class="text-gray-500 hover:text-gray-700">
-                        <i class="ri-close-line text-xl"></i>
-                    </button>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="p-4 border border-gray-200 rounded bg-white">
-                        <h3 class="font-medium mb-2">积分管理</h3>
-                        <div class="flex items-center space-x-2 mb-2">
-                            <input type="number" id="dev-credits-amount" class="form-control" placeholder="输入积分数量">
-                            <button id="dev-set-credits" class="btn-primary whitespace-nowrap">设置积分</button>
-                        </div>
-                    </div>
-                    
-                    <div class="p-4 border border-gray-200 rounded bg-white">
-                        <h3 class="font-medium mb-2">功能使用次数重置</h3>
-                        <div class="flex items-center space-x-2 mb-2">
-                            <select id="dev-feature-select" class="form-control">
-                                <option value="all">所有功能</option>
-                                <!-- 其他选项由JS动态填充 -->
-                            </select>
-                            <button id="dev-reset-usage" class="btn-primary whitespace-nowrap">重置次数</button>
-                        </div>
-                    </div>
-                </div>
-                <div id="dev-result" class="text-sm text-gray-600 hidden bg-gray-100 p-2 rounded"></div>
-            </div>
-
             <!-- 充值表单 (默认隐藏) -->
             <div id="recharge-form-container" class="hidden bg-white rounded-xl shadow-lg p-6 mb-8 transform transition-all duration-300 ease-in-out">
                 <div class="flex justify-between items-center mb-6">
@@ -298,14 +267,6 @@
         </div>
     </div>
 
-    <!-- 开发者模式悬浮按钮 -->
-    <div class="fixed bottom-4 right-4" id="dev-mode-button" style="display: none;">
-        <button id="dev-mode-toggle" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-3 shadow-lg flex items-center px-4" title="开发者模式">
-            <i class="ri-code-s-slash-line text-xl mr-1"></i>
-            <span>开发者模式</span>
-        </button>
-    </div>
-
     <script>
         // 全局变量
         let userCredits = 0;
@@ -345,28 +306,6 @@
                 localStorage.removeItem('user');
                 window.location.href = '/login.html';
                 return false;
-            }
-        }
-        
-        // 检查用户是否有开发者权限
-        async function checkDeveloperAccess() {
-            try {
-                const response = await fetch('/api/auth/check-developer', {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data.success && data.isDeveloper) {
-                        // 如果用户是开发者，显示开发者模式按钮
-                        document.getElementById('dev-mode-button').style.display = 'block';
-                    }
-                }
-            } catch (error) {
-                console.error('检查开发者权限出错:', error);
             }
         }
         
@@ -678,9 +617,6 @@
             // 检查用户是否已登录
             if (!checkAuth()) return;
             
-            // 检查用户是否有开发者权限
-            checkDeveloperAccess();
-            
             // 加载用户积分信息
             loadCreditsInfo();
             
@@ -689,9 +625,6 @@
             
             // 初始化充值表单
             initRechargeForm();
-            
-            // 初始化开发者模式
-            initDevMode();
             
             // 绑定刷新使用记录按钮
             document.getElementById('refresh-usage').addEventListener('click', loadCreditsInfo);
@@ -775,8 +708,8 @@
                     if (!amount || isNaN(amount) || amount < 10) {
                         showMessage('请选择充值金额', 'error');
                         return;
-        }
-        
+                    }
+                    
                     // 获取支付方式
                     const paymentMethod = paymentMethodInput.value;
                     
@@ -789,24 +722,24 @@
                     try {
                         // 创建支付订单
                         const response = await fetch('/api/credits/alipay/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ 
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                            },
+                            body: JSON.stringify({ 
                                 amount: parseInt(amount),
                                 paymentMethod
-                    })
-                });
-                
-                const data = await response.json();
-                
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
                         if (response.ok && data.success && data.data.paymentUrl) {
                             // 保存订单信息到本地存储，以便在支付完成后查询
                             localStorage.setItem('pendingOrderNumber', data.data.orderNumber);
                             localStorage.setItem('pendingOrderAmount', amount);
-                    
+                            
                             // 如果有过期时间，也保存下来
                             if (data.data.expireTime) {
                                 localStorage.setItem('orderExpireTime', new Date(data.data.expireTime).getTime());
@@ -816,11 +749,11 @@
                             
                             // 跳转到支付页面
                             window.location.href = data.data.paymentUrl;
-                } else {
+                        } else {
                             // 订单创建失败
                             showMessage(data.message || '创建支付订单失败，请稍后重试', 'error');
-                }
-            } catch (error) {
+                        }
+                    } catch (error) {
                         console.error('创建支付订单出错:', error);
                         showMessage('创建支付订单出错，请稍后重试', 'error');
                     } finally {
@@ -850,169 +783,6 @@
             
             // 重置金额输入
             amountInput.value = '';
-        }
-        
-        // 初始化开发者模式
-        function initDevMode() {
-            const devModeButton = document.getElementById('dev-mode-button');
-            const devModeToggle = document.getElementById('dev-mode-toggle');
-            const devContainer = document.getElementById('developer-mode-container');
-            
-            if (devModeButton) {
-                devModeButton.addEventListener('click', function() {
-                    if (devContainer.classList.contains('hidden')) {
-                        devContainer.classList.remove('hidden');
-                        populateDevModeFeatureSelect();
-                    } else {
-                        devContainer.classList.add('hidden');
-                    }
-                });
-            }
-            
-            if (devModeToggle) {
-                devModeToggle.addEventListener('click', function() {
-                if (devContainer.classList.contains('hidden')) {
-                    devContainer.classList.remove('hidden');
-                    populateDevModeFeatureSelect();
-                } else {
-                    devContainer.classList.add('hidden');
-                }
-            });
-            }
-            
-            if (devContainer) {
-                const closeDevModeBtn = document.getElementById('close-dev-mode');
-                if (closeDevModeBtn) {
-                    closeDevModeBtn.addEventListener('click', function() {
-                        devContainer.classList.add('hidden');
-            });
-                }
-            }
-            
-            // 填充功能选择下拉框
-            function populateDevModeFeatureSelect() {
-                const featureSelect = document.getElementById('dev-feature-select');
-                
-                // 清除现有选项，保留"所有功能"选项
-                while (featureSelect.options.length > 1) {
-                    featureSelect.remove(1);
-                }
-                
-                // 功能名称本地化
-                const featureNames = {
-                    'image-upscaler': '图像高清放大',
-                    'marketing-images': 'AI营销图生成',
-                    'cutout': '商品换背景',
-                    'translate': '图片翻译',
-                    'scene-generator': '场景图生成',
-                    'image-removal': '图像智能消除',
-                    'model-skin-changer': '模特换肤',
-                    'clothing-simulation': '模拟试衣',
-                    'text-to-video': '文生视频',
-                    'image-to-video': '图生视频',
-                    'IMAGE_EDIT': '指令编辑',
-                    'LOCAL_REDRAW': '局部重绘',
-                    'IMAGE_COLORIZATION': '图像上色',
-                    'IMAGE_EXPANSION': '智能扩图',
-                    'VIRTUAL_SHOE_MODEL': '鞋靴虚拟试穿',
-                    'TEXT_TO_IMAGE': '文生图片',
-                    'IMAGE_SHARPENING': '模糊图片变清晰',
-                    'CLOTH_SEGMENTATION': '智能服饰分割',
-                    'GLOBAL_STYLE': '全局风格化',
-                    'VIRTUAL_MODEL_VTON': '智能虚拟模特试穿',
-                    'VIDEO_SUBTITLE_REMOVER': '视频去除字幕',
-                    'MULTI_IMAGE_TO_VIDEO': '多图转视频',
-                    'DIGITAL_HUMAN_VIDEO': '视频数字人',
-                    'VIDEO_STYLE_REPAINT': '视频风格重绘'
-                };
-                
-                // 添加所有功能到下拉框
-                Object.keys(featureUsages).forEach(key => {
-                    const option = document.createElement('option');
-                    option.value = key;
-                    option.textContent = featureNames[key] || key;
-                    featureSelect.appendChild(option);
-                });
-            }
-            
-            // 设置积分按钮点击事件
-            document.getElementById('dev-set-credits').addEventListener('click', async function() {
-                const creditsAmount = document.getElementById('dev-credits-amount').value;
-                
-                if (!creditsAmount || isNaN(creditsAmount)) {
-                    showDevResult('请输入有效的积分数量', 'error');
-                    return;
-                }
-                
-                try {
-                    const response = await fetch('/api/credits/dev/set-credits', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                        },
-                        body: JSON.stringify({ amount: parseInt(creditsAmount) })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok && data.success) {
-                        showDevResult(`积分已成功设置为 ${data.data.credits} 点`);
-                        
-                        // 更新显示的积分
-                        userCredits = data.data.credits;
-                        document.getElementById('user-credits').textContent = userCredits;
-                    } else {
-                        showDevResult(data.message || '设置积分失败', 'error');
-                    }
-                } catch (error) {
-                    console.error('设置积分出错:', error);
-                    showDevResult('设置积分出错，请稍后重试', 'error');
-                }
-            });
-            
-            // 重置功能使用次数按钮点击事件
-            document.getElementById('dev-reset-usage').addEventListener('click', async function() {
-                const featureName = document.getElementById('dev-feature-select').value;
-                
-                try {
-                    const response = await fetch('/api/credits/dev/reset-usage', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                        },
-                        body: JSON.stringify({ featureName })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok && data.success) {
-                        showDevResult(data.message || '功能使用次数重置成功');
-                        
-                        // 重新加载积分和使用信息
-                        loadCreditsInfo();
-                    } else {
-                        showDevResult(data.message || '重置功能使用次数失败', 'error');
-                    }
-                } catch (error) {
-                    console.error('重置功能使用次数出错:', error);
-                    showDevResult('重置功能使用次数出错，请稍后重试', 'error');
-                }
-            });
-            
-            // 显示开发者模式操作结果
-            function showDevResult(message, type = 'success') {
-                const resultBox = document.getElementById('dev-result');
-                resultBox.textContent = message;
-                resultBox.className = `text-sm p-2 rounded ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
-                resultBox.classList.remove('hidden');
-                
-                // 3秒后自动隐藏
-                setTimeout(() => {
-                    resultBox.classList.add('hidden');
-                }, 3000);
-            }
         }
     </script>
 </body>

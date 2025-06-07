@@ -1101,16 +1101,6 @@
                 <i class="ri-team-line mr-1"></i>
                 <span>商家AI交流群</span>
             </a>
-            <div class="relative language-menu-wrapper">
-                <button class="text-gray-600 hover:text-gray-900 flex items-center" id="language-menu-btn">
-                    <span>简体中文</span>
-                    <i class="ri-arrow-down-s-line ml-1 arrow-icon"></i>
-                </button>
-                <div id="language-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">简体中文</a>
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">English</a>
-                </div>
-            </div>
             <!-- 用户未登录时显示登录注册按钮 -->
             <a href="/login.html" id="login-btn" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                 登录/注册
@@ -2418,91 +2408,6 @@
             // 页面加载时初始化快捷访问功能
             loadSelectedFeatures();
             
-            // 语言菜单下拉
-            const languageMenuBtn = document.getElementById('language-menu-btn');
-            const languageDropdown = document.getElementById('language-dropdown');
-            const languageMenuWrapper = document.querySelector('.language-menu-wrapper');
-            
-            let languageHideTimeout;
-            let isMouseOverLanguageMenu = false;
-            
-            // 显示语言下拉菜单
-            function showLanguageDropdown() {
-                clearTimeout(languageHideTimeout);
-                
-                // 立即改变箭头方向为向上
-                const arrowIcon = languageMenuBtn.querySelector('.arrow-icon');
-                arrowIcon.style.transform = 'rotate(180deg)';
-                
-                // 先移除 hidden 类并设置显示
-                languageDropdown.classList.remove('hidden');
-                languageDropdown.style.display = '';
-                
-                // 强制重排，确保过渡效果正常工作
-                languageDropdown.offsetHeight;
-                
-                // 添加可见类
-                requestAnimationFrame(() => {
-                    languageDropdown.classList.add('visible');
-                });
-                
-                // 关闭其他下拉菜单
-                featuresDropdown.classList.add('hidden');
-                creditsDropdown.classList.add('hidden');
-                if (userDropdown) userDropdown.classList.add('hidden');
-            }
-            
-            // 隐藏语言下拉菜单
-            function hideLanguageDropdown() {
-                if (!isMouseOverLanguageMenu) {
-                    // 立即改变箭头方向为向下
-                    const arrowIcon = languageMenuBtn.querySelector('.arrow-icon');
-                    arrowIcon.style.transform = 'rotate(0deg)';
-                    
-                    // 移除可见类，触发淡出动画
-                    languageDropdown.classList.remove('visible');
-                    
-                    // 延长隐藏延迟，给用户更多时间移动到下拉菜单
-                    languageHideTimeout = setTimeout(() => {
-                        if (!isMouseOverLanguageMenu) {
-                            languageDropdown.classList.add('hidden');
-                            languageDropdown.style.display = 'none';
-                        }
-                    }, 300); // 延长延迟时间，给用户更多反应时间
-                }
-            }
-            
-            // 优化鼠标事件处理
-            languageMenuWrapper.addEventListener('mouseenter', () => {
-                isMouseOverLanguageMenu = true;
-                showLanguageDropdown();
-            });
-            
-            languageMenuWrapper.addEventListener('mouseleave', () => {
-                isMouseOverLanguageMenu = false;
-                // 增加延迟，让用户有时间移动到下拉菜单
-                setTimeout(() => {
-                    if (!isMouseOverLanguageMenu) {
-                        hideLanguageDropdown();
-                    }
-                }, 100); // 添加短暂延迟
-            });
-            
-            // 下拉菜单的鼠标事件
-            languageDropdown.addEventListener('mouseenter', () => {
-                isMouseOverLanguageMenu = true;
-                clearTimeout(languageHideTimeout);
-            });
-            
-            languageDropdown.addEventListener('mouseleave', () => {
-                isMouseOverLanguageMenu = false;
-                // 添加短延迟，防止意外鼠标移动导致菜单消失
-                setTimeout(() => {
-                    if (!isMouseOverLanguageMenu) {
-                        hideLanguageDropdown();
-                    }
-                }, 100);
-            });
         });
         
         // 检查用户权限并重定向

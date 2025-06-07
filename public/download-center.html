@@ -10,16 +10,6 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
-        .sidebar-item.active {
-            background-color: #f3f0ff;
-            color: #6366f1;
-        }
-        .sidebar-item:hover:not(.active) {
-            background-color: #f9fafb;
-        }
-        .sidebar-item.active i {
-            color: #6366f1;
-        }
         .image-card {
             transition: all 0.3s ease;
         }
@@ -152,234 +142,168 @@
         #no-data {
             min-height: 300px;
         }
-        
-        /* 确保侧边栏延伸到底部 */
-        .sidebar {
-            height: 100vh;
-            position: sticky;
-            top: 0;
-            overflow-y: auto;
-        }
     </style>
 </head>
 <body class="bg-gray-50">
-    <div class="flex">
-        <!-- 侧边栏 -->
-        <div class="sidebar w-64 bg-white border-r border-gray-200">
-            <div class="py-4 px-3 h-full overflow-y-auto">
-                <ul class="space-y-2">
-                    <li>
-                        <a href="/" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-home-line mr-3 text-lg"></i>
-                            <span>首页</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-translate-2 mr-3 text-lg"></i>
-                            <span>图片翻译</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-image-edit-line mr-3 text-lg"></i>
-                            <span>商品换背景</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-landscape-line mr-3 text-lg"></i>
-                            <span>场景图生成</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-flow-chart mr-3 text-lg"></i>
-                            <span>图像智能消除</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-question-answer-line mr-3 text-lg"></i>
-                            <span>模特换肤</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-file-text-line mr-3 text-lg"></i>
-                            <span>模拟试衣</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-t-shirt-line mr-3 text-lg"></i>
-                            <span>智能虚拟模特试穿</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-zoom-in-line mr-3 text-lg"></i>
-                            <span>智能服饰分割</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-t-shirt-line mr-3 text-lg"></i>
-                            <span>智能虚拟模特试穿</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-palette-line mr-3 text-lg"></i>
-                            <span>鞋靴虚拟试穿</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-file-list-line mr-3 text-lg"></i>
-                            <span>文生图片</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-video-line mr-3 text-lg"></i>
-                            <span>文生视频</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-film-line mr-3 text-lg"></i>
-                            <span>图生视频</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="sidebar-item flex items-center p-3 text-base font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
-                            <i class="ri-picture-in-picture-line mr-3 text-lg"></i>
-                            <span>指令绘图</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/download-center.html" class="sidebar-item active flex items-center p-3 text-base font-medium rounded-lg">
-                            <i class="ri-download-2-line mr-3 text-lg"></i>
-                            <span>下载中心</span>
-                        </a>
-                    </li>
-                </ul>
+    <!-- 导航栏 -->
+    <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
+        <div class="flex items-center">
+            <a href="/" class="flex items-center">
+                <span class="font-bold text-2xl text-indigo-600 mr-1 logo-text">萤火<span class="logo-dot"></span>AI</span>
+                <span class="text-gray-500 text-sm ml-1">Yinghuo.Ai</span>
+            </a>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div class="relative">
+                <button class="text-gray-600 hover:text-gray-900 flex items-center" id="credits-menu-btn">
+                    <i class="ri-coin-line mr-1"></i>
+                    <span>积分中心</span>
+                    <i class="ri-arrow-down-s-line ml-1"></i>
+                </button>
+                <div id="credits-dropdown" class="hidden absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a href="/credits.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分管理</a>
+                    <a href="/credits-usage.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分使用情况</a>
+                </div>
+            </div>
+            <a href="/download-center.html" class="text-gray-600 hover:text-gray-900 flex items-center">
+                <i class="ri-download-2-line mr-1"></i>
+                <span>下载中心</span>
+            </a>
+            <a href="#" class="text-gray-600 hover:text-gray-900 flex items-center">
+                <i class="ri-team-line mr-1"></i>
+                <span>商家AI交流群</span>
+            </a>
+            <!-- 用户未登录时显示登录注册按钮 -->
+            <a href="/login.html" id="login-btn" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                登录注册
+            </a>
+            <!-- 用户已登录时显示用户信息 -->
+            <div id="user-info" class="hidden relative">
+                <button id="user-menu-btn" class="flex items-center text-gray-700 hover:text-gray-900">
+                    <i class="ri-user-3-line mr-1 text-lg"></i>
+                    <span id="username-display">用户名</span>
+                    <i class="ri-arrow-down-s-line ml-1"></i>
+                </button>
+                <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <a href="/account.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">我的账户</a>
+                    <a href="/credits.html" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">积分管理</a>
+                    <a href="#" id="logout-btn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">退出登录</a>
+                </div>
             </div>
         </div>
+    </nav>
 
-        <!-- 主内容区域 -->
-        <div class="flex-1 p-5 overflow-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h1 class="text-2xl font-bold">下载中心</h1>
-                
-                <!-- 搜索框 -->
-                <div class="relative">
-                    <input 
-                        type="text" 
-                        id="search-input" 
-                        placeholder="搜索..." 
-                        class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <i class="ri-search-line text-gray-400"></i>
-                    </div>
+    <!-- 主内容区域 -->
+    <div class="container mx-auto p-5 overflow-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">下载中心</h1>
+            
+            <!-- 搜索框 -->
+            <div class="relative">
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    placeholder="搜索..." 
+                    class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="ri-search-line text-gray-400"></i>
                 </div>
             </div>
-            
-            <!-- 视图/操作选项 -->
-            <div class="flex flex-wrap justify-between items-center mb-4">
-                <!-- 标签切换 -->
-                <div class="flex space-x-2 flex-wrap gap-2">
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-indigo-600 text-white text-sm" data-tab="all">
-                        全部图片
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="图片翻译">
-                        图片翻译
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="营销图生成">
-                        营销图生成
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="商品换背景">
-                        商品换背景
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="场景图生成">
-                        场景图生成
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="图像智能消除">
-                        图像智能消除
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="模特换肤">
-                        模特换肤
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="模拟试衣">
-                        模拟试衣
-                    </button>
-                    <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="other">
-                        其他处理
-                    </button>
-                </div>
-                
-                <!-- 视图切换 -->
-                <div class="flex items-center space-x-3 mt-2 sm:mt-0">
-                    <span class="text-sm text-gray-500">视图:</span>
-                    <button id="grid-view-btn" class="p-1.5 rounded bg-indigo-100 text-indigo-700">
-                        <i class="ri-grid-fill text-lg"></i>
-                    </button>
-                    <button id="list-view-btn" class="p-1.5 rounded hover:bg-gray-100 text-gray-500">
-                        <i class="ri-list-check text-lg"></i>
-                    </button>
-                    <button id="select-all-btn" class="ml-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">
-                        <i class="ri-checkbox-multiple-line mr-1"></i>
-                        全选
-                    </button>
-                    <button id="delete-selected-btn" class="hidden px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 text-red-600 rounded-lg">
-                        <i class="ri-delete-bin-line mr-1"></i>
-                        删除所选
-                    </button>
-                </div>
+        </div>
+        
+        <!-- 视图/操作选项 -->
+        <div class="flex flex-wrap justify-between items-center mb-4">
+            <!-- 标签切换 -->
+            <div class="flex space-x-2 flex-wrap gap-2">
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-indigo-600 text-white text-sm" data-tab="all">
+                    全部图片
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="图片翻译">
+                    图片翻译
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="营销图生成">
+                    营销图生成
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="商品换背景">
+                    商品换背景
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="场景图生成">
+                    场景图生成
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="图像智能消除">
+                    图像智能消除
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="模特换肤">
+                    模特换肤
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="模拟试衣">
+                    模拟试衣
+                </button>
+                <button class="tab-btn px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm" data-tab="other">
+                    其他处理
+                </button>
             </div>
             
-            <!-- 图片列表 -->
-            <div id="image-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                <!-- 图片卡片将通过JS动态添加 -->
-                <div class="loading flex items-center justify-center col-span-full py-10">
-                    <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-lg font-medium">正在加载...</span>
-                </div>
+            <!-- 视图切换 -->
+            <div class="flex items-center space-x-3 mt-2 sm:mt-0">
+                <span class="text-sm text-gray-500">视图:</span>
+                <button id="grid-view-btn" class="p-1.5 rounded bg-indigo-100 text-indigo-700">
+                    <i class="ri-grid-fill text-lg"></i>
+                </button>
+                <button id="list-view-btn" class="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+                    <i class="ri-list-check text-lg"></i>
+                </button>
+                <button id="select-all-btn" class="ml-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">
+                    <i class="ri-checkbox-multiple-line mr-1"></i>
+                    全选
+                </button>
+                <button id="delete-selected-btn" class="hidden px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 text-red-600 rounded-lg">
+                    <i class="ri-delete-bin-line mr-1"></i>
+                    删除所选
+                </button>
             </div>
-            
-            <!-- 列表视图容器 -->
-            <div id="image-list" class="hidden">
-                <table class="w-full border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 text-left">
-                            <th class="p-3 border-b"><input type="checkbox" id="select-all-table"></th>
-                            <th class="p-3 border-b">图片</th>
-                            <th class="p-3 border-b">处理类型</th>
-                            <th class="p-3 border-b">时间</th>
-                            <th class="p-3 border-b">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="image-table-body">
-                        <!-- 列表项通过JS动态添加 -->
-                    </tbody>
-                </table>
+        </div>
+        
+        <!-- 图片列表 -->
+        <div id="image-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            <!-- 图片卡片将通过JS动态添加 -->
+            <div class="loading flex items-center justify-center col-span-full py-10">
+                <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-lg font-medium">正在加载...</span>
             </div>
-            
-            <!-- 无数据提示 -->
-            <div id="no-data" class="hidden text-center py-10">
-                <i class="ri-image-line text-gray-300 text-6xl mb-2"></i>
-                <p class="text-gray-500 text-lg">暂无图片记录</p>
-            </div>
-            
-            <!-- 分页控件 -->
-            <div id="pagination" class="mt-5 flex justify-center items-center space-x-2">
-                <!-- 分页按钮将动态生成 -->
-            </div>
+        </div>
+        
+        <!-- 列表视图容器 -->
+        <div id="image-list" class="hidden">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 text-left">
+                        <th class="p-3 border-b"><input type="checkbox" id="select-all-table"></th>
+                        <th class="p-3 border-b">图片</th>
+                        <th class="p-3 border-b">处理类型</th>
+                        <th class="p-3 border-b">时间</th>
+                        <th class="p-3 border-b">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="image-table-body">
+                    <!-- 列表项通过JS动态添加 -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 无数据提示 -->
+        <div id="no-data" class="hidden text-center py-10">
+            <i class="ri-image-line text-gray-300 text-6xl mb-2"></i>
+            <p class="text-gray-500 text-lg">暂无图片记录</p>
+        </div>
+        
+        <!-- 分页控件 -->
+        <div id="pagination" class="mt-5 flex justify-center items-center space-x-2">
+            <!-- 分页按钮将动态生成 -->
         </div>
     </div>
 

@@ -258,6 +258,16 @@
             <button type="submit" class="register-btn">
                 <i class="fas fa-user-plus"></i> 注册
             </button>
+            
+            <div class="agreement-container" style="margin-top: 15px; text-align: center;">
+                <label class="agreement-label" style="display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text-light);">
+                    <input type="checkbox" id="agreement-checkbox" style="margin-right: 5px;" required>
+                    <span>注册即表示您同意</span>
+                    <a href="/service-agreement.html" target="_blank" style="color: var(--primary-color); margin: 0 3px;">《服务协议》</a>
+                    <span>和</span>
+                    <a href="/privacy-policy.html" target="_blank" style="color: var(--primary-color); margin-left: 3px;">《隐私政策》</a>
+                </label>
+            </div>
         </form>
         
         <div class="auth-footer">
@@ -405,6 +415,13 @@
             
             if (!code) {
                 showError('请输入验证码');
+                return;
+            }
+            
+            // 检查用户是否同意协议
+            const agreementCheckbox = document.getElementById('agreement-checkbox');
+            if (!agreementCheckbox.checked) {
+                showError('请阅读并同意服务协议和隐私政策');
                 return;
             }
             

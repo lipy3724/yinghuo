@@ -720,7 +720,7 @@ router.get('/usage', protect, async (req, res) => {
                   new Date(task.timestamp) >= startDate
                 );
                 console.log(`从数据库获取到${tasks.length}条视频字幕擦除任务记录`);
-                
+        
                 // 计算时间范围内的积分消费
                 if (tasks.length > 0) {
                   totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
@@ -980,8 +980,8 @@ router.get('/usage', protect, async (req, res) => {
                 // 计算所有时间的总积分消费
                 if (details.tasks.length > 0) {
                   allTimeFeatureCreditCost = details.tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
-                }
-                
+        }
+        
                 // 过滤出时间范围内的任务
                 tasks = details.tasks.filter(task => 
                   new Date(task.timestamp) >= startDate
@@ -1011,7 +1011,7 @@ router.get('/usage', protect, async (req, res) => {
               global.sceneGeneratorTasks[tid].hasChargedCredits
             )
             .map(tid => global.sceneGeneratorTasks[tid]);
-          
+        
           // 计算所有时间的总积分消费
           if (allTasks.length > 0) {
             allTimeFeatureCreditCost = allTasks.reduce((total, task) => total + (task.creditCost || 0), 0);
@@ -1064,7 +1064,7 @@ router.get('/usage', protect, async (req, res) => {
             usageData[dateIndex] += creditCost;
           }
         });
-        
+          
         // 如果没有任何任务记录，但有使用次数，创建通用记录
         if (tasks.length === 0 && usage.usageCount > 0) {
           console.log(`没有找到场景图生成任务记录，但有${usage.usageCount}次使用记录，创建通用记录`);
@@ -1228,7 +1228,7 @@ router.get('/usage', protect, async (req, res) => {
           );
           if (dateIndex !== -1) {
             usageData[dateIndex] += creditCost;
-          }
+        }
         });
         
         // 如果没有任何任务记录，但有使用次数，创建通用记录

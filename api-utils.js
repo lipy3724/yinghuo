@@ -154,17 +154,37 @@ async function uploadToOSS(fileBuffer, fileName) {
 async function callUpscaleApi(imageUrl, upscaleFactor) {
   try {
     // API 路径
-    const apiPath = "/ai/super/resolution";
+    const apiPath = "/rest/ai/super/resolution";
     
     // 当前时间戳（毫秒）
     const timestamp = Date.now();
     
-    // 按照示例代码计算签名：HmacSHA256(secret+timestamp, secret).toUpperCase()
-    const signData = API_CONFIG.SECRET_KEY + timestamp;
-    const sign = hmacSha256(signData, API_CONFIG.SECRET_KEY);
+    // 准备签名参数
+    const signParams = {
+      partner_id: "aidge",
+      app_key: API_CONFIG.APP_KEY,
+      timestamp: String(timestamp),
+      sign_method: "sha256",
+      sign_ver: "v2"
+    };
+    
+    // 对参数按字典序排序
+    const sortedKeys = Object.keys(signParams).sort();
+    let stringToSign = "";
+    
+    // 构建待签名字符串
+    for (const key of sortedKeys) {
+      if (signParams[key]) {
+        stringToSign += key + signParams[key];
+      }
+    }
+    
+    // 使用secretKey进行签名
+    const secret = API_CONFIG.SECRET_KEY;
+    const sign = hmacSha256(stringToSign, secret);
     
     // 构建API URL
-    const apiUrl = `${API_CONFIG.API_HOST}/rest${apiPath}?partner_id=aidge&sign_method=sha256&sign_ver=v2&app_key=${API_CONFIG.APP_KEY}&timestamp=${timestamp}&sign=${sign}`;
+    const apiUrl = `https://cn-api.aidc-ai.com${apiPath}?partner_id=${signParams.partner_id}&sign_method=${signParams.sign_method}&sign_ver=${signParams.sign_ver}&app_key=${signParams.app_key}&timestamp=${signParams.timestamp}&sign=${sign}`;
     
     // 构建请求参数
     const requestBody = {
@@ -179,8 +199,7 @@ async function callUpscaleApi(imageUrl, upscaleFactor) {
     // 发起API请求
     const response = await axios.post(apiUrl, requestBody, {
       headers: {
-        'Content-Type': 'application/json',
-        'x-iop-trial': 'true' // 试用标记
+        'Content-Type': 'application/json'
       }
     });
     
@@ -190,11 +209,11 @@ async function callUpscaleApi(imageUrl, upscaleFactor) {
       return response.data;
     } else {
       console.error('API调用失败:', response.data);
-      throw new Error(response.data.resMessage || '图像处理失败');
+      throw new Error(response.data.message || '图像处理失败');
     }
   } catch (error) {
     console.error('调用图像高清放大API失败:', error.message);
-    throw error;
+    throw new Error('图像处理失败');
   }
 }
 
