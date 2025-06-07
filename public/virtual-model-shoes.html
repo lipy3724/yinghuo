@@ -32,6 +32,11 @@
         .upload-area {
             border: 2px dashed #e5e7eb;
             transition: all 0.3s ease;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
         .upload-area:hover {
             border-color: #6366f1;
@@ -40,9 +45,31 @@
             border-color: #6366f1;
             background-color: rgba(99, 102, 241, 0.05);
         }
+        .upload-area.has-image {
+            border: none;
+            background-color: transparent;
+        }
         .preview-image {
-            max-height: 300px;
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
+            border-radius: 4px;
+        }
+        .image-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .upload-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
         }
     </style>
 </head>
@@ -73,14 +100,16 @@
                 <!-- 模特图片上传区域 -->
                 <div class="flex flex-col">
                     <h2 class="text-lg font-semibold text-gray-700 mb-3">模特图片</h2>
-                    <div id="model-upload-area" class="upload-area rounded-lg p-4 flex flex-col items-center justify-center h-64 bg-gray-50 relative cursor-pointer">
+                    <div id="model-upload-area" class="upload-area rounded-lg p-4 bg-gray-50 relative cursor-pointer">
                         <input type="file" id="model-input" class="hidden" accept="image/*">
-                        <div id="model-placeholder" class="flex flex-col items-center justify-center">
+                        <div id="model-placeholder" class="upload-placeholder">
                             <i class="ri-user-line text-5xl text-gray-400 mb-2"></i>
                             <p class="text-gray-500 text-center mb-2">点击或拖拽上传模特图片</p>
                             <p class="text-xs text-gray-400 text-center">支持 JPG、PNG 格式，大小不超过 5MB</p>
                         </div>
-                        <img id="model-preview" class="hidden preview-image">
+                        <div class="image-container hidden" id="model-image-container">
+                            <img id="model-preview" class="preview-image">
+                        </div>
                         <button id="model-remove-btn" class="hidden absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
                             <i class="ri-close-line"></i>
                         </button>
@@ -90,14 +119,16 @@
                 <!-- 鞋靴图片上传区域 -->
                 <div class="flex flex-col">
                     <h2 class="text-lg font-semibold text-gray-700 mb-3">鞋靴图片</h2>
-                    <div id="shoes-upload-area" class="upload-area rounded-lg p-4 flex flex-col items-center justify-center h-64 bg-gray-50 relative cursor-pointer">
+                    <div id="shoes-upload-area" class="upload-area rounded-lg p-4 bg-gray-50 relative cursor-pointer">
                         <input type="file" id="shoes-input" class="hidden" accept="image/*">
-                        <div id="shoes-placeholder" class="flex flex-col items-center justify-center">
+                        <div id="shoes-placeholder" class="upload-placeholder">
                             <i class="ri-footprint-line text-5xl text-gray-400 mb-2"></i>
                             <p class="text-gray-500 text-center mb-2">点击或拖拽上传鞋靴图片</p>
                             <p class="text-xs text-gray-400 text-center">支持 JPG、PNG 格式，大小不超过 5MB</p>
                         </div>
-                        <img id="shoes-preview" class="hidden preview-image">
+                        <div class="image-container hidden" id="shoes-image-container">
+                            <img id="shoes-preview" class="preview-image">
+                        </div>
                         <button id="shoes-remove-btn" class="hidden absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
                             <i class="ri-close-line"></i>
                         </button>
@@ -190,9 +221,16 @@
                 e.stopPropagation();
                 modelFile = null;
                 modelPreview.src = '';
-                modelPreview.classList.add('hidden');
+                document.getElementById('model-image-container').classList.add('hidden');
                 modelPlaceholder.classList.remove('hidden');
                 modelRemoveBtn.classList.add('hidden');
+                
+                // 重置容器高度
+                document.getElementById('model-upload-area').style.height = '';
+                
+                // 恢复边框样式
+                modelUploadArea.classList.remove('has-image');
+                
                 checkSubmitStatus();
             });
             
@@ -211,9 +249,16 @@
                 e.stopPropagation();
                 shoesFile = null;
                 shoesPreview.src = '';
-                shoesPreview.classList.add('hidden');
+                document.getElementById('shoes-image-container').classList.add('hidden');
                 shoesPlaceholder.classList.remove('hidden');
                 shoesRemoveBtn.classList.add('hidden');
+                
+                // 重置容器高度
+                document.getElementById('shoes-upload-area').style.height = '';
+                
+                // 恢复边框样式
+                shoesUploadArea.classList.remove('has-image');
+                
                 checkSubmitStatus();
             });
             
@@ -229,9 +274,18 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     modelPreview.src = e.target.result;
-                    modelPreview.classList.remove('hidden');
-                    modelPlaceholder.classList.add('hidden');
-                    modelRemoveBtn.classList.remove('hidden');
+                    modelPreview.onload = function() {
+                        // 显示图片容器
+                        document.getElementById('model-image-container').classList.remove('hidden');
+                        modelPlaceholder.classList.add('hidden');
+                        modelRemoveBtn.classList.remove('hidden');
+                        
+                        // 根据图片尺寸调整容器高度
+                        adjustContainerHeight('model-upload-area', modelPreview);
+                        
+                        // 移除边框样式
+                        modelUploadArea.classList.add('has-image');
+                    };
                 };
                 reader.readAsDataURL(file);
                 
@@ -250,9 +304,18 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     shoesPreview.src = e.target.result;
-                    shoesPreview.classList.remove('hidden');
-                    shoesPlaceholder.classList.add('hidden');
-                    shoesRemoveBtn.classList.remove('hidden');
+                    shoesPreview.onload = function() {
+                        // 显示图片容器
+                        document.getElementById('shoes-image-container').classList.remove('hidden');
+                        shoesPlaceholder.classList.add('hidden');
+                        shoesRemoveBtn.classList.remove('hidden');
+                        
+                        // 根据图片尺寸调整容器高度
+                        adjustContainerHeight('shoes-upload-area', shoesPreview);
+                        
+                        // 移除边框样式
+                        shoesUploadArea.classList.add('has-image');
+                    };
                 };
                 reader.readAsDataURL(file);
                 
@@ -282,6 +345,25 @@
             
             setupDragDrop(modelUploadArea, handleModelFile);
             setupDragDrop(shoesUploadArea, handleShoesFile);
+            
+            // 根据图片尺寸调整容器高度
+            function adjustContainerHeight(containerId, imageElement) {
+                const container = document.getElementById(containerId);
+                const aspectRatio = imageElement.naturalWidth / imageElement.naturalHeight;
+                
+                // 设置最小高度和最大高度
+                const minHeight = 200; // 最小高度200px
+                const maxHeight = 400; // 最大高度400px
+                
+                // 根据图片比例计算合适的高度
+                let height = container.clientWidth / aspectRatio;
+                
+                // 限制在最小和最大高度范围内
+                height = Math.max(minHeight, Math.min(height, maxHeight));
+                
+                // 应用高度
+                container.style.height = `${height}px`;
+            }
             
             // 上传图片到服务器并获取URL
             async function uploadImageAndGetUrl(file, type) {
