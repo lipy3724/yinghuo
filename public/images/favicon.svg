@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <!-- 圆形背景 -->
+  <circle cx="40" cy="40" r="40" fill="#6366f1"/>
+  
+  <!-- 火焰图标 - 简化版 -->
+  <path d="M40 20c0 0-8 10-8 18s4 14 8 14c4 0 8-6 8-14S40 20 40 20z" 
+        fill="white" 
+        transform="translate(0, 4)"/>
+  <circle cx="40" cy="38" r="4" fill="#6366f1" transform="translate(0, 4)"/>
+</svg> 

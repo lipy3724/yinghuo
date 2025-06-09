@@ -122,7 +122,8 @@
             border-color: #6366f1;
         }
     </style>
-</head>
+
+    <link rel="icon" href="/images/favicon.png" type="image/png"></head>
 <body class="bg-gray-50">
     <!-- 导航栏 -->
     <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
@@ -646,7 +647,7 @@
                 rechargeBtn.addEventListener('click', function() {
                     rechargeFormContainer.classList.remove('hidden');
                     rechargeFormContainer.classList.add('animate-fade-in');
-                });
+            });
             }
             
             // 隐藏充值表单
@@ -689,7 +690,7 @@
                     
                     // 添加选中状态
                     this.classList.add('active', 'border-indigo-500', 'bg-indigo-50');
-                    
+            
                     // 设置支付方式
                     const paymentMethod = this.getAttribute('data-method');
                     paymentMethodInput.value = paymentMethod;
@@ -699,21 +700,21 @@
             // 提交充值表单
             if (rechargeForm) {
                 rechargeForm.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    
+                e.preventDefault();
+                
                     // 获取充值金额
                     let amount = amountInput.value;
                     
                     // 验证充值金额
                     if (!amount || isNaN(amount) || amount < 10) {
                         showMessage('请选择充值金额', 'error');
-                        return;
-                    }
+                    return;
+                }
                     
                     // 获取支付方式
                     const paymentMethod = paymentMethodInput.value;
-                    
-                    // 显示加载状态
+                
+                // 显示加载状态
                     const submitBtn = rechargeForm.querySelector('button[type="submit"]');
                     const originalBtnText = submitBtn.innerHTML;
                     submitBtn.innerHTML = '<i class="ri-loader-2-line animate-spin mr-1"></i> 创建订单中...';
@@ -722,19 +723,19 @@
                     try {
                         // 创建支付订单
                         const response = await fetch('/api/credits/alipay/create', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                            },
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        },
                             body: JSON.stringify({ 
                                 amount: parseInt(amount),
                                 paymentMethod
                             })
-                        });
-                        
-                        const data = await response.json();
-                        
+                    });
+                    
+                    const data = await response.json();
+                    
                         if (response.ok && data.success && data.data.paymentUrl) {
                             // 保存订单信息到本地存储，以便在支付完成后查询
                             localStorage.setItem('pendingOrderNumber', data.data.orderNumber);
@@ -746,14 +747,14 @@
                             }
                             
                             showMessage('订单创建成功，正在跳转到支付页面...');
-                            
+                        
                             // 跳转到支付页面
                             window.location.href = data.data.paymentUrl;
-                        } else {
+                    } else {
                             // 订单创建失败
                             showMessage(data.message || '创建支付订单失败，请稍后重试', 'error');
-                        }
-                    } catch (error) {
+                    }
+                } catch (error) {
                         console.error('创建支付订单出错:', error);
                         showMessage('创建支付订单出错，请稍后重试', 'error');
                     } finally {

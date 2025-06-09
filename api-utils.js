@@ -132,7 +132,8 @@ async function uploadToOSS(fileBuffer, fileName) {
   try {
     // 生成唯一的文件名避免冲突
     const extname = path.extname(fileName);
-    const ossPath = `image-upscaler/${uuidv4()}${extname}`;
+    // 针对鞋靴试穿功能使用特定目录
+    const ossPath = `shoe-virtual-try/images/${Date.now()}-${uuidv4()}${extname}`;
     
     // 上传到OSS
     const result = await ossClient.put(ossPath, fileBuffer);

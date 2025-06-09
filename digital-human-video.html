@@ -116,7 +116,6 @@
                 <i class="ri-arrow-left-line mr-1"></i>
                 <span>返回首页</span>
             </a>
-            <span class="text-gray-600 text-sm">积分: 951</span>
         </div>
     </header>
 
@@ -170,16 +169,13 @@
                     <p class="text-xs text-gray-500">音频要求: 清晰的人声录音，背景噪音小，普通话/方言不限，尽量避免混有明显背景音乐。</p>
                 </div>
 
-                <!-- 积分消费说明 -->
+                <!-- 法律合规提示 -->
                 <div class="bg-indigo-50 p-4 rounded-lg mt-4">
                     <div class="flex items-start">
                         <i class="ri-information-line text-indigo-600 text-xl mr-2 mt-0.5"></i>
                         <div>
-                            <h3 class="text-sm font-medium text-indigo-800">积分消费说明</h3>
-                            <p class="text-xs text-indigo-700 mt-1">
-                                数字人视频功能按<strong>生成视频的实际时长</strong>计算积分，而非上传素材的时长。
-                                <br>目前计费标准为：<strong>9积分/秒</strong>。
-                                <br>例如：生成一个30秒的视频将消耗270积分。
+                            <p class="text-xs text-red-500 font-medium">
+                                请上传合法合规的图片视频，如有违反会进行封号处理，任务一旦提交就会扣除积分不可中断，请勿重复刷新提交，否则会造成积分浪费。
                             </p>
                         </div>
                     </div>
@@ -230,7 +226,6 @@
             <div class="space-y-6">
                 <div class="bg-white p-6 rounded-lg shadow-sm">
                     <h2 class="text-xl font-semibold mb-4">效果展示</h2>
-                    <p class="text-gray-700 mb-4">声动人像VideoRetalk可基于人物视频和人声音频，生成人物讲话口型与输入音频相匹配的新视频。</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- 源视频 -->
@@ -378,35 +373,15 @@
             let taskId = null;
             let statusCheckInterval = null;
             
-            // 检查登录状态和获取用户积分
+            // 检查登录状态
             checkLoginStatus();
             
             // 检查用户登录状态
             function checkLoginStatus() {
                 const token = localStorage.getItem('authToken');
-                const creditsElement = document.querySelector('header .text-sm:last-child');
                 
-                if (token) {
-                    // 用户已登录，获取积分信息
-                    fetch('/api/user/credits', {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.credits !== undefined) {
-                            // 更新显示的积分
-                            creditsElement.textContent = `积分: ${data.credits}`;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('获取积分失败:', error);
-                    });
-                } else {
+                if (!token) {
                     // 用户未登录
-                    creditsElement.textContent = '未登录';
-                    
                     // 添加登录链接
                     const headerDiv = document.querySelector('header .flex.items-center.space-x-4');
                     
@@ -417,7 +392,7 @@
                         loginLink.className = 'text-indigo-600 hover:text-indigo-800 text-sm font-medium';
                         loginLink.id = 'login-btn';
                         loginLink.textContent = '登录';
-                        headerDiv.insertBefore(loginLink, creditsElement);
+                        headerDiv.appendChild(loginLink);
                     }
                 }
             }
@@ -722,7 +697,6 @@
                             const updateCreditInfo = () => {
                                 // 优先使用API返回的时长，如果没有则使用视频元数据
                                 const videoDuration = data.videoDuration || Math.ceil(resultVideo.duration);
-                                const creditCost = videoDuration * 9; // 每秒9积分
                                 
                                 costInfoElement.innerHTML = `
                                     <div class="flex items-start">
@@ -730,8 +704,7 @@
                                         <div>
                                             <h3 class="font-medium text-indigo-800">视频生成完成</h3>
                                             <p class="text-indigo-700 mt-1">
-                                                视频时长: <strong>${Math.ceil(videoDuration)}秒</strong><br>
-                                                消费积分: <strong>${Math.ceil(videoDuration) * 9}积分</strong> (9积分/秒)
+                                                视频时长: <strong>${Math.ceil(videoDuration)}秒</strong>
                                             </p>
                                         </div>
                                     </div>

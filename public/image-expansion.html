@@ -124,7 +124,8 @@
             border-color: #6366f1;
         }
     </style>
-</head>
+
+    <link rel="icon" href="/images/favicon.png" type="image/png"></head>
 <body class="min-h-screen bg-white">
     <!-- 导航栏 -->
     <nav class="bg-white border-b border-gray-200 py-3 px-4 flex items-center justify-between shadow-sm">
@@ -139,20 +140,6 @@
                 <i class="ri-home-line mr-1"></i>
                 <span>返回首页</span>
             </a>
-            <a href="/credits.html" class="text-gray-600 hover:text-gray-900">
-                <i class="ri-coin-line mr-1"></i>
-                <span id="user-credits">积分: 加载中...</span>
-            </a>
-            <div class="relative" id="user-section">
-                <button id="user-menu-btn" class="hidden flex items-center text-gray-700 hover:text-gray-900">
-                    <i class="ri-user-3-line mr-1 text-lg"></i>
-                    <span id="username-display">用户名</span>
-                    <i class="ri-arrow-down-s-line ml-1"></i>
-                </button>
-                <a href="/login.html" id="login-btn" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                    登录/注册
-                </a>
-            </div>
         </div>
     </nav>
 
@@ -169,7 +156,8 @@
                         <p class="mb-2">此功能可以智能扩展图像的边界，实现图像无缝延伸。</p>
                         <p class="mb-2">选择扩展方向，然后在提示框中描述您希望在扩展区域出现的内容。</p>
                         <p class="mb-2">提示词越详细，生成结果越符合预期，例如"蓝天白云"、"延续城市景观"等。</p>
-                        <p>图片上传尺寸最小为512×512像素，最大不超过2048×2048像素。</p>
+                        <p class="mb-2">图片上传尺寸最小为512×512像素，最大不超过2048×2048像素。</p>
+                        <p class="text-red-500 font-medium">请上传合法合规的图片视频，如有违反会进行封号处理，任务一旦提交就会扣除积分不可中断，请勿重复刷新提交，否则会造成积分浪费。</p>
                     </div>
                 </div>
 
@@ -298,8 +286,6 @@
             const loadingOverlay = document.getElementById('loading-overlay');
             const loadingMessage = document.getElementById('loading-message');
             const downloadBtn = document.getElementById('download-btn');
-            const userMenuBtn = document.getElementById('user-menu-btn');
-            const loginBtn = document.getElementById('login-btn');
             const saveToDownloadsBtn = document.getElementById('save-to-downloads-btn');
             const leftScale = document.getElementById('left-scale');
             const rightScale = document.getElementById('right-scale');
@@ -311,9 +297,6 @@
             const bottomScaleValue = document.getElementById('bottom-scale-value');
             const resetScales = document.getElementById('reset-scales');
             const equalScales = document.getElementById('equal-scales');
-            
-            // 检查用户登录状态
-            checkAuthStatus();
             
             // 初始化滑块值显示
             updateScaleValueDisplay();
@@ -910,43 +893,6 @@
             
             function unhighlight() {
                 uploadArea.classList.remove('border-indigo-500', 'bg-indigo-50');
-            }
-            
-            // 检查用户登录状态
-            function checkAuthStatus() {
-                const authToken = localStorage.getItem('authToken');
-                const userInfo = localStorage.getItem('user');
-                
-                if (authToken && userInfo) {
-                    try {
-                        const user = JSON.parse(userInfo);
-                        document.getElementById('username-display').textContent = user.username;
-                        
-                        loginBtn.classList.add('hidden');
-                        userMenuBtn.classList.remove('hidden');
-                        
-                        // 获取用户积分
-                        fetch('/api/user/credits', {
-                            headers: {
-                                'Authorization': `Bearer ${authToken}`
-                            }
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            document.getElementById('user-credits').textContent = `积分: ${data.credits || 0}`;
-                        })
-                        .catch(err => {
-                            console.error('获取积分失败:', err);
-                        });
-                    } catch (e) {
-                        console.error('解析用户信息出错:', e);
-                        localStorage.removeItem('authToken');
-                        localStorage.removeItem('user');
-                    }
-                } else {
-                    userMenuBtn.classList.add('hidden');
-                    loginBtn.classList.remove('hidden');
-                }
             }
         });
     </script>

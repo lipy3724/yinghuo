@@ -43,7 +43,8 @@
             top: -2px;
         }
     </style>
-</head>
+
+    <link rel="icon" href="/images/favicon.png" type="image/png"></head>
 <body class="bg-gray-50">
     <!-- 主内容区域 -->
     <div class="container mx-auto p-8">
@@ -66,6 +67,7 @@
                             <li>支持JPG、PNG、WEBP等常见图片格式</li>
                             <li>放大倍数范围：2-4倍（推荐2倍效果最佳，4倍效果更明显）</li>
                         </ul>
+                        <p class="text-red-500 font-medium mt-2">请上传合法合规的图片视频，如有违反会进行封号处理，任务一旦提交就会扣除积分不可中断，请勿重复刷新提交，否则会造成积分浪费。</p>
                     </div>
                 </div>
             </div>
@@ -261,7 +263,7 @@
                 // 获取用户选择的放大倍数（从隐藏输入框）
                 const upscaleFactor = parseInt(document.getElementById('upscaleFactor').value);
                 
-                // 记录功能使用
+                // 检查积分
                 const canProceed = await trackFeatureUsage('image-upscaler');
                 if (!canProceed) {
                     return; // 如果不能继续（如积分不足），则中止处理

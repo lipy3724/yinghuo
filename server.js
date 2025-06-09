@@ -802,28 +802,22 @@ app.post('/api/digital-human/upload', protect, (req, res, next) => {
     const imageFile = req.files.image ? req.files.image[0] : null;
     
     console.log('收到数字人视频请求，上传文件信息：', {
-      video: videoFile.filename,
-      audio: audioFile.filename,
-      image: imageFile ? imageFile.filename : '无参考图片'
+      video: videoFile.originalname,
+      audio: audioFile.originalname,
+      image: imageFile ? imageFile.originalname : '无参考图片'
     });
 
-    // 创建上传目录（如果不存在）
-    const uploadDir = path.join(__dirname, 'uploads', 'digital-human');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
     try {
-      // 上传文件到阿里云OSS
+      // 上传文件到阿里云OSS - 直接使用内存buffer
       console.log('开始上传视频到OSS...');
-      const videoUrl = await uploadFileToOSS(videoFile, 'digital-human/videos');
+      const videoUrl = await uploadFileToOSS(videoFile.buffer, 'digital-human/videos');
       console.log('开始上传音频到OSS...');
-      const audioUrl = await uploadFileToOSS(audioFile, 'digital-human/audios');
+      const audioUrl = await uploadFileToOSS(audioFile.buffer, 'digital-human/audios');
       
       let imageUrl = null;
       if (imageFile) {
         console.log('开始上传图片到OSS...');
-        imageUrl = await uploadFileToOSS(imageFile, 'digital-human/images');
+        imageUrl = await uploadFileToOSS(imageFile.buffer, 'digital-human/images');
       }
 
       console.log('文件上传到OSS成功，URL:', {
@@ -2076,6 +2070,7 @@ app.get('/', (req, res) => {
 
 // 确保功能相关的上传目录存在
 const ensureUploadDirs = () => {
+  // 鞋靴试穿功能已改为仅使用OSS存储，不再需要本地uploads目录存储这类图片
   const dirs = [
     'uploads',
     'uploads/image-to-video',
@@ -2296,7 +2291,7 @@ app.post('/api/get-virtual-model-signature', async (req, res) => {
 });
 
 // 处理鞋靴模特API的上传图片请求
-app.post('/api/upload-image-for-shoe-model', protect, upload.single('file'), async (req, res) => {
+app.post('/api/upload-image-for-shoe-model', protect, memoryUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -2305,36 +2300,27 @@ app.post('/api/upload-image-for-shoe-model', protect, upload.single('file'), asy
       });
     }
 
-    const filePath = req.file.path;
-    const fileName = req.file.filename;
     const type = req.body.type || 'unknown'; // 'model' 或 'shoe'
 
-    // 获取文件的完整URL（根据你的服务器设置调整）
-    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${fileName}`;
-
-    // 记录上传历史（可选）
     try {
-      await ImageHistory.create({
-        userId: req.user.id,
-        fileUrl: fileUrl,
-        fileName: fileName,
-        fileType: req.file.mimetype,
-        fileSize: req.file.size,
-        uploadDate: new Date(),
-        category: type === 'model' ? 'model_template' : 'shoe_image',
-        status: 'uploaded'
-      });
-    } catch (historyError) {
-      console.error('记录上传历史失败:', historyError);
-      // 继续处理，不影响主流程
-    }
+      // 直接上传到OSS，不保存本地文件
+      const imageUrl = await uploadToOSS(req.file.buffer, req.file.originalname);
+      
+      // 不再记录上传历史，防止图片显示在下载中心
 
     res.status(200).json({
       success: true,
       message: '文件上传成功',
-      imageUrl: fileUrl,
-      fileName: fileName
-    });
+        imageUrl: imageUrl
+      });
+    } catch (ossError) {
+      console.error('上传到OSS失败:', ossError);
+      res.status(500).json({
+        success: false,
+        message: '上传图片到OSS服务器失败',
+        error: ossError.message
+      });
+    }
   } catch (error) {
     console.error('上传文件时出错:', error);
     res.status(500).json({
@@ -2707,7 +2693,7 @@ app.get('/api/tasks/:taskId', protect, async (req, res) => {
 });
 
 // 上传图片到OSS并返回可公开访问的URL - 专用于鞋靴试穿功能
-app.post('/api/image-to-oss', protect, upload.single('image'), async (req, res) => {
+app.post('/api/image-to-oss', protect, memoryUpload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -2741,12 +2727,14 @@ app.post('/api/image-to-oss', protect, upload.single('image'), async (req, res) 
     }
 
     try {
-      // 使用api-utils.js中的上传到OSS函数
-      const imageUrl = await uploadToOSS(req.file.buffer || fs.readFileSync(req.file.path), req.file.originalname);
+      // 直接使用buffer上传到OSS，不保存到本地
+      const imageUrl = await uploadToOSS(req.file.buffer, req.file.originalname);
       
       console.log('图片上传到OSS成功:', imageUrl);
 
-      // 记录上传历史
+      // 不再记录上传历史到ImageHistory，这样图片就不会出现在下载中心
+      // 删除这段代码
+      /* 
       try {
         await ImageHistory.create({
           userId: req.user.id,
@@ -2765,6 +2753,7 @@ app.post('/api/image-to-oss', protect, upload.single('image'), async (req, res) 
         console.error('记录上传历史失败:', historyError);
         // 继续处理，不影响主流程
       }
+      */
 
       res.status(200).json({
         success: true,
@@ -3865,20 +3854,7 @@ console.log('开始同步数据库表结构...');
 app.use(express.static(path.join(__dirname)));
 
 // 设置视频数字人文件上传
-const digitalHumanVideoStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, 'uploads', 'digital-human');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
+const digitalHumanVideoStorage = multer.memoryStorage(); // 使用内存存储
 
 const digitalHumanUpload = multer({
   storage: digitalHumanVideoStorage,
@@ -3889,22 +3865,44 @@ const digitalHumanUpload = multer({
 
 /**
  * 上传文件到OSS服务
- * @param {Object} file - multer文件对象
+ * @param {Object|Buffer} file - multer文件对象或文件buffer
  * @param {String} folderPath - OSS存储的文件夹路径
  * @returns {Promise<String>} OSS URL
  */
 async function uploadFileToOSS(file, folderPath) {
-  console.log('准备上传文件到OSS:', file.path);
-  const objectName = `${folderPath}/${Date.now()}-${path.basename(file.path)}`;
-  
   try {
+    let fileContent, fileName;
+    
+    // 检查是否传入的是Buffer还是文件对象
+    if (Buffer.isBuffer(file)) {
+      // 如果是Buffer数据，直接使用
+      fileContent = file;
+      // 使用时间戳作为文件名
+      fileName = `file-${Date.now()}.bin`;
+      console.log('准备上传Buffer数据到OSS');
+    } else if (file.buffer) {
+      // 如果是multer内存存储的文件对象
+      fileContent = file.buffer;
+      fileName = file.originalname || `file-${Date.now()}${path.extname(file.originalname || '.bin')}`;
+      console.log('准备上传multer内存文件到OSS:', fileName);
+    } else if (file.path) {
+      // 如果是multer磁盘存储的文件对象
+  console.log('准备上传文件到OSS:', file.path);
+  
     // 确认文件存在
     if (!fs.existsSync(file.path)) {
       throw new Error(`文件路径不存在: ${file.path}`);
     }
     
     // 读取文件内容
-    const fileContent = fs.readFileSync(file.path);
+      fileContent = fs.readFileSync(file.path);
+      fileName = path.basename(file.path);
+    } else {
+      throw new Error('无效的文件参数，需要提供Buffer或multer文件对象');
+    }
+    
+    // 生成OSS对象名
+    const objectName = `${folderPath}/${Date.now()}-${fileName}`;
     
     // 检查OSS客户端配置
     if (!ossClient) {
@@ -3917,18 +3915,29 @@ async function uploadFileToOSS(file, folderPath) {
       const result = await ossClient.put(objectName, fileContent);
       console.log('文件上传到OSS成功:', result.url);
       
-      // 删除本地临时文件
+      // 如果是磁盘存储的文件，删除本地临时文件
+      if (file.path && fs.existsSync(file.path)) {
       fs.unlinkSync(file.path);
+        console.log('已删除本地临时文件:', file.path);
+      }
+      
       return result.url;
     } catch (ossError) {
       console.error('上传到OSS失败:', ossError);
+      
       // 如果OSS上传失败但在生产环境，抛出错误
       if (process.env.NODE_ENV === 'production') {
         throw ossError;
       }
+      
       // 在开发环境保留本地文件作为备用
+      if (file.path && fs.existsSync(file.path)) {
       console.log('开发环境：返回本地文件URL作为备用');
       return `http://localhost:${port}/uploads/${path.relative(path.join(__dirname, 'uploads'), file.path)}`;
+      } else {
+        // 没有本地文件可用
+        throw ossError;
+      }
     }
   } catch (error) {
     console.error('读取或处理文件失败:', error);

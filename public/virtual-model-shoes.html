@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>鞋靴虚拟试穿 - 萤火AI</title>
+    <link rel="icon" href="/images/favicon.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <style>
@@ -731,12 +732,21 @@
             
             // 下载按钮
             downloadBtn.addEventListener('click', () => {
-                const link = document.createElement('a');
-                link.href = resultImage.src;
-                link.download = '虚拟试鞋结果_' + Date.now() + '.jpg';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                // 创建一个 blob URL 来直接下载图片，避免浏览器显示下载提示
+                fetch(resultImage.src)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const blobUrl = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = '虚拟试鞋结果_' + Date.now() + '.jpg';
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        // 释放 blob URL
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+                    });
             });
             
             // 重新试穿按钮
