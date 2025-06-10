@@ -22,13 +22,11 @@
         }
     </style>
     <script>
-        // open sdk 扩展配置
+        // open sdk 扩展配置 - 初始化为空，稍后从API获取
         window.INTL_OP_FRAME_SDK_CONFIG = {
             apiMap: {
                 signature: '/open/api/signature' // 签名接口路径
-            },
-            appKey: '502592', // 正确的appKey
-            secretKey: 'dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t' // 正确的secretKey
+            }
         };
     </script>
     <script src="https://g.alicdn.com/code/npm/@ali/intl-op-frame-sdk/0.1.10/main.min.js"></script>
@@ -41,6 +39,48 @@
         // 必要的变量设置
         let iframeEle = document.getElementById("myiframe");
         let receiveBiz = ""; // 保存业务标识，用于postMessage回应
+        
+        // 从API获取配置信息
+        async function fetchConfig() {
+            try {
+                const authToken = localStorage.getItem('authToken');
+                if (!authToken) {
+                    console.error('用户未登录，无法获取配置');
+                    alert('请先登录');
+                    window.location.href = '/login.html';
+                    return false;
+                }
+                
+                const response = await fetch('/api/api-configs/translate', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`获取配置失败: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    // 更新SDK配置
+                    window.INTL_OP_FRAME_SDK_CONFIG = {
+                        ...window.INTL_OP_FRAME_SDK_CONFIG,
+                        ...result.data
+                    };
+                    console.log('成功获取API配置');
+                    return true;
+                } else {
+                    throw new Error('配置数据无效');
+                }
+            } catch (error) {
+                console.error('获取配置失败:', error);
+                alert('获取配置失败，请重试或联系管理员');
+                return false;
+            }
+        }
         
         // 记录功能使用
         async function trackFeatureUsage() {
@@ -87,16 +127,16 @@
         
         // 构建编辑器URL并加载
         async function initializeEditor() {
-            // 不再记录功能使用 - 移除初始化时扣除次数
-            // const canProceed = await trackFeatureUsage();
-            // if (!canProceed) {
-            //     return; // 如果不能继续（如积分不足），则不加载编辑器
-            // }
+            // 首先获取配置
+            const configSuccess = await fetchConfig();
+            if (!configSuccess) {
+                return; // 如果配置获取失败，不继续初始化
+            }
             
             // 只构建基本参数，不包含imageUrl
             const params = {
                 apiHost: 'aibcn',
-                appKey: "502592",
+                appKey: window.INTL_OP_FRAME_SDK_CONFIG.appKey,
                 trial: true,
                 lang: 'zh-cn',
                 // 添加源语言和目标语言设置

@@ -82,9 +82,9 @@ const ossClient = new OSS({
 const app = express();
 const port = process.env.PORT || 8080;
 
-// API密钥和密钥配置 - 更新为新的密钥
-const APP_KEY = "502592";
-const SECRET_KEY = "dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t";
+// API密钥和密钥配置 - 从环境变量中获取
+const APP_KEY = process.env.IMAGE_REMOVAL_APP_KEY;
+const SECRET_KEY = process.env.IMAGE_REMOVAL_SECRET_KEY;
 const SIGN_METHOD_SHA256 = "sha256";
 const SIGN_METHOD_HMAC_SHA256 = "HmacSHA256";
 // 阿里云API相关配置 - 确保从环境变量中获取
@@ -263,6 +263,9 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/admin', adminRoutes);
+// 添加API通用路由
+const apiRoutes = require('./routes/api');
+app.use('/api', apiRoutes);
 // 添加文生视频路由
 app.use('/api/text-to-video', textToVideoRoutes);
 // 添加图像编辑路由
@@ -2247,9 +2250,9 @@ app.post('/api/get-virtual-model-signature', async (req, res) => {
       });
     }
     
-    // 虚拟模特的AppKey和Secret - 确保使用正确的值
-    const APP_KEY = '502592';
-    const APP_SECRET = 'dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t';
+    // 虚拟模特的AppKey和Secret - 从环境变量中获取
+    const APP_KEY = process.env.IMAGE_REMOVAL_APP_KEY;
+    const APP_SECRET = process.env.IMAGE_REMOVAL_SECRET_KEY;
     
     console.log('使用参数:', {
       userId,

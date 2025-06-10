@@ -51,14 +51,58 @@
         }
     </style>
     <script>
-        // open sdk 扩展配置
+        // open sdk 扩展配置 - 将从服务器安全获取
         window.INTL_OP_FRAME_SDK_CONFIG = {
             apiMap: {
-                signature: '/open/api/signature' // 签名接口路径
+                signature: '/api/open/api/signature' // 签名接口路径
             },
-            appKey: '502592', // 正确的appKey
-            secretKey: 'dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t' // 正确的secretKey
+            appKey: '' // appKey将从服务器获取
+            // secretKey不再直接暴露在前端代码中
         };
+        
+        // 从服务器获取API配置
+        async function fetchApiConfig() {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    console.warn('用户未登录，使用默认配置');
+                    // 使用默认配置
+                    window.INTL_OP_FRAME_SDK_CONFIG.appKey = '';
+                    return;
+                }
+                
+                const response = await fetch('/api/api-configs/image-removal', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.warn('获取API配置失败，使用默认配置');
+                    window.INTL_OP_FRAME_SDK_CONFIG.appKey = '';
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    // 更新SDK配置
+                    window.INTL_OP_FRAME_SDK_CONFIG.appKey = result.data.appKey;
+                    console.log('成功获取API配置');
+                } else {
+                    console.error('获取API配置响应格式错误:', result);
+                    // 使用默认配置
+                    window.INTL_OP_FRAME_SDK_CONFIG.appKey = '';
+                }
+            } catch (error) {
+                console.error('获取API配置出错:', error);
+                // 使用默认配置
+                window.INTL_OP_FRAME_SDK_CONFIG.appKey = '';
+            }
+        }
+        
+        // 页面加载时获取API配置
+        fetchApiConfig();
         
         // 添加全局错误处理
         window.onerror = function(message, source, lineno, colno, error) {
@@ -106,7 +150,7 @@
             // 严格按照API文档构建参数
             const eliminationParam = {
                 apiHost: 'aibcn',
-                appKey: "502592",
+                appKey: window.INTL_OP_FRAME_SDK_CONFIG.appKey, // 从配置中获取appKey
                 trial: true,
                 lang: 'zh-cn',
                 charge: true // 开启生产拦截
@@ -381,8 +425,15 @@
         });
         
         // 页面加载时初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeEditor();
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 先获取API配置，再初始化编辑器
+            try {
+                await fetchApiConfig();
+                initializeEditor();
+            } catch (error) {
+                console.error("初始化过程出错:", error);
+                showError("初始化失败，请刷新重试");
+            }
         });
     </script>
 </body>
