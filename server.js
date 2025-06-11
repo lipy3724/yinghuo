@@ -1645,21 +1645,8 @@ app.post('/api/save-result', async (req, res) => {
     
     console.log('保存图片历史记录成功:', imageHistory.id);
     
-    // 同时保存到JSON文件作为备份
-    const resultsDir = path.join(__dirname, 'results');
-    if (!fs.existsSync(resultsDir)) {
-      fs.mkdirSync(resultsDir, { recursive: true });
-    }
-    
-    const resultFile = path.join(resultsDir, `result-${timestamp}.json`);
-    fs.writeFileSync(resultFile, JSON.stringify({
-      ...resultData,
-      id: imageHistory.id,
-      userId: userId,
-      saveTime: new Date().toISOString()
-    }, null, 2));
-    
-    console.log('保存到JSON文件成功:', resultFile);
+    // 数据已保存到数据库，不再额外生成JSON文件备份
+    // console.log('数据已保存到数据库，跳过JSON文件备份');
     
     res.json({ 
       success: true, 
@@ -1794,20 +1781,7 @@ app.delete('/api/delete-image/:id', async (req, res) => {
     // 删除记录
     await imageRecord.destroy();
     
-    // 如果有对应的文件，尝试删除文件（可选）
-    try {
-      const resultFile = path.join(__dirname, 'results', `result-*.json`);
-      // 查找可能的结果文件并删除（这里简化处理，实际应用中可能需要更精确的匹配）
-      // const files = glob.sync(resultFile);
-      // files.forEach(file => {
-      //   const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-      //   if (data.id === parseInt(imageId)) {
-      //     fs.unlinkSync(file);
-      //   }
-      // });
-    } catch (fileError) {
-      console.error('删除文件失败:', fileError);
-    }
+    // 不再需要删除JSON文件，因为已经停止创建
     
     res.json({ 
       success: true, 

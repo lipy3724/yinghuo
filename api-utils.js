@@ -154,40 +154,22 @@ async function uploadToOSS(fileBuffer, fileName) {
  */
 async function callUpscaleApi(imageUrl, upscaleFactor) {
   try {
-    // API 路径
-    const apiPath = "/rest/ai/super/resolution";
+    // 使用原始代码中的API路径
+    const apiPath = "/ai/super/resolution";
     
     // 当前时间戳（毫秒）
     const timestamp = Date.now();
     
-    // 准备签名参数
-    const signParams = {
-      partner_id: "aidge",
-      app_key: API_CONFIG.APP_KEY,
-      timestamp: String(timestamp),
-      sign_method: "sha256",
-      sign_ver: "v2"
-    };
+    // 按照原始代码的方式计算签名
+    // 原始代码: const signData = API_CONFIG.SECRET_KEY + timestamp;
+    // 原始代码: const sign = hmacSha256(signData, API_CONFIG.SECRET_KEY);
+    const signData = API_CONFIG.SECRET_KEY + timestamp;
+    const sign = hmacSha256(signData, API_CONFIG.SECRET_KEY);
     
-    // 对参数按字典序排序
-    const sortedKeys = Object.keys(signParams).sort();
-    let stringToSign = "";
+    // 构建API URL - 与原始代码保持一致
+    const apiUrl = `https://cn-api.aidc-ai.com/rest${apiPath}?partner_id=aidge&sign_method=sha256&sign_ver=v2&app_key=${API_CONFIG.APP_KEY}&timestamp=${timestamp}&sign=${sign}`;
     
-    // 构建待签名字符串
-    for (const key of sortedKeys) {
-      if (signParams[key]) {
-        stringToSign += key + signParams[key];
-      }
-    }
-    
-    // 使用secretKey进行签名
-    const secret = API_CONFIG.SECRET_KEY;
-    const sign = hmacSha256(stringToSign, secret);
-    
-    // 构建API URL
-    const apiUrl = `https://cn-api.aidc-ai.com${apiPath}?partner_id=${signParams.partner_id}&sign_method=${signParams.sign_method}&sign_ver=${signParams.sign_ver}&app_key=${signParams.app_key}&timestamp=${signParams.timestamp}&sign=${sign}`;
-    
-    // 构建请求参数
+    // 构建请求参数 - 与原始代码保持一致
     const requestBody = {
       imageUrl: imageUrl,
       upscaleFactor: String(upscaleFactor)
@@ -195,18 +177,29 @@ async function callUpscaleApi(imageUrl, upscaleFactor) {
     
     // 打印日志
     console.log('调用图像高清放大API:', apiUrl);
+    console.log('签名数据:', signData);
+    
+    // 准备请求头 - 与原始代码保持一致
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-iop-trial': 'true'  // 添加试用标记
+    };
+    
+    console.log('请求头:', headers);
     console.log('请求参数:', requestBody);
     
-    // 发起API请求
-    const response = await axios.post(apiUrl, requestBody, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    // 使用POST方法发送请求，参数放在请求体中
+    const response = await axios.post(apiUrl, requestBody, { headers });
     
     console.log('API响应状态:', response.status);
+    console.log('API完整响应:', JSON.stringify(response.data, null, 2));
     
     if (response.data && response.data.success) {
+      console.log('API调用成功');
+      return response.data;
+    } else if (response.data && response.data.data) {
+      // 可能是成功但格式不同
+      console.log('API可能成功，检查data字段');
       return response.data;
     } else {
       console.error('API调用失败:', response.data);
