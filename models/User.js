@@ -69,6 +69,18 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: false // 默认不是管理员
   },
+  // 是否为内部用户
+  isInternal: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false // 默认不是内部用户
+  },
+  // 用户备注
+  remark: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    defaultValue: null
+  },
   // 用户创建时间
   createdAt: {
     type: DataTypes.DATE,

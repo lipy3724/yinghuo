@@ -35,7 +35,7 @@ router.get('/users', protect, checkAdmin, async (req, res) => {
     // 查询用户列表
     const { count, rows: users } = await User.findAndCountAll({
       where: whereCondition,
-      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'createdAt', 'lastRechargeTime'],
+      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'isInternal', 'remark', 'createdAt', 'lastRechargeTime'],
       order: [['createdAt', 'DESC']],
       limit,
       offset
@@ -77,7 +77,7 @@ router.get('/users/:id', protect, checkAdmin, async (req, res) => {
     
     // 查询用户信息
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'createdAt', 'lastRechargeTime']
+      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'isInternal', 'remark', 'createdAt', 'lastRechargeTime']
     });
     
     if (!user) {
@@ -118,7 +118,7 @@ router.get('/users/:id', protect, checkAdmin, async (req, res) => {
 router.put('/users/:id', protect, checkAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
-    const { username, phone, credits, isAdmin, password } = req.body;
+    const { username, phone, credits, isAdmin, isInternal, remark, password } = req.body;
     
     // 查询用户
     const user = await User.findByPk(userId);
@@ -135,6 +135,8 @@ router.put('/users/:id', protect, checkAdmin, async (req, res) => {
     if (phone !== undefined) user.phone = phone;
     if (credits !== undefined) user.credits = parseInt(credits);
     if (isAdmin !== undefined) user.isAdmin = Boolean(isAdmin);
+    if (isInternal !== undefined) user.isInternal = Boolean(isInternal);
+    if (remark !== undefined) user.remark = remark;
     
     // 如果提供了新密码，更新密码
     if (password) {
@@ -152,6 +154,8 @@ router.put('/users/:id', protect, checkAdmin, async (req, res) => {
         phone: user.phone,
         credits: user.credits,
         isAdmin: user.isAdmin,
+        isInternal: user.isInternal,
+        remark: user.remark,
         createdAt: user.createdAt,
         lastRechargeTime: user.lastRechargeTime
       }
@@ -903,6 +907,82 @@ router.post('/delete-user-usage', protect, checkAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '服务器错误，删除用户功能使用记录失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/users
+ * @desc    创建新用户（普通用户或内部用户）
+ * @access  私有 (仅管理员)
+ */
+router.post('/users', protect, checkAdmin, async (req, res) => {
+  try {
+    const { username, password, phone, credits, isAdmin, isInternal } = req.body;
+    
+    // 基本验证
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: '用户名和密码不能为空'
+      });
+    }
+    
+    // 检查用户名是否已存在
+    const existingUser = await User.findOne({
+      where: { username }
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: '用户名已被使用'
+      });
+    }
+    
+    // 如果提供了手机号，检查是否已被使用
+    if (phone) {
+      const existingPhone = await User.findOne({
+        where: { phone }
+      });
+      
+      if (existingPhone) {
+        return res.status(400).json({
+          success: false,
+          message: '手机号已被使用'
+        });
+      }
+    }
+    
+    // 创建新用户
+    const user = await User.create({
+      username,
+      password,
+      phone: phone || null,
+      credits: credits ? parseInt(credits) : 0,
+      isAdmin: Boolean(isAdmin),
+      isInternal: Boolean(isInternal)
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: '用户创建成功',
+      data: {
+        id: user.id,
+        username: user.username,
+        phone: user.phone,
+        credits: user.credits,
+        isAdmin: user.isAdmin,
+        isInternal: user.isInternal,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('创建用户错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，创建用户失败',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

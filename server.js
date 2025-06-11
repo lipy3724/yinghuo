@@ -120,9 +120,9 @@ const ossClient = new OSS({
 const app = express();
 const port = process.env.PORT || 8080;
 
-// API密钥和密钥配置 - 更新为新的密钥
-const APP_KEY = "502592";
-const SECRET_KEY = "dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t";
+// API密钥和密钥配置 - 从环境变量中获取
+const APP_KEY = process.env.IMAGE_REMOVAL_APP_KEY;
+const SECRET_KEY = process.env.IMAGE_REMOVAL_SECRET_KEY;
 const SIGN_METHOD_SHA256 = "sha256";
 const SIGN_METHOD_HMAC_SHA256 = "HmacSHA256";
 // 阿里云API相关配置 - 确保从环境变量中获取
@@ -301,6 +301,9 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/admin', adminRoutes);
+// 添加API通用路由
+const apiRoutes = require('./routes/api');
+app.use('/api', apiRoutes);
 // 添加文生视频路由
 app.use('/api/text-to-video', textToVideoRoutes);
 // 添加图像编辑路由
@@ -1749,21 +1752,8 @@ app.post('/api/save-result', async (req, res) => {
     
     console.log('保存图片历史记录成功:', imageHistory.id);
     
-    // 同时保存到JSON文件作为备份
-    const resultsDir = path.join(__dirname, 'results');
-    if (!fs.existsSync(resultsDir)) {
-      fs.mkdirSync(resultsDir, { recursive: true });
-    }
-    
-    const resultFile = path.join(resultsDir, `result-${timestamp}.json`);
-    fs.writeFileSync(resultFile, JSON.stringify({
-      ...resultData,
-      id: imageHistory.id,
-      userId: userId,
-      saveTime: new Date().toISOString()
-    }, null, 2));
-    
-    console.log('保存到JSON文件成功:', resultFile);
+    // 数据已保存到数据库，不再额外生成JSON文件备份
+    // console.log('数据已保存到数据库，跳过JSON文件备份');
     
     res.json({ 
       success: true, 
@@ -1898,20 +1888,7 @@ app.delete('/api/delete-image/:id', async (req, res) => {
     // 删除记录
     await imageRecord.destroy();
     
-    // 如果有对应的文件，尝试删除文件（可选）
-    try {
-      const resultFile = path.join(__dirname, 'results', `result-*.json`);
-      // 查找可能的结果文件并删除（这里简化处理，实际应用中可能需要更精确的匹配）
-      // const files = glob.sync(resultFile);
-      // files.forEach(file => {
-      //   const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-      //   if (data.id === parseInt(imageId)) {
-      //     fs.unlinkSync(file);
-      //   }
-      // });
-    } catch (fileError) {
-      console.error('删除文件失败:', fileError);
-    }
+    // 不再需要删除JSON文件，因为已经停止创建
     
     res.json({ 
       success: true, 
@@ -2411,9 +2388,9 @@ app.post('/api/get-virtual-model-signature', async (req, res) => {
       });
     }
     
-    // 虚拟模特的AppKey和Secret - 确保使用正确的值
-    const APP_KEY = '502592';
-    const APP_SECRET = 'dSmD7xK5Oms04Ml4VsQH0mmHJsBXcB1t';
+    // 虚拟模特的AppKey和Secret - 从环境变量中获取
+    const APP_KEY = process.env.IMAGE_REMOVAL_APP_KEY;
+    const APP_SECRET = process.env.IMAGE_REMOVAL_SECRET_KEY;
     
     console.log('使用参数:', {
       userId,
