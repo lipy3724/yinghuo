@@ -64,7 +64,7 @@ const PaymentOrder = sequelize.define('payment_order', {
 });
 
 // 设置关联关系
-PaymentOrder.belongsTo(User, { foreignKey: 'user_id', as: 'orderUser' });
+PaymentOrder.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasMany(PaymentOrder, { foreignKey: 'user_id', as: 'payments' });
 
 module.exports = PaymentOrder; 
