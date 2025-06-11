@@ -479,12 +479,19 @@ router.get('/payment-records', protect, checkAdmin, async (req, res) => {
     
     // 搜索参数
     const userId = req.query.userId ? parseInt(req.query.userId) : null;
+    const status = req.query.status || null;
     
     // 构建查询条件
     const whereCondition = {};
     if (userId) {
       whereCondition.user_id = userId;
     }
+    if (status) {
+      whereCondition.status = status;
+    }
+    
+    console.log('充值记录API请求参数:', { userId, status, page, limit });
+    console.log('查询条件:', whereCondition);
     
     // 查询支付订单
     const { count, rows: orders } = await PaymentOrder.findAndCountAll({
@@ -641,7 +648,9 @@ router.get('/feature-usage', protect, checkAdmin, async (req, res) => {
       'product_comparison': '产品对比',
       'amazon_post_creator': '创建亚马逊Post',
       'amazon_keyword_recommender': '亚马逊关键词推荐',
-      'amazon_case_creator': '亚马逊客服case内容'
+      'amazon_case_creator': '亚马逊客服case内容',
+      'virtual-model': '虚拟模特',
+      'DIANTU': '垫图'
     };
     
     const responseData = {
