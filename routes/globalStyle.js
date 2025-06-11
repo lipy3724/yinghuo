@@ -113,8 +113,8 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
         taskId: taskId,
         creditCost: creditCost,
         timestamp: new Date(),
-        prompt: sanitizedPrompt,
-        strength: strengthValue
+          prompt: sanitizedPrompt,
+          strength: strengthValue
       });
       
       // 更新usage记录 - 同时记录credits字段
