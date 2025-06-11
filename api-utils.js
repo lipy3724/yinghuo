@@ -161,8 +161,6 @@ async function callUpscaleApi(imageUrl, upscaleFactor) {
     const timestamp = Date.now();
     
     // 按照原始代码的方式计算签名
-    // 原始代码: const signData = API_CONFIG.SECRET_KEY + timestamp;
-    // 原始代码: const sign = hmacSha256(signData, API_CONFIG.SECRET_KEY);
     const signData = API_CONFIG.SECRET_KEY + timestamp;
     const sign = hmacSha256(signData, API_CONFIG.SECRET_KEY);
     

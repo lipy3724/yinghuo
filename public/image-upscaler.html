@@ -291,6 +291,9 @@
                     
                     const response = await fetch('/api/upscale', {
                         method: 'POST',
+                        headers: {
+                            'Authorization': localStorage.getItem('authToken') ? `Bearer ${localStorage.getItem('authToken')}` : ''
+                        },
                         body: formData
                     });
                     
