@@ -45,6 +45,14 @@ global.clothingSimulationTasks = {};
 global.imageEditTasks = {};
 // 初始化全局变量，用于存储文生视频任务信息
 global.textToVideoTasks = {};
+// 初始化全局变量，用于存储智能扩图任务信息
+global.imageExpansionTasks = {};
+// 初始化全局变量，用于存储AI营销图任务信息
+global.marketingImagesTasks = {};
+// 初始化全局变量，用于存储图片翻译任务信息
+global.translateTasks = {};
+// 初始化全局变量，用于存储图片换背景任务信息
+global.cutoutTasks = {};
 // 导入环境变量配置
 require('dotenv').config();
 // 导入数据库
@@ -5300,6 +5308,48 @@ async function syncAllFeatureUsagesWithDatabase() {
             if (global.imageToVideoTasks) {
               for (const taskId in global.imageToVideoTasks) {
                 const task = global.imageToVideoTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'marketing-images':
+            // AI营销图功能
+            if (global.marketingImagesTasks) {
+              for (const taskId in global.marketingImagesTasks) {
+                const task = global.marketingImagesTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'translate':
+            // 图片翻译功能
+            if (global.translateTasks) {
+              for (const taskId in global.translateTasks) {
+                const task = global.translateTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'cutout':
+            // 图片换背景功能
+            if (global.cutoutTasks) {
+              for (const taskId in global.cutoutTasks) {
+                const task = global.cutoutTasks[taskId];
                 if (task && task.userId === userId) {
                   globalTasks[taskId] = task;
                   taskCount++;

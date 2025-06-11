@@ -661,6 +661,15 @@
             recentRecords.forEach(record => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50';
+                
+                // 处理免费使用的显示
+                let creditDisplay;
+                if (record.isFree || record.credits === 0) {
+                    creditDisplay = '<span class="text-green-500 font-medium">免费</span>';
+                } else {
+                    creditDisplay = `<span class="text-red-500 font-medium">-${record.credits} 积分</span>`;
+                }
+                
                 row.innerHTML = `
                     <td class="py-3 px-4 border-b text-sm">${record.date}</td>
                     <td class="py-3 px-4 border-b text-sm">
@@ -669,7 +678,7 @@
                         </span>
                     </td>
                     <td class="py-3 px-4 border-b text-sm">${record.description}</td>
-                    <td class="py-3 px-4 border-b text-sm font-medium text-red-500">-${record.credits} 积分</td>
+                    <td class="py-3 px-4 border-b text-sm">${creditDisplay}</td>
                 `;
                 recordsListEl.appendChild(row);
             });
