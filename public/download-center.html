@@ -213,6 +213,20 @@
                 </div>
             </div>
             
+            <!-- 过期提示信息 -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="ri-time-line text-yellow-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700">
+                            <strong>温馨提示：</strong> 下载中心的图片和视频仅保存12小时，请及时下载保存到本地。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 视图/操作选项 -->
             <div class="flex flex-wrap justify-between items-center mb-4">
                 <!-- 标签切换 -->
@@ -562,6 +576,13 @@
                 const data = await response.json();
                 console.log('获取历史记录成功，结果数量:', data.results ? data.results.length : 0);
                 
+                // 更新过期提示信息
+                if (data.expirationPeriod) {
+                    const expirationHours = data.expirationPeriod;
+                    document.querySelector('.bg-yellow-50 .text-yellow-700').innerHTML = 
+                        `<strong>温馨提示：</strong> 下载中心的图片和视频仅保存${expirationHours}小时，请及时下载保存到本地。`;
+                }
+                
                 // 隐藏加载中提示
                 document.querySelector('.loading').classList.add('hidden');
                 
@@ -732,6 +753,13 @@
             // 检查图片是否被选中
             const isSelected = selectedItems.has(item.id.toString());
             
+            // 计算剩余时间
+            const createdAt = new Date(item.createdAt || Date.now());
+            const expiresAt = new Date(createdAt.getTime() + 12 * 60 * 60 * 1000);
+            const now = new Date();
+            const hoursLeft = Math.max(0, Math.floor((expiresAt - now) / (60 * 60 * 1000)));
+            const minutesLeft = Math.max(0, Math.floor(((expiresAt - now) % (60 * 60 * 1000)) / (60 * 1000)));
+            
             card.innerHTML = `
                 <div class="absolute top-2 left-2 z-10">
                     <input type="checkbox" class="image-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" ${isSelected ? 'checked' : ''}>
@@ -750,6 +778,9 @@
                             <i class="ri-delete-bin-line"></i>
                         </button>
                     </div>
+                    ${hoursLeft < 3 ? `<div class="absolute top-2 right-2 bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-sm">
+                        <i class="ri-time-line mr-0.5"></i>${hoursLeft}小时${minutesLeft}分钟后过期
+                    </div>` : ''}
                 </div>
                 <div class="p-2">
                     <div class="flex justify-between items-center">
@@ -815,6 +846,13 @@
             // 检查图片是否被选中
             const isSelected = selectedItems.has(item.id.toString());
             
+            // 计算剩余时间
+            const createdAt = new Date(item.createdAt || Date.now());
+            const expiresAt = new Date(createdAt.getTime() + 12 * 60 * 60 * 1000);
+            const now = new Date();
+            const hoursLeft = Math.max(0, Math.floor((expiresAt - now) / (60 * 60 * 1000)));
+            const minutesLeft = Math.max(0, Math.floor(((expiresAt - now) % (60 * 60 * 1000)) / (60 * 1000)));
+            
             row.innerHTML = `
                 <td class="p-3">
                     <input type="checkbox" class="image-checkbox w-4 h-4" ${isSelected ? 'checked' : ''}>
@@ -834,7 +872,12 @@
                         ${processType}
                     </span>
                 </td>
-                <td class="p-3 text-sm text-gray-600">${formatDate(processTime)}</td>
+                <td class="p-3 text-sm text-gray-600">
+                    ${formatDate(processTime)}
+                    ${hoursLeft < 3 ? `<div class="mt-1 bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-sm inline-block">
+                        <i class="ri-time-line mr-0.5"></i>${hoursLeft}小时${minutesLeft}分钟后过期
+                    </div>` : ''}
+                </td>
                 <td class="p-3">
                     <div class="flex space-x-1">
                         <button class="preview-btn p-1.5 rounded text-gray-600 hover:bg-gray-100">
@@ -962,6 +1005,13 @@
             const processTime = item.processTime ? new Date(item.processTime).toLocaleString() : '未知时间';
             const processType = item.processType || '图片处理';
             
+            // 计算剩余时间
+            const createdAt = new Date(item.createdAt || Date.now());
+            const expiresAt = new Date(createdAt.getTime() + 12 * 60 * 60 * 1000);
+            const now = new Date();
+            const hoursLeft = Math.max(0, Math.floor((expiresAt - now) / (60 * 60 * 1000)));
+            const minutesLeft = Math.max(0, Math.floor(((expiresAt - now) % (60 * 60 * 1000)) / (60 * 1000)));
+            
             modal.innerHTML = `
                 <div class="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto relative">
                     <button class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl" id="close-modal">
@@ -993,6 +1043,9 @@
                             <div>
                                 <p class="text-sm text-gray-500">处理时间: ${formatDate(processTime)}</p>
                                 <p class="text-sm text-gray-500">类型: ${processType}</p>
+                                ${hoursLeft < 12 ? `<p class="text-sm mt-1 bg-yellow-50 text-yellow-700 px-2 py-1 rounded">
+                                    <i class="ri-time-line mr-1"></i>还有 ${hoursLeft}小时${minutesLeft}分钟 后过期
+                                </p>` : ''}
                             </div>
                             
                             <button class="download-preview-btn px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">

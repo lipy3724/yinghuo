@@ -140,6 +140,29 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 使用记录组件 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 class="font-medium text-lg mb-4">使用记录</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="py-2 px-4 text-left text-sm font-medium text-gray-500 border-b">时间</th>
+                            <th class="py-2 px-4 text-left text-sm font-medium text-gray-500 border-b">功能名称</th>
+                            <th class="py-2 px-4 text-left text-sm font-medium text-gray-500 border-b">操作</th>
+                            <th class="py-2 px-4 text-left text-sm font-medium text-gray-500 border-b">积分消费</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usage-records-list">
+                        <!-- 使用记录将通过JS动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-records" class="hidden text-center py-6 text-gray-500">
+                暂无使用记录
+            </div>
+        </div>
     </div>
 
     <script>
@@ -308,6 +331,9 @@
             
             // 渲染功能列表
             renderFeatureList();
+            
+            // 渲染使用记录列表
+            renderUsageRecords();
         }
         
         // 绑定时间筛选事件
@@ -611,6 +637,42 @@
                     `;
                     featureListEl.appendChild(listItem);
                 });
+        }
+        
+        // 渲染使用记录列表
+        function renderUsageRecords() {
+            const recordsListEl = document.getElementById('usage-records-list');
+            const noRecordsEl = document.getElementById('no-records');
+            
+            recordsListEl.innerHTML = '';
+            
+            // 检查是否有记录数据
+            if (!usageData.usageRecords || usageData.usageRecords.length === 0) {
+                noRecordsEl.classList.remove('hidden');
+                return;
+            }
+            
+            noRecordsEl.classList.add('hidden');
+            
+            // 只显示最近的10条记录
+            const recentRecords = usageData.usageRecords.slice(0, 10);
+            
+            // 渲染每条记录
+            recentRecords.forEach(record => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="py-3 px-4 border-b text-sm">${record.date}</td>
+                    <td class="py-3 px-4 border-b text-sm">
+                        <span class="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs">
+                            ${record.feature}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 border-b text-sm">${record.description}</td>
+                    <td class="py-3 px-4 border-b text-sm font-medium text-red-500">-${record.credits} 积分</td>
+                `;
+                recordsListEl.appendChild(row);
+            });
         }
         
         // 页面加载时检查登录状态

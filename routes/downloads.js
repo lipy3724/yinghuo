@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { checkFeatureAccess } = require('../middleware/featureAccess');
 const ImageHistory = require('../models/ImageHistory');
+const { Op } = require('sequelize');
 
 /**
  * @route   POST /api/downloads/save
@@ -82,6 +83,12 @@ router.get('/', protect, async (req, res) => {
       whereCondition.type = type;
     }
     
+    // 添加12小时过期条件 - 只返回12小时内的图片
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    whereCondition.createdAt = {
+      [Op.gte]: twelveHoursAgo
+    };
+    
     // 获取图片列表
     const images = await ImageHistory.findAndCountAll({
       where: whereCondition,
@@ -96,7 +103,8 @@ router.get('/', protect, async (req, res) => {
         images: images.rows,
         total: images.count,
         currentPage: parseInt(page),
-        totalPages: Math.ceil(images.count / limit)
+        totalPages: Math.ceil(images.count / limit),
+        expirationPeriod: 12 // 添加过期时间字段，表示12小时
       }
     });
   } catch (error) {
