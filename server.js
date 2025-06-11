@@ -7,6 +7,44 @@ const crypto = require('crypto');
 const multer = require('multer');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+// 初始化全局变量，用于存储图像智能消除任务信息
+global.imageRemovalTasks = {};
+// 初始化全局变量，用于存储模糊图片变清晰任务信息
+global.imageSharpeningTasks = {};
+// 初始化全局变量，用于存储垫图任务信息
+global.diantuTasks = {};
+// 初始化全局变量，用于存储文生图片任务信息
+global.textToImageTasks = {};
+// 初始化全局变量，用于存储图生视频任务信息
+global.imageToVideoTasks = {};
+// 初始化全局变量，用于存储多图转视频任务信息
+global.multiImageToVideoTasks = {};
+// 初始化全局变量，用于存储视频风格重绘任务信息
+global.videoStyleRepaintTasks = {};
+// 初始化全局变量，用于存储视频去除字幕任务信息
+global.videoSubtitleTasks = {};
+// 初始化全局变量，用于存储视频数字人任务信息
+global.digitalHumanTasks = {};
+// 初始化全局变量，用于存储图片高清放大任务信息
+global.imageUpscalerTasks = {};
+// 初始化全局变量，用于存储场景图生成任务信息
+global.sceneGeneratorTasks = {};
+// 初始化全局变量，用于存储图像上色任务信息
+global.imageColorizationTasks = {};
+// 初始化全局变量，用于存储局部重绘任务信息
+global.localRedrawTasks = {};
+// 初始化全局变量，用于存储全局风格化任务信息
+global.globalStyleTasks = {};
+// 初始化全局变量，用于存储垫图任务信息
+global.diantuTasks = {};
+// 初始化全局变量，用于存储模特换肤任务信息
+global.modelSkinChangerTasks = {};
+// 初始化全局变量，用于存储模特试衣任务信息
+global.clothingSimulationTasks = {};
+// 初始化全局变量，用于存储指令编辑任务信息
+global.imageEditTasks = {};
+// 初始化全局变量，用于存储文生视频任务信息
+global.textToVideoTasks = {};
 // 导入环境变量配置
 require('dotenv').config();
 // 导入数据库
@@ -276,7 +314,7 @@ app.get('/admin', (req, res) => {
 });
 
 // 多图转视频API - 确保在主要API路由中注册
-app.post('/api/multi-image-to-video', protect, async (req, res) => {
+app.post('/api/multi-image-to-video', protect, checkFeatureAccess('MULTI_IMAGE_TO_VIDEO'), async (req, res) => {
     try {
         console.log('收到多图转视频请求:', JSON.stringify(req.body, null, 2));
         
@@ -315,39 +353,6 @@ app.post('/api/multi-image-to-video', protect, async (req, res) => {
         
         if (duration && (duration < 5 || duration > 60)) {
             return res.status(400).json({ success: false, message: '视频时长应在5-60秒范围内' });
-        }
-        
-        // 使用featureAccess中间件进行积分检查和扣除
-        const { checkFeatureAccess } = require('./middleware/featureAccess');
-        const featureAccessMiddleware = checkFeatureAccess('MULTI_IMAGE_TO_VIDEO');
-        
-        try {
-            // 使用自定义中间件执行功能访问检查
-            await new Promise((resolve, reject) => {
-                featureAccessMiddleware(req, res, (err) => {
-                    if (err) {
-                        console.error('功能访问检查失败:', err);
-                        reject(err);
-                        return;
-                    }
-                    resolve();
-                });
-            });
-        } catch (featureAccessError) {
-            // 如果在这里捕获到错误，说明中间件内部有异常，但没有调用res.json()结束响应
-            // 返回错误消息
-            console.error('功能访问权限检查异常:', featureAccessError);
-            return res.status(500).json({ 
-                success: false, 
-                message: '功能访问检查失败：' + (featureAccessError.message || '未知错误')
-            });
-        }
-        
-        // 如果res.headersSent为true，说明featureAccess中间件已经发送了响应
-        // 比如因为积分不足，响应已经结束，我们直接返回
-        if (res.headersSent) {
-            console.log('featureAccess中间件已经处理了响应，不再继续处理');
-            return;
         }
         
         // 继续处理请求
@@ -470,6 +475,23 @@ app.post('/api/multi-image-to-video', protect, async (req, res) => {
                 status: 'PENDING'
             };
         }
+        
+        // 保存任务信息到全局变量，用于积分统计
+        if (!global.multiImageToVideoTasks) {
+            global.multiImageToVideoTasks = {};
+        }
+        
+        // 记录用户的任务信息
+        global.multiImageToVideoTasks[taskId] = {
+            userId: req.user.id,
+            creditCost: req.featureUsage?.creditCost || 30, // 默认消费30积分
+            hasChargedCredits: true,
+            timestamp: new Date(),
+            imageCount: images.length,
+            duration: duration || 10
+        };
+        
+        console.log(`多图转视频任务信息已保存: 用户ID=${req.user.id}, 任务ID=${taskId}, 积分=${global.multiImageToVideoTasks[taskId].creditCost}`);
         
         // 返回任务ID给前端
         return res.json({
@@ -736,26 +758,51 @@ app.use((req, res, next) => {
 
 // 注册视频数字人API路由 - 确保这个路由在其他API路由之前注册
 // 使用已定义在文件底部的配置和处理函数
-app.post('/api/digital-human/upload', protect, (req, res, next) => {
-  // 检查功能访问权限
-  const { checkFeatureAccess } = require('./middleware/featureAccess');
-  const featureAccessMiddleware = checkFeatureAccess('DIGITAL_HUMAN_VIDEO');
+app.post('/api/digital-human/upload', protect, async (req, res) => {
+  console.log('进入数字人视频上传路由 - 预处理');
   
-  // 使用自定义中间件执行功能访问检查
-  featureAccessMiddleware(req, res, (err) => {
-    if (err) {
-      console.error('功能访问检查失败:', err);
-      return res.status(500).json({
+  try {
+    // 获取用户ID
+    const userId = req.user.id;
+    
+    // 检查用户是否有权限使用数字人视频功能
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(401).json({
         success: false,
-        message: '功能访问检查失败: ' + err.message
+        message: '用户不存在'
       });
     }
-    // 继续处理请求
-    next();
-  });
-}, (req, res, next) => {
-  console.log('进入数字人视频上传路由 - 预处理');
-  try {
+    
+    // 获取用户的功能使用记录
+    let usage = await FeatureUsage.findOne({
+      where: {
+        userId: userId,
+        featureName: 'DIGITAL_HUMAN_VIDEO'
+      }
+    });
+    
+    // 在这里只检查权限，但不更新usageCount，仅更新lastUsedAt
+    if (!usage) {
+      // 如果用户之前没有使用过该功能，创建新记录
+      usage = await FeatureUsage.create({
+        userId: userId,
+        featureName: 'DIGITAL_HUMAN_VIDEO',
+        usageCount: 0, // 初始化为0，在任务完成后才会增加
+        lastUsedAt: new Date(),
+        resetDate: new Date().toISOString().split('T')[0],
+        credits: 0,
+        details: JSON.stringify({ tasks: [] })
+      });
+    } else {
+      // 只更新最后使用时间，不增加usageCount
+      usage.lastUsedAt = new Date();
+      await usage.save();
+    }
+    
+    console.log('数字人视频功能权限检查，积分将在任务完成后根据实际生成视频时长扣除');
+    
+    // 继续处理上传请求...
     if (!digitalHumanUpload) {
       console.error('digitalHumanUpload未定义，检查配置是否正确加载');
       return res.status(500).json({
@@ -764,6 +811,8 @@ app.post('/api/digital-human/upload', protect, (req, res, next) => {
       });
     }
     
+    // 使用Promise包装multer的中间件处理
+    await new Promise((resolve, reject) => {
     digitalHumanUpload.fields([
       { name: 'video', maxCount: 1 },
       { name: 'audio', maxCount: 1 },
@@ -771,24 +820,19 @@ app.post('/api/digital-human/upload', protect, (req, res, next) => {
     ])(req, res, (err) => {
       if (err) {
         console.error('文件上传中间件错误:', err);
-        return res.status(400).json({
-          success: false,
-          message: '文件上传失败: ' + (err.message || '未知错误')
-        });
-      }
-      next();
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    }).catch(err => {
+      throw new Error('文件上传失败: ' + (err.message || '未知错误'));
     });
-  } catch (error) {
-    console.error('数字人视频上传路由预处理错误:', error);
-    return res.status(500).json({
-      success: false,
-      message: '服务器处理错误: ' + error.message
-    });
-  }
-}, async (req, res) => {
+    
+    // 如果执行到这里，说明文件上传成功，可以继续处理
+    console.log('文件上传成功，继续处理请求');
   console.log('接收到数字人视频上传请求', req.files ? Object.keys(req.files).length : '无文件');
   
-  try {
     // 检查是否上传了必要的文件
     if (!req.files || !req.files.video || !req.files.audio) {
       return res.status(400).json({
@@ -807,7 +851,6 @@ app.post('/api/digital-human/upload', protect, (req, res, next) => {
       image: imageFile ? imageFile.originalname : '无参考图片'
     });
 
-    try {
       // 上传文件到阿里云OSS - 直接使用内存buffer
       console.log('开始上传视频到OSS...');
       const videoUrl = await uploadFileToOSS(videoFile.buffer, 'digital-human/videos');
@@ -831,7 +874,6 @@ app.post('/api/digital-human/upload', protect, (req, res, next) => {
       // 从请求参数中获取是否需要扩展视频
       const videoExtension = req.body.videoExtension === 'true' || req.body.videoExtension === true;
       
-      try {
         const taskId = await createVideoRetalkTask(videoUrl, audioUrl, imageUrl, videoExtension);
         console.log('VideoRetalk任务创建成功, 任务ID:', taskId);
         
@@ -857,26 +899,7 @@ app.post('/api/digital-human/upload', protect, (req, res, next) => {
           taskId: taskId,
           message: '任务已提交，请使用任务ID查询处理状态'
         });
-      } catch (apiError) {
-        console.error('创建VideoRetalk任务失败:', apiError);
-        return res.status(500).json({
-          success: false,
-          message: '创建任务失败: ' + (apiError.message || '未知错误'),
-          // 保留已上传的文件URL，以便前端可以重试
-          urls: {
-            videoUrl: videoUrl,
-            audioUrl: audioUrl,
-            imageUrl: imageUrl
-          }
-        });
-      }
-    } catch (uploadError) {
-      console.error('文件上传到OSS失败:', uploadError);
-      return res.status(500).json({
-        success: false,
-        message: '文件上传失败: ' + uploadError.message
-      });
-    }
+    
   } catch (error) {
     console.error('数字人视频处理失败:', error);
     return res.status(500).json({
@@ -984,19 +1007,103 @@ app.get('/api/digital-human/task/:taskId', async (req, res) => {
                   console.log(`已从用户ID ${userId} 扣除 ${creditCost} 积分，剩余积分: ${user.credits}`);
                   
                   // 记录功能使用
-                  await FeatureUsage.create({
-                    userId: userId,
-                    featureName: 'DIGITAL_HUMAN_VIDEO',
-                    creditsUsed: creditCost,
-                    details: JSON.stringify({
-                      taskId: taskId,
-                      videoDuration: videoDuration,
-                      timestamp: new Date()
-                    })
-                  });
+                  try {
+                    // 查找现有记录
+                    let usage = await FeatureUsage.findOne({
+                      where: {
+                        userId: userId,
+                        featureName: 'DIGITAL_HUMAN_VIDEO'
+                      }
+                    });
+                    
+                    if (usage) {
+                      // 更新现有记录
+                      console.log(`找到用户ID ${userId} 的现有数字人视频功能使用记录`);
+                      
+                      // 更新积分记录和最后使用时间，但不累加usageCount
+                      // usageCount将基于实际任务数量统计，而不是简单累加
+                      usage.credits = (usage.credits || 0) + creditCost;
+                      usage.lastUsedAt = new Date();
+                      
+                      // 更新详细信息 - 添加任务记录
+                      let details = {};
+                      try {
+                        details = JSON.parse(usage.details || '{}');
+                      } catch (e) {
+                        console.error('解析details出错，重置为空对象:', e);
+                      }
+                      
+                      if (!details.tasks) {
+                        details.tasks = [];
+                      }
+                      
+                      // 检查是否已存在相同的任务ID，避免重复添加
+                      const isTaskExists = details.tasks.some(task => task.taskId === taskId);
+                      
+                      if (!isTaskExists) {
+                        // 添加新任务信息
+                        details.tasks.push({
+                          taskId: taskId,
+                          videoDuration: videoDuration,
+                          creditCost: creditCost,
+                          timestamp: new Date()
+                        });
+                        
+                        // 更新记录
+                        usage.details = JSON.stringify(details);
+                      } else {
+                        console.log(`任务ID ${taskId} 已存在于数据库中，跳过添加`);
+                      }
+                      
+                      // 只有在当前任务是新任务时才更新usageCount和credits
+                      if (!isTaskExists) {
+                        // 递增使用次数，而不是设置为tasks的长度
+                        usage.usageCount += 1;
+                        // 只有新任务才累加积分消费
+                        usage.credits = (usage.credits || 0) + creditCost;
+                      }
+                      
+                      await usage.save();
+                      console.log(`成功更新用户ID ${userId} 的数字人视频功能使用记录，任务总数: ${details.tasks.length}`);
+                    } else {
+                      // 创建新记录
+                      console.log(`未找到用户ID ${userId} 的数字人视频功能使用记录，创建新记录`);
+                      
+                      // 创建详细信息对象
+                      const details = {
+                        tasks: [{
+                          taskId: taskId,
+                          videoDuration: videoDuration,
+                          creditCost: creditCost,
+                          timestamp: new Date()
+                        }]
+                      };
+                      
+                      await FeatureUsage.create({
+                        userId: userId,
+                        featureName: 'DIGITAL_HUMAN_VIDEO',
+                        usageCount: 1,
+                        credits: creditCost,
+                        lastUsedAt: new Date(),
+                        resetDate: new Date().toISOString().split('T')[0],
+                        details: JSON.stringify(details)
+                      });
+                      
+                      console.log(`成功创建用户ID ${userId} 的数字人视频功能使用记录`);
+                    }
+                  } catch (dbError) {
+                    console.error('保存数字人视频功能使用记录到数据库失败:', dbError);
+                  }
                   
-                  // 标记为已扣除积分
+                  // 标记为已扣除积分，并添加更多信息用于统计
                   global.digitalHumanTasks[taskId].hasChargedCredits = true;
+                  global.digitalHumanTasks[taskId].creditCost = creditCost;
+                  global.digitalHumanTasks[taskId].videoDuration = videoDuration;
+                  global.digitalHumanTasks[taskId].timestamp = new Date();
+                  
+                  // 任务信息已经在上面的代码中保存到数据库了，不需要重复保存
+                  // 记录日志以便调试
+                  console.log(`视频数字人任务ID ${taskId} 处理完成，积分 ${creditCost}，时长 ${videoDuration}秒`);
                 } else {
                   console.log(`用户积分不足，需要 ${creditCost}，当前有 ${user.credits}`);
                   // 可以选择在这里处理积分不足的情况
@@ -2010,7 +2117,7 @@ app.post('/api/call-service', async (req, res) => {
 });
 
 // API路由 - 图像高清放大
-app.post('/api/upscale', memoryUpload.single('image'), async (req, res) => {
+app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUpload.single('image'), async (req, res) => {
   try {
     console.log('接收到图像高清放大请求');
     
@@ -2038,6 +2145,63 @@ app.post('/api/upscale', memoryUpload.single('image'), async (req, res) => {
       // 2. 调用图像高清放大API
       console.log('调用图像高清放大API...');
       const apiResult = await callUpscaleApi(imageUrl, upscaleFactor);
+      
+      // 获取当前用户ID和积分消费信息
+      const userId = req.user.id;
+      const creditCost = req.featureUsage?.creditCost || FEATURES['image-upscaler'].creditCost;
+      
+      // 生成唯一任务ID
+      const taskId = `upscale-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+      
+      // 保存任务信息到全局变量
+      global.imageUpscalerTasks[taskId] = {
+        userId: userId,
+        creditCost: creditCost,
+        hasChargedCredits: true,
+        timestamp: new Date(),
+        imageUrl: imageUrl,
+        upscaleFactor: upscaleFactor
+      };
+      
+      console.log(`图像高清放大任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+      
+      // 将任务信息保存到数据库
+      try {
+        const usage = await FeatureUsage.findOne({
+          where: { 
+            userId: userId, 
+            featureName: 'image-upscaler' 
+          }
+        });
+        
+        if (usage) {
+          // 解析现有详情
+          const details = JSON.parse(usage.details || '{}');
+          // 准备任务列表
+          const tasks = details.tasks || [];
+          // 添加新任务
+          tasks.push({
+            taskId: taskId,
+            creditCost: creditCost,
+            timestamp: new Date()
+          });
+          
+          // 更新usage记录 - 同时记录credits字段
+          const currentCredits = usage.credits || 0;
+          usage.credits = currentCredits + creditCost;
+          usage.details = JSON.stringify({
+            ...details,
+            tasks: tasks
+          });
+          
+          // 保存更新
+          await usage.save();
+          console.log(`图像高清放大任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+        }
+      } catch (saveError) {
+        console.error('保存图像高清放大任务详情失败:', saveError);
+        // 继续响应，不中断流程
+      }
       
       // 3. 返回处理结果
       console.log('图像处理成功');
@@ -2279,6 +2443,136 @@ app.post('/api/get-virtual-model-signature', async (req, res) => {
       timeStamp: numericTimeStamp
     };
     
+    // 获取当前用户的ID
+    let currentUserId = null;
+    // 从认证token中获取用户ID
+    if (req.headers.authorization) {
+      const token = req.headers.authorization.split(' ')[1];
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded && decoded.id) {
+          currentUserId = decoded.id;
+        }
+      } catch (error) {
+        console.error('解析token失败:', error.message);
+      }
+    } else {
+      // 尝试从cookie中获取
+      const token = req.cookies && req.cookies.authToken;
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+          if (decoded && decoded.id) {
+            currentUserId = decoded.id;
+          }
+        } catch (error) {
+          console.error('解析cookie token失败:', error.message);
+        }
+      }
+    }
+    
+    // 如果获取到了用户ID，记录使用情况
+    if (currentUserId) {
+      try {
+        // 获取功能的积分消费配置
+        const { FEATURES } = require('./middleware/featureAccess');
+        const featureConfig = FEATURES['VIRTUAL_MODEL_VTON'];
+        const creditCost = featureConfig ? featureConfig.creditCost : 40; // 默认消费40积分
+        
+        // 生成唯一任务ID
+        const taskId = require('uuid').v4();
+        
+        // 保存任务信息到全局变量
+        if (!global.virtualModelVtonTasks) {
+          global.virtualModelVtonTasks = {};
+        }
+        
+        // 记录任务信息
+        global.virtualModelVtonTasks[taskId] = {
+          userId: currentUserId,
+          creditCost: creditCost,
+          timestamp: new Date(),
+          status: 'completed',
+          details: {
+            timeStamp: numericTimeStamp,
+            ak: APP_KEY,
+            sign: sign
+          }
+        };
+        
+        // 保存使用记录到数据库
+        try {
+          const { FeatureUsage } = require('./models/FeatureUsage');
+          const User = require('./models/User');
+          
+          // 获取用户信息
+          const user = await User.findByPk(currentUserId);
+          
+          // 更新数据库中的使用记录
+          let usage = await FeatureUsage.findOne({
+            where: { userId: currentUserId, featureName: 'VIRTUAL_MODEL_VTON' }
+          });
+          
+          if (usage) {
+            // 已有记录，更新使用次数和积分消费
+            let details = {};
+            try {
+              details = usage.details ? JSON.parse(usage.details) : {};
+            } catch (e) {
+              details = {};
+            }
+            
+            if (!details.tasks) {
+              details.tasks = [];
+            }
+            
+            // 添加新的任务记录
+            details.tasks.push({
+              taskId: taskId,
+              creditCost: creditCost,
+              timestamp: new Date()
+            });
+            
+            // 更新使用记录
+            usage.usageCount += 1;
+            usage.credits += creditCost;
+            usage.details = JSON.stringify(details);
+            usage.lastUsedAt = new Date();
+            await usage.save();
+          } else {
+            // 没有记录，创建新记录
+            await FeatureUsage.create({
+              userId: currentUserId,
+              featureName: 'VIRTUAL_MODEL_VTON',
+              usageCount: 1,
+              credits: creditCost,
+              details: JSON.stringify({
+                tasks: [{
+                  taskId: taskId,
+                  creditCost: creditCost,
+                  timestamp: new Date()
+                }]
+              }),
+              lastUsedAt: new Date()
+            });
+          }
+          
+          // 从用户积分中扣除
+          if (user) {
+            user.credits -= creditCost;
+            await user.save();
+            console.log(`已从用户 ${currentUserId} 扣除 ${creditCost} 积分，剩余积分: ${user.credits}`);
+          }
+        } catch (dbError) {
+          console.error('保存虚拟模特试穿使用记录失败:', dbError);
+          // 继续处理，不影响用户使用
+        }
+      } catch (error) {
+        console.error('记录虚拟模特试穿使用情况失败:', error);
+        // 继续处理，不影响用户使用
+      }
+    }
+    
     console.log('返回响应:', response);
     res.json(response);
   } catch (error) {
@@ -2379,6 +2673,30 @@ app.post('/api/create-shoe-model-task', protect, checkFeatureAccess('VIRTUAL_SHO
         throw new Error('API响应格式不正确，缺少task_id');
       }
 
+      // 获取功能的积分消费配置
+      const { FEATURES } = require('./middleware/featureAccess');
+      const featureConfig = FEATURES['VIRTUAL_SHOE_MODEL'];
+      const creditCost = featureConfig ? featureConfig.creditCost : 25; // 默认消费25积分
+      
+      // 生成唯一任务ID
+      const taskId = response.data.output.task_id;
+      
+      // 保存任务信息到全局变量
+      if (!global.virtualShoeModelTasks) {
+        global.virtualShoeModelTasks = {};
+      }
+      
+      // 记录任务信息
+      global.virtualShoeModelTasks[taskId] = {
+        userId: req.user.id,
+        modelImageUrl: modelImageUrl,
+        shoeImageUrl: shoeImageUrl,
+        creditCost: creditCost,
+        timestamp: new Date(),
+        status: 'PENDING',
+        result: response.data
+      };
+
       // 记录使用历史
       try {
         await FeatureUsage.create({
@@ -2395,7 +2713,7 @@ app.post('/api/create-shoe-model-task', protect, checkFeatureAccess('VIRTUAL_SHO
 
         // 扣除用户积分
         await User.decrement('credits', {
-          by: 1, // 扣除1积分，你可以根据实际情况调整
+          by: creditCost, // 使用配置的积分消费值
           where: { id: req.user.id }
         });
       } catch (historyError) {
@@ -2502,6 +2820,13 @@ app.get('/api/check-task-status', protect, async (req, res) => {
         
         resultData.resultUrl = response.data.output.result_url;
 
+        // 更新全局变量中的任务状态
+        if (global.virtualShoeModelTasks && global.virtualShoeModelTasks[taskId]) {
+          global.virtualShoeModelTasks[taskId].status = 'SUCCEEDED';
+          global.virtualShoeModelTasks[taskId].resultUrl = response.data.output.result_url;
+          global.virtualShoeModelTasks[taskId].endTime = new Date();
+        }
+
         // 更新使用历史
         try {
           await FeatureUsage.update(
@@ -2525,6 +2850,13 @@ app.get('/api/check-task-status', protect, async (req, res) => {
       } else if (taskStatus === 'FAILED') {
         resultData.message = response.data.output.message || '任务执行失败';
         resultData.code = response.data.output.code || '未知错误';
+
+        // 更新全局变量中的任务状态
+        if (global.virtualShoeModelTasks && global.virtualShoeModelTasks[taskId]) {
+          global.virtualShoeModelTasks[taskId].status = 'FAILED';
+          global.virtualShoeModelTasks[taskId].errorMessage = response.data.output.message || '任务执行失败';
+          global.virtualShoeModelTasks[taskId].endTime = new Date();
+        }
 
         // 更新使用历史
         try {
@@ -2989,12 +3321,81 @@ app.post('/api/remove-subtitles', protect, async (req, res) => {
           }
         });
         
-        // 如果记录已存在，更新使用计数和最后使用时间
-        if (!created) {
+        // 注意：featureAccess中间件已经增加了usageCount，这里不应再次增加
+        // 避免重复增加计数，只需处理任务记录的保存
+        // 如果记录已存在，但之前的中间件没有正确更新时间，确保更新最后使用时间
+        if (!created && !req.featureUsage) {
+          console.log(`警告：featureAccess中间件似乎没有正确处理，手动更新最后使用时间`);
           await usage.update({
-            usageCount: usage.usageCount + 1,
             lastUsedAt: new Date()
           });
+        }
+        
+        // 保存任务信息到全局变量，用于积分统计
+        if (!global.videoSubtitleTasks) {
+          global.videoSubtitleTasks = {};
+        }
+        
+        // 记录用户的任务信息，使用任务ID作为唯一标识
+        const taskId = result.body.requestId;
+        global.videoSubtitleTasks[taskId] = {
+          userId: user.id,
+          creditCost: Math.ceil(duration/30) * 30, // 按每30秒30积分计算
+          hasChargedCredits: true,
+          timestamp: new Date(),
+          videoDuration: duration
+        };
+        
+        console.log(`视频去除字幕任务信息已保存: 用户ID=${user.id}, 任务ID=${taskId}, 时长=${duration}秒, 积分=${global.videoSubtitleTasks[taskId].creditCost}`);
+        
+        // 尝试更新用户功能使用记录中的详细信息
+        try {
+          // 先检查是否存在相同的任务ID，避免重复添加
+          let isTaskExists = false;
+          
+          if (usage.details) {
+            const details = JSON.parse(usage.details || '{}');
+            if (!details.tasks) {
+              details.tasks = [];
+            }
+            
+            // 检查任务ID是否已存在
+            isTaskExists = details.tasks.some(task => task.taskId === taskId);
+            
+            if (!isTaskExists) {
+              // 添加新任务信息
+              details.tasks.push({
+                taskId: taskId,
+                videoDuration: duration,
+                creditCost: Math.ceil(duration/30) * 30,
+                timestamp: new Date()
+              });
+              
+              // 更新记录
+              usage.details = JSON.stringify(details);
+              await usage.save();
+              console.log(`已将任务ID ${taskId} 保存到数据库`);
+            } else {
+              console.log(`任务ID ${taskId} 已存在于数据库中，跳过添加`);
+            }
+          } else {
+            // 创建新的详细信息
+            const details = {
+              tasks: [{
+                taskId: taskId,
+                videoDuration: duration,
+                creditCost: Math.ceil(duration/30) * 30,
+                timestamp: new Date()
+              }]
+            };
+            
+            // 更新记录
+            usage.details = JSON.stringify(details);
+            await usage.save();
+            console.log(`已创建并保存任务详情到数据库，任务ID: ${taskId}`);
+          }
+        } catch (detailsError) {
+          console.error('更新任务详细信息失败:', detailsError);
         }
       } catch (dbError) {
         // 记录错误但不阻止API返回结果
@@ -3342,210 +3743,233 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
           try {
             console.log('======= 开始处理视频风格重绘积分扣除 =======');
             
-                          // 先打印完整的API响应，便于调试
-              console.log('完整API响应结构:', JSON.stringify(response.data));
-              
-              // 获取视频时长和分辨率
-              let duration = 0;
-              let resolution = 540; // 默认值
-              
-              // 直接访问顶层的usage对象
-              if (response.data && response.data.usage) {
-                duration = response.data.usage.duration || 0;
-                resolution = response.data.usage.SR || 540;
-                console.log(`直接从response.data.usage获取 - 时长: ${duration}秒, 分辨率: ${resolution}P`);
-              } else {
-                console.error('未在API响应中找到usage字段，使用默认值');
+            // 先打印完整的API响应，便于调试
+            console.log('完整API响应结构:', JSON.stringify(response.data));
+            
+            // 获取视频时长和分辨率
+            let duration = 0;
+            let resolution = 540; // 默认值
+            
+            // 直接访问顶层的usage对象
+            if (response.data && response.data.usage) {
+              duration = response.data.usage.duration || 0;
+              resolution = response.data.usage.SR || 540;
+              console.log(`直接从response.data.usage获取 - 时长: ${duration}秒, 分辨率: ${resolution}P`);
+            
+              // 保存任务信息到全局变量，用于积分统计
+              try {
+                if (!global.videoStyleRepaintTasks) {
+                  global.videoStyleRepaintTasks = {};
+                }
+                
+                // 记录用户的任务信息
+                global.videoStyleRepaintTasks[taskId] = {
+                  userId: req.user.id,
+                  creditCost: duration * (resolution <= 540 ? 3 : 6), // 根据分辨率和时长计算积分
+                  hasChargedCredits: true,
+                  timestamp: new Date(),
+                  videoDuration: duration,
+                  resolution: resolution
+                };
+                
+                console.log(`视频风格重绘任务信息已保存: 用户ID=${req.user.id}, 任务ID=${taskId}, 时长=${duration}秒, 分辨率=${resolution}P, 积分=${global.videoStyleRepaintTasks[taskId].creditCost}`);
+              } catch (error) {
+                console.error('保存视频风格重绘任务信息到全局变量失败:', error);
               }
-              
+            } else {
+              console.error('未在API响应中找到usage字段，使用默认值');
+            }
+            
+            try {
               // 确保分辨率是数字
               resolution = parseInt(resolution);
               console.log(`最终确定的值 - 时长: ${duration}秒, 分辨率: ${resolution}P`);
             
-            // 记录key用于任务标识
-            let taskKey = `task:${taskId}`;
-            
-            // 获取任务ID的创建记录，检查是否已扣费
-            const taskRecords = await FeatureUsage.findAll({
-              where: {
-                userId: req.user.id,
-                featureName: 'VIDEO_STYLE_REPAINT'
-              }
-            });
-            console.log(`查询到用户的风格重绘记录数量: ${taskRecords.length}`);
-            
-            // 查找包含当前taskId的记录
-            let taskRecord = null;
-            for (const record of taskRecords) {
-              try {
-                const details = JSON.parse(record.details || '{}');
-                console.log(`检查记录ID=${record.id}, 详情:`, details);
-                if (details.taskId === taskId) {
-                  taskRecord = record;
-                  console.log(`找到匹配的任务记录: ID=${record.id}`);
-                  
-                  // 打印任务记录中的分辨率，但不覆盖API返回的分辨率
-                  // 从任务记录中读取分辨率，使用统一的字段名
-const recordResolution = parseInt(details.min_len || details.resolution) || 540;
-                  console.log(`任务记录中的分辨率: ${recordResolution}P，API返回的分辨率: ${resolution}P`);
-                  
-                  // 确认使用API返回的分辨率
-                  console.log(`确认使用API返回的分辨率: ${resolution}P作为计费标准`);
-                  break;
+              // 记录key用于任务标识
+              let taskKey = `task:${taskId}`;
+              
+              // 获取任务ID的创建记录，检查是否已扣费
+              const taskRecords = await FeatureUsage.findAll({
+                where: {
+                  userId: req.user.id,
+                  featureName: 'VIDEO_STYLE_REPAINT'
                 }
-              } catch (e) {
-                console.error('解析任务详情出错:', e);
-                continue;
-              }
-            }
-            
-            // 检查是否已经扣过积分
-            let alreadyCharged = false;
-            if (global.chargedTasks && global.chargedTasks[taskKey]) {
-              alreadyCharged = true;
-              console.log(`该任务已经扣除过积分(全局标记): ${taskKey}`);
-            }
-            
-            // 如果找到记录，验证是否已更新积分
-            if (taskRecord) {
-              // 获取任务详情
-              const taskDetails = JSON.parse(taskRecord.details || '{}');
-              console.log(`任务详情:`, taskDetails);
+              });
+              console.log(`查询到用户的风格重绘记录数量: ${taskRecords.length}`);
               
-              if (taskDetails.creditUpdated) {
+              // 查找包含当前taskId的记录
+              let taskRecord = null;
+              for (const record of taskRecords) {
+                try {
+                  const details = JSON.parse(record.details || '{}');
+                  console.log(`检查记录ID=${record.id}, 详情:`, details);
+                  if (details.taskId === taskId) {
+                    taskRecord = record;
+                    console.log(`找到匹配的任务记录: ID=${record.id}`);
+                    
+                    // 打印任务记录中的分辨率，但不覆盖API返回的分辨率
+                    // 从任务记录中读取分辨率，使用统一的字段名
+                    const recordResolution = parseInt(details.min_len || details.resolution) || 540;
+                    console.log(`任务记录中的分辨率: ${recordResolution}P，API返回的分辨率: ${resolution}P`);
+                    
+                    // 确认使用API返回的分辨率
+                    console.log(`确认使用API返回的分辨率: ${resolution}P作为计费标准`);
+                    break;
+                  }
+                } catch (e) {
+                  console.error('解析任务详情出错:', e);
+                  continue;
+                }
+              }
+              
+              // 检查是否已经扣过积分
+              let alreadyCharged = false;
+              if (global.chargedTasks && global.chargedTasks[taskKey]) {
                 alreadyCharged = true;
-                console.log(`该任务已经扣除过积分(数据库记录): ${taskId}`);
+                console.log(`该任务已经扣除过积分(全局标记): ${taskKey}`);
               }
-            }
-            
-            // 如果尚未扣费，进行扣费操作
-            if (!alreadyCharged) {
-              console.log(`该任务尚未扣除积分, 开始计算...`);
               
-                                // 计算积分消耗
-                  // 这里我们直接使用上面已经获取并解析过的resolution变量
-                  // 不需要再重复解析
-                  // 计算费率：540P及以下是3积分/秒，超过540P是6积分/秒
-                  const rate = resolution <= 540 ? 3 : 6;
-                  const creditCost = Math.ceil(duration) * rate;
-                  
-                  console.log(`视频风格重绘完成: 实际时长=${duration}秒, 分辨率=${resolution}P, 费率=${rate}积分/秒, 消耗=${creditCost}积分`);
-                  console.log(`用于计费的确定值: 时长=${duration}秒, 分辨率=${resolution}P, 费率=${rate}积分/秒`);
-                  
-                  // 确保在任务详情中也保存正确的分辨率
-                  if (taskRecord && taskRecord.details) {
-                    try {
-                      const details = JSON.parse(taskRecord.details || '{}');
-                      // 更新为API返回的实际分辨率
-                      details.actual_resolution = resolution;
-                      taskRecord.details = JSON.stringify(details);
-                      // 不用await，让它在后台更新，不阻塞主流程
-                      taskRecord.save().catch(e => console.error('更新任务记录分辨率失败:', e));
-                    } catch (e) {
-                      console.error('更新任务记录分辨率时解析JSON失败:', e);
+              // 如果找到记录，验证是否已更新积分
+              if (taskRecord) {
+                // 获取任务详情
+                const taskDetails = JSON.parse(taskRecord.details || '{}');
+                console.log(`任务详情:`, taskDetails);
+                
+                if (taskDetails.creditUpdated) {
+                  alreadyCharged = true;
+                  console.log(`该任务已经扣除过积分(数据库记录): ${taskId}`);
+                }
+              }
+              
+              // 如果尚未扣费，进行扣费操作
+              if (!alreadyCharged) {
+                console.log(`该任务尚未扣除积分, 开始计算...`);
+                
+                // 计算积分消耗
+                // 这里我们直接使用上面已经获取并解析过的resolution变量
+                // 不需要再重复解析
+                // 计算费率：540P及以下是3积分/秒，超过540P是6积分/秒
+                const rate = resolution <= 540 ? 3 : 6;
+                const creditCost = Math.ceil(duration) * rate;
+                
+                console.log(`视频风格重绘完成: 实际时长=${duration}秒, 分辨率=${resolution}P, 费率=${rate}积分/秒, 消耗=${creditCost}积分`);
+                console.log(`用于计费的确定值: 时长=${duration}秒, 分辨率=${resolution}P, 费率=${rate}积分/秒`);
+                
+                // 确保在任务详情中也保存正确的分辨率
+                if (taskRecord && taskRecord.details) {
+                  try {
+                    const details = JSON.parse(taskRecord.details || '{}');
+                    // 更新为API返回的实际分辨率
+                    details.actual_resolution = resolution;
+                    taskRecord.details = JSON.stringify(details);
+                    // 不用await，让它在后台更新，不阻塞主流程
+                    taskRecord.save().catch(e => console.error('更新任务记录分辨率失败:', e));
+                  } catch (e) {
+                    console.error('更新任务记录分辨率时解析JSON失败:', e);
+                  }
+                }
+                
+                try {
+                  // 更新用户积分
+                  const user = await User.findByPk(req.user.id);
+                  if (user) {
+                    console.log(`当前用户积分: ${user.credits}`);
+                    
+                    // 直接使用计算出的积分
+                    let finalCost = creditCost;
+                    
+                    // 直接扣除积分
+                    user.credits = user.credits - finalCost;
+                    await user.save();
+                    console.log(`扣除积分成功: ${finalCost}积分`);
+                    
+                    // 初始化全局已扣费任务记录
+                    if (typeof global.chargedTasks === 'undefined') {
+                      global.chargedTasks = {};
+                    }
+                    
+                    // 标记该任务已扣费
+                    global.chargedTasks[taskKey] = {
+                      timestamp: new Date().getTime(),
+                      userId: req.user.id,
+                      cost: finalCost
+                    };
+                    
+                    // 如果找到对应的记录，更新它
+                    if (taskRecord) {
+                      // 更新任务记录
+                      const taskDetails = JSON.parse(taskRecord.details || '{}');
+                      taskDetails.creditUpdated = true;
+                      taskDetails.actualDuration = duration;
+                      taskDetails.creditCost = finalCost || creditCost;
+                      taskRecord.details = JSON.stringify(taskDetails);
+                      await taskRecord.save();
+                    } else {
+                      // 如果没有找到对应任务记录，查找用户的功能使用记录并更新
+                      // 避免违反唯一约束
+                      try {
+                        // 先查找该用户的功能使用记录
+                        const existingRecord = await FeatureUsage.findOne({
+                          where: {
+                            userId: req.user.id,
+                            featureName: 'VIDEO_STYLE_REPAINT'
+                          }
+                        });
+                        
+                        if (existingRecord) {
+                          // 更新现有记录
+                          console.log(`找到用户的功能使用记录，ID=${existingRecord.id}，更新它`);
+                          const existingDetails = JSON.parse(existingRecord.details || '{}');
+                          existingDetails.taskId = taskId;
+                          // 同时更新两种字段名，确保兼容性
+                          existingDetails.min_len = resolution;
+                          existingDetails.resolution = resolution; // 使用统一的字段名
+                          existingDetails.actual_resolution = resolution; // 保存API返回的实际分辨率
+                          existingDetails.actualDuration = duration;
+                          existingDetails.creditCost = finalCost || creditCost;
+                          existingDetails.creditUpdated = true;
+                          
+                          existingRecord.details = JSON.stringify(existingDetails);
+                          await existingRecord.save();
+                          console.log(`更新用户记录成功，ID=${existingRecord.id}`);
+                        } else {
+                          // 这种情况应该很少发生，因为前面已经查询过一次了
+                          console.log(`未找到用户的功能使用记录，创建新记录（这是不常见的情况）`);
+                          await FeatureUsage.create({
+                            userId: req.user.id,
+                            featureName: 'VIDEO_STYLE_REPAINT',
+                            usageCount: 1, // 确保设置使用次数
+                            lastUsedAt: new Date(),
+                            resetDate: new Date().toISOString().split('T')[0],
+                            credits: creditCost,
+                            details: JSON.stringify({
+                              taskId: taskId,
+                              min_len: resolution,
+                              resolution: resolution, // 使用统一的字段名
+                              actual_resolution: resolution, // 保存API返回的实际分辨率
+                              actualDuration: duration,
+                              creditCost: finalCost || creditCost,
+                              creditUpdated: true
+                            })
+                          });
+                        }
+                      } catch (saveError) {
+                        console.error('保存用户功能使用记录失败:', saveError);
+                      }
                     }
                   }
-              
-                              // 更新用户积分
-                const user = await User.findByPk(req.user.id);
-                if (user) {
-                  console.log(`当前用户积分: ${user.credits}`);
-                  
-                  // 直接使用计算出的积分
-                  let finalCost = creditCost;
-                  
-                  // 直接扣除积分
-                  user.credits = user.credits - finalCost;
-                  await user.save();
-                  console.log(`扣除积分成功: ${finalCost}积分`);
-                  
-                  // 初始化全局已扣费任务记录
-                  if (typeof global.chargedTasks === 'undefined') {
-                    global.chargedTasks = {};
-                  }
-                  
-                  // 标记该任务已扣费
-                  global.chargedTasks[taskKey] = {
-                    timestamp: new Date().getTime(),
-                    userId: req.user.id,
-                    cost: finalCost
-                  };
-                
-                // 如果找到对应的记录，更新它
-                if (taskRecord) {
-                  // 更新任务记录
-                  const taskDetails = JSON.parse(taskRecord.details || '{}');
-                  taskDetails.creditUpdated = true;
-                  taskDetails.actualDuration = duration;
-                  taskDetails.creditCost = finalCost || creditCost;
-                  taskRecord.details = JSON.stringify(taskDetails);
-                  await taskRecord.save();
-                                 } else {
-                   // 如果没有找到对应任务记录，查找用户的功能使用记录并更新
-                   // 避免违反唯一约束
-                   try {
-                     // 先查找该用户的功能使用记录
-                     const existingRecord = await FeatureUsage.findOne({
-                       where: {
-                         userId: req.user.id,
-                         featureName: 'VIDEO_STYLE_REPAINT'
-                       }
-                     });
-                     
-                     if (existingRecord) {
-                       // 更新现有记录
-                       console.log(`找到用户的功能使用记录，ID=${existingRecord.id}，更新它`);
-                                             const existingDetails = JSON.parse(existingRecord.details || '{}');
-                      existingDetails.taskId = taskId;
-                      // 同时更新两种字段名，确保兼容性
-                      existingDetails.min_len = resolution;
-                      existingDetails.resolution = resolution; // 使用统一的字段名
-                      existingDetails.actual_resolution = resolution; // 保存API返回的实际分辨率
-                      existingDetails.actualDuration = duration;
-                      existingDetails.creditCost = finalCost || creditCost;
-                      existingDetails.creditUpdated = true;
-                       
-                       existingRecord.details = JSON.stringify(existingDetails);
-                       await existingRecord.save();
-                       console.log(`更新用户记录成功，ID=${existingRecord.id}`);
-                     } else {
-                       // 这种情况应该很少发生，因为前面已经查询过一次了
-                       console.log(`未找到用户的功能使用记录，创建新记录（这是不常见的情况）`);
-                       await FeatureUsage.create({
-                         userId: req.user.id,
-                         featureName: 'VIDEO_STYLE_REPAINT',
-                         usageCount: 1, // 确保设置使用次数
-                         lastUsedAt: new Date(),
-                         resetDate: new Date().toISOString().split('T')[0],
-                         credits: creditCost,
-                         details: JSON.stringify({
-                                                 taskId: taskId,
-                      min_len: resolution,
-                      resolution: resolution, // 使用统一的字段名
-                      actual_resolution: resolution, // 保存API返回的实际分辨率
-                      actualDuration: duration,
-                      creditCost: finalCost || creditCost,
-                      creditUpdated: true
-                         })
-                       });
-                     }
-                   } catch (saveError) {
-                     console.error('保存用户功能使用记录失败:', saveError);
-                     // 即使保存记录失败，我们也已经扣除了积分，所以不影响核心功能
-                   }
-                 }
-                
-                console.log(`用户积分已更新: 用户ID=${req.user.id}, 剩余积分=${user.credits}, 扣除=${creditCost}`);
-              } else {
-                console.error(`未找到用户: ID=${req.user.id}`);
+                } catch (updateError) {
+                  console.error('更新用户积分失败:', updateError);
+                }
               }
-            } else {
-              console.log(`该任务已经扣除过积分, 无需重复扣除`);
+            } catch (processError) {
+              console.error('处理视频风格重绘任务完成后的积分计算失败:', processError);
             }
-            console.log('======= 结束处理视频风格重绘积分扣除 =======');
-          } catch (creditError) {
-            console.error('更新积分出错:', creditError);
-            console.error(creditError.stack);
+            
+            console.log('视频风格重绘任务积分处理完成');
+            // 不中断流程，继续返回任务状态
+          } catch (taskError) {
+            console.error('处理视频风格重绘任务出错:', taskError);
             // 不中断流程，继续返回任务状态
           }
         } else {
@@ -3798,55 +4222,231 @@ process.on('uncaughtException', (error) => {
 // 在文件末尾寻找服务器启动代码
 const startServer = async () => {
   try {
-    // 尝试连接数据库
-    await sequelize.authenticate();
-    console.log('数据库连接成功.');
-    
-    // 尝试同步数据库
-    try {
-      await syncDatabase();
-      console.log('数据库同步完成.');
-    } catch (error) {
-      console.error('同步数据库出错:', error);
-      // 数据库同步失败但继续启动服务器
-    }
-  } catch (error) {
-    console.error('无法连接到数据库:', error);
-    // 数据库连接失败但继续启动服务器
-  }
-  
-  // 无论数据库连接是否成功，都启动HTTP服务器
-  app.listen(port, () => {
-    console.log(`服务器运行在 http://localhost:${port}`);
-    console.log(`虚拟模特编辑器可在 http://localhost:${port}/virtual-model 访问`);
-  });
-};
-
-// 启动服务器
-startServer(); 
-
-// 同步数据库
-console.log('开始同步数据库表结构...');
-(async () => {
-  try {
-    await User.sync();
-    console.log('User表同步完成');
-    
-    await FeatureUsage.sync();
-    console.log('FeatureUsage表同步完成');
-    
-    await PaymentOrder.sync();
-    console.log('PaymentOrder表同步完成');
+    // 同步数据库
+    await syncDatabase();
     
     // 设置模型关联关系
     console.log('设置模型关联关系...');
     setupAssociations();
     console.log('模型关联关系设置完成');
     
+    // 从数据库加载任务信息到全局变量
+    await loadTasksFromDatabase();
+    
+    // 启动服务器
+    app.listen(port, () => {
+      console.log(`服务器运行在 http://localhost:${port}`);
+      console.log(`虚拟模特编辑器可在 http://localhost:${port}/virtual-model 访问`);
+    });
   } catch (error) {
-    console.error('数据库同步出错:', error);
+    console.error('启动服务器失败:', error);
   }
-})(); 
+};
+
+// 从数据库加载任务信息到全局变量
+const loadTasksFromDatabase = async () => {
+  try {
+    console.log('开始从数据库加载任务信息到全局变量...');
+    
+    // 加载视频数字人任务
+    const digitalHumanUsages = await FeatureUsage.findAll({
+      where: { featureName: 'DIGITAL_HUMAN_VIDEO' }
+    });
+    
+    let loadedTasks = 0;
+    
+    // 初始化全局变量（确保它存在）
+    if (!global.digitalHumanTasks) {
+      global.digitalHumanTasks = {};
+    }
+    
+    // 处理每个用户的使用记录
+    for (const usage of digitalHumanUsages) {
+      if (usage.details) {
+        try {
+          const details = JSON.parse(usage.details);
+          if (details.tasks && Array.isArray(details.tasks)) {
+            // 遍历任务并添加到全局变量
+            for (const task of details.tasks) {
+              if (task.taskId) {
+                // 无论全局变量中是否已存在，都更新任务信息，确保数据完整性
+                global.digitalHumanTasks[task.taskId] = {
+                  userId: usage.userId,
+                  hasChargedCredits: true, // 已从数据库加载，表示已扣除积分
+                  creditCost: task.creditCost || 0,
+                  videoDuration: task.videoDuration || 0,
+                  timestamp: new Date(task.timestamp) || new Date()
+                };
+                loadedTasks++;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`解析用户ID ${usage.userId} 的视频数字人功能使用记录详情失败:`, error);
+          
+          // 尝试修复损坏的JSON
+          try {
+            if (typeof usage.details === 'string' && usage.details.trim()) {
+              // 创建一个基本的有效JSON结构
+              const fixedDetails = { tasks: [] };
+              
+              // 保存修复后的details到数据库
+              usage.details = JSON.stringify(fixedDetails);
+              await usage.save();
+              console.log(`已修复用户ID ${usage.userId} 的损坏数据`);
+            }
+          } catch (repairError) {
+            console.error('修复损坏数据失败:', repairError);
+          }
+        }
+      } else if (usage.credits > 0 || usage.usageCount > 0) {
+        // 如果没有details字段但有积分消费或使用次数记录，创建一个基本的details结构
+        try {
+          console.log(`用户ID ${usage.userId} 的视频数字人记录没有details字段，但有积分记录，尝试修复`);
+          
+          // 创建一个基本的任务记录
+          const mockTaskId = `reconstructed-${usage.userId}-${Date.now()}`;
+          const mockTask = {
+            taskId: mockTaskId,
+            videoDuration: Math.max(1, Math.floor(usage.credits / 9)), // 假设每秒9积分
+            creditCost: usage.credits || 0,
+            timestamp: usage.lastUsedAt || new Date()
+          };
+          
+          // 创建details字段
+          const details = { tasks: [mockTask] };
+          
+          // 保存到数据库
+          usage.details = JSON.stringify(details);
+          await usage.save();
+          
+          // 添加到全局变量
+          global.digitalHumanTasks[mockTaskId] = {
+            userId: usage.userId,
+            hasChargedCredits: true,
+            creditCost: mockTask.creditCost,
+            videoDuration: mockTask.videoDuration,
+            timestamp: mockTask.timestamp
+          };
+          
+          loadedTasks++;
+          console.log(`已为用户ID ${usage.userId} 重建视频数字人任务记录`);
+        } catch (reconstructError) {
+          console.error('重建任务记录失败:', reconstructError);
+        }
+      }
+    }
+    
+    console.log(`成功从数据库加载了 ${loadedTasks} 条视频数字人任务信息到全局变量`);
+    
+    // 可以在这里添加其他功能的任务加载逻辑
+    
+  } catch (error) {
+    console.error('从数据库加载任务信息失败:', error);
+  }
+};
+
+// 启动服务器后立即加载任务数据
+startServer().then(() => {
+  // 确保在服务器启动后执行加载任务
+  loadTasksFromDatabase().catch(err => {
+    console.error('加载任务数据失败:', err);
+  });
+  
+  // 同步全局变量和数据库中的视频数字人使用记录
+  syncDigitalHumanTasksWithDatabase().catch(err => {
+    console.error('同步视频数字人任务数据失败:', err);
+  });
+});
+
+/**
+ * 同步全局变量和数据库中的视频数字人使用记录
+ * 确保两者保持一致，以便准确统计
+ */
+async function syncDigitalHumanTasksWithDatabase() {
+  try {
+    console.log('开始同步全局变量和数据库中的视频数字人使用记录...');
+    
+    // 获取所有视频数字人功能使用记录
+    const usages = await FeatureUsage.findAll({
+      where: { featureName: 'DIGITAL_HUMAN_VIDEO' }
+    });
+    
+    // 记录同步情况
+    let syncCount = 0;
+    let updateCount = 0;
+    
+    // 处理每个用户的记录
+    for (const usage of usages) {
+      const userId = usage.userId;
+      let tasksFromDB = [];
+      
+      // 解析数据库中的任务记录
+      if (usage.details) {
+        try {
+          const details = JSON.parse(usage.details);
+          if (details && details.tasks && Array.isArray(details.tasks)) {
+            tasksFromDB = details.tasks;
+          }
+        } catch (error) {
+          console.error(`解析用户ID ${userId} 的任务记录失败:`, error);
+          continue;
+        }
+      }
+      
+      // 获取全局变量中该用户的任务
+      const userTasksInGlobal = {};
+      let taskCount = 0;
+      let totalCredits = 0;
+      
+      // 从全局变量中筛选出该用户的任务
+      for (const taskId in global.digitalHumanTasks) {
+        const task = global.digitalHumanTasks[taskId];
+        if (task && task.userId === userId) {
+          userTasksInGlobal[taskId] = task;
+          taskCount++;
+          totalCredits += task.creditCost || 0;
+        }
+      }
+      
+      console.log(`用户ID ${userId}: 数据库中有 ${tasksFromDB.length} 条任务记录，全局变量中有 ${taskCount} 条任务记录`);
+      
+      // 检查是否需要更新数据库记录
+      const needUpdate = tasksFromDB.length !== taskCount || usage.usageCount !== taskCount || usage.credits !== totalCredits;
+      
+      if (needUpdate) {
+        // 创建新的任务列表，以全局变量为准
+        const newTasks = [];
+        for (const taskId in userTasksInGlobal) {
+          const task = userTasksInGlobal[taskId];
+          newTasks.push({
+            taskId: taskId,
+            videoDuration: task.videoDuration || 0,
+            creditCost: task.creditCost || 0,
+            timestamp: task.timestamp || new Date()
+          });
+        }
+        
+        // 更新数据库记录
+        usage.details = JSON.stringify({ tasks: newTasks });
+        usage.usageCount = taskCount;
+        usage.credits = totalCredits;
+        await usage.save();
+        
+        console.log(`已更新用户ID ${userId} 的使用记录: ${taskCount} 次使用，${totalCredits} 积分`);
+        updateCount++;
+      }
+      
+      syncCount++;
+    }
+    
+    console.log(`同步完成: 共处理 ${syncCount} 个用户记录，更新了 ${updateCount} 个记录`);
+    
+  } catch (error) {
+    console.error('同步视频数字人使用记录失败:', error);
+    throw error;
+  }
+}
 
 // 在现有的路由配置之后添加视频数字人路由
 
@@ -4384,4 +4984,445 @@ app.post('/api/upload-audio', protect, upload.single('audio'), async (req, res) 
 });
 
 // 在路由配置部分的开始处添加数字人视频处理路由
+
+/**
+ * 同步全局变量和数据库中的所有功能使用记录
+ * 确保所有功能的使用记录保持一致，以便准确统计
+ */
+async function syncAllFeatureUsagesWithDatabase() {
+  try {
+    console.log('开始同步全局变量和数据库中的所有功能使用记录...');
+    
+    // 获取所有功能的使用记录
+    const allUsages = await FeatureUsage.findAll();
+    console.log(`从数据库中获取到 ${allUsages.length} 条功能使用记录`);
+    
+    // 记录同步情况
+    let syncCount = 0;
+    let updateCount = 0;
+    
+    // 处理每个功能类型
+    const { FEATURES } = require('./middleware/featureAccess');
+    const featureTypes = Object.keys(FEATURES);
+    
+    // 为每种功能类型创建索引
+    for (const featureType of featureTypes) {
+      console.log(`处理功能类型: ${featureType}`);
+      
+      // 筛选该功能类型的使用记录
+      const featureUsages = allUsages.filter(usage => usage.featureName === featureType);
+      console.log(`找到 ${featureUsages.length} 条 ${featureType} 功能的使用记录`);
+      
+      // 处理每个功能的使用记录
+      for (const usage of featureUsages) {
+        const userId = usage.userId;
+        let tasksFromDB = [];
+        
+        // 解析数据库中的任务记录
+        if (usage.details) {
+          try {
+            const details = JSON.parse(usage.details);
+            if (details && details.tasks && Array.isArray(details.tasks)) {
+              tasksFromDB = details.tasks;
+            }
+          } catch (error) {
+            console.error(`解析用户ID ${userId} 的 ${featureType} 任务记录失败:`, error);
+            continue;
+          }
+        }
+        
+        // 根据功能类型获取对应的全局变量
+        let globalTasks = {};
+        let taskCount = 0;
+        let totalCredits = 0;
+        
+        // 处理不同类型的功能
+        switch (featureType) {
+          case 'DIGITAL_HUMAN_VIDEO':
+            // 视频数字人功能
+            if (global.digitalHumanTasks) {
+              for (const taskId in global.digitalHumanTasks) {
+                const task = global.digitalHumanTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'MULTI_IMAGE_TO_VIDEO':
+            // 多图转视频功能
+            if (global.multiImageToVideoTasks) {
+              for (const taskId in global.multiImageToVideoTasks) {
+                const task = global.multiImageToVideoTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'VIDEO_SUBTITLE_REMOVER':
+            // 视频去除字幕功能
+            if (global.videoSubtitleTasks) {
+              for (const taskId in global.videoSubtitleTasks) {
+                const task = global.videoSubtitleTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'VIDEO_STYLE_REPAINT':
+            // 视频风格重绘功能
+            if (global.videoStyleRepaintTasks) {
+              for (const taskId in global.videoStyleRepaintTasks) {
+                const task = global.videoStyleRepaintTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'IMAGE_EXPANSION':
+            // 智能扩图功能
+            if (global.imageExpansionTasks) {
+              for (const taskId in global.imageExpansionTasks) {
+                const task = global.imageExpansionTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'IMAGE_SHARPENING':
+            // 图像锐化功能
+            if (global.imageSharpeningTasks) {
+              for (const taskId in global.imageSharpeningTasks) {
+                const task = global.imageSharpeningTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'image-upscaler':
+            // 图像高清放大功能
+            if (global.imageUpscalerTasks) {
+              for (const taskId in global.imageUpscalerTasks) {
+                const task = global.imageUpscalerTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'scene-generator':
+            // 场景图生成功能
+            if (global.sceneGeneratorTasks) {
+              for (const taskId in global.sceneGeneratorTasks) {
+                const task = global.sceneGeneratorTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'IMAGE_COLORIZATION':
+            // 图像上色功能
+            if (global.imageColorizationTasks) {
+              for (const taskId in global.imageColorizationTasks) {
+                const task = global.imageColorizationTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'LOCAL_REDRAW':
+            // 局部重绘功能
+            if (global.localRedrawTasks) {
+              for (const taskId in global.localRedrawTasks) {
+                const task = global.localRedrawTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'GLOBAL_STYLE':
+            // 全局风格化功能
+            if (global.globalStyleTasks) {
+              for (const taskId in global.globalStyleTasks) {
+                const task = global.globalStyleTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'DIANTU':
+            // 垫图功能
+            if (global.diantuTasks) {
+              for (const taskId in global.diantuTasks) {
+                const task = global.diantuTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'model-skin-changer':
+            // 模特换肤功能
+            if (global.modelSkinChangerTasks) {
+              for (const taskId in global.modelSkinChangerTasks) {
+                const task = global.modelSkinChangerTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'clothing-simulation':
+            // 模特试衣功能
+            if (global.clothingSimulationTasks) {
+              for (const taskId in global.clothingSimulationTasks) {
+                const task = global.clothingSimulationTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'CLOTH_SEGMENTATION':
+            // 智能服饰分割功能
+            if (global.clothingSegmentationTasks) {
+              for (const taskId in global.clothingSegmentationTasks) {
+                const task = global.clothingSegmentationTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'VIRTUAL_MODEL_VTON':
+            // 智能虚拟模特试穿功能
+            if (global.virtualModelVtonTasks) {
+              for (const taskId in global.virtualModelVtonTasks) {
+                const task = global.virtualModelVtonTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'VIRTUAL_SHOE_MODEL':
+            // 鞋靴虚拟试穿功能
+            if (global.virtualShoeModelTasks) {
+              for (const taskId in global.virtualShoeModelTasks) {
+                const task = global.virtualShoeModelTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'TEXT_TO_IMAGE':
+            // 文生图片功能
+            if (global.textToImageTasks) {
+              for (const taskId in global.textToImageTasks) {
+                const task = global.textToImageTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'IMAGE_EDIT':
+            // 指令编辑功能
+            if (global.imageEditTasks) {
+              for (const taskId in global.imageEditTasks) {
+                const task = global.imageEditTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'text-to-video':
+            // 文生视频功能
+            if (global.textToVideoTasks) {
+              for (const taskId in global.textToVideoTasks) {
+                const task = global.textToVideoTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          case 'image-to-video':
+            // 图生视频功能
+            if (global.imageToVideoTasks) {
+              for (const taskId in global.imageToVideoTasks) {
+                const task = global.imageToVideoTasks[taskId];
+                if (task && task.userId === userId) {
+                  globalTasks[taskId] = task;
+                  taskCount++;
+                  totalCredits += task.creditCost || 0;
+                }
+              }
+            }
+            break;
+            
+          // 亚马逊助手功能 - 静态积分记录
+          case 'amazon_listing':
+          case 'amazon_video_script':
+          case 'amazon_brand_info':
+          case 'amazon_brand_naming':
+          case 'amazon_search_term':
+          case 'amazon_review_analysis':
+          case 'amazon_consumer_insights':
+          case 'amazon_customer_email':
+          case 'fba_claim_email':
+          case 'amazon_review_generator':
+          case 'amazon_review_response':
+          case 'product_comparison':
+          case 'amazon_post_creator':
+          case 'amazon_keyword_recommender':
+          case 'amazon_case_creator':
+          case 'product_improvement_analysis':
+            // 亚马逊助手功能类型的积分记录已经在checkFeatureAccess中间件中实时记录
+            // 这里无需使用全局变量记录任务，直接使用数据库中的记录
+            console.log(`亚马逊助手功能 ${featureType} 积分使用记录直接从数据库读取`);
+            break;
+            
+          default:
+            // 其他功能类型可能没有全局变量跟踪任务
+            console.log(`功能 ${featureType} 没有全局变量跟踪任务，跳过同步`);
+            continue;
+        }
+        
+        console.log(`用户ID ${userId} 的 ${featureType} 功能: 数据库中有 ${tasksFromDB.length} 条任务记录，全局变量中有 ${taskCount} 条任务记录`);
+        
+        // 检查是否需要更新数据库记录
+        const needUpdate = tasksFromDB.length !== taskCount || 
+                          (usage.usageCount !== taskCount && taskCount > 0) || 
+                          (usage.credits !== totalCredits && totalCredits > 0);
+        
+        if (needUpdate && taskCount > 0) {
+          // 创建新的任务列表，以全局变量为准
+          const newTasks = [];
+          for (const taskId in globalTasks) {
+            const task = globalTasks[taskId];
+            newTasks.push({
+              taskId: taskId,
+              duration: task.videoDuration || task.duration || 0,
+              creditCost: task.creditCost || 0,
+              timestamp: task.timestamp || new Date()
+            });
+          }
+          
+          // 更新数据库记录
+          usage.details = JSON.stringify({ tasks: newTasks });
+          usage.usageCount = taskCount;
+          usage.credits = totalCredits;
+          await usage.save();
+          
+          console.log(`已更新用户ID ${userId} 的 ${featureType} 使用记录: ${taskCount} 次使用，${totalCredits} 积分`);
+          updateCount++;
+        }
+        
+        syncCount++;
+      }
+    }
+    
+    console.log(`同步完成: 共处理 ${syncCount} 个功能使用记录，更新了 ${updateCount} 个记录`);
+    
+  } catch (error) {
+    console.error('同步功能使用记录失败:', error);
+    throw error;
+  }
+}
+
+// 同步视频数字人使用记录的函数（保留向后兼容）
+async function syncDigitalHumanTasksWithDatabase() {
+  console.log('调用旧的同步函数，将重定向到新的全功能同步函数');
+  return syncAllFeatureUsagesWithDatabase();
+}
+
+// 启动服务器后立即加载任务数据
+startServer().then(() => {
+  // 确保在服务器启动后执行加载任务
+  loadTasksFromDatabase().catch(err => {
+    console.error('加载任务数据失败:', err);
+  });
+  
+  // 同步所有功能的使用记录
+  syncAllFeatureUsagesWithDatabase().catch(err => {
+    console.error('同步功能使用记录失败:', err);
+  });
+});
+
+// 确保全局变量存在 - 用于存储多图转视频任务信息
+if (!global.multiImageToVideoTasks) {
+  global.multiImageToVideoTasks = {};
+}
 

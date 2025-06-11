@@ -49,6 +49,95 @@ router.post('/create-task', protect, checkFeatureAccess('CLOTH_SEGMENTATION'), a
             const apiResult = await callClothSegmentationApi(apiParams);
             console.log('阿里云API返回结果:', JSON.stringify(apiResult, null, 2));
             
+            // 获取功能的积分消费配置
+            const { FEATURES } = require('../middleware/featureAccess');
+            const featureConfig = FEATURES['CLOTH_SEGMENTATION'];
+            const creditCost = featureConfig ? featureConfig.creditCost : 2; // 默认消费2积分
+            
+            // 生成唯一任务ID
+            const taskId = uuidv4();
+            
+            // 保存任务信息到全局变量
+            if (!global.clothingSegmentationTasks) {
+                global.clothingSegmentationTasks = {};
+            }
+            
+            // 记录任务信息
+            global.clothingSegmentationTasks[taskId] = {
+                userId: req.user.id,
+                imageUrl: imageUrl,
+                clothClasses: clothClasses,
+                creditCost: creditCost,
+                timestamp: new Date(),
+                status: 'completed',
+                result: apiResult
+            };
+            
+            // 保存使用记录到数据库
+            try {
+                const { FeatureUsage } = require('../models/FeatureUsage');
+                const user = await require('../models/User').findByPk(req.user.id);
+                
+                // 更新数据库中的使用记录
+                let usage = await FeatureUsage.findOne({
+                    where: { userId: req.user.id, featureName: 'CLOTH_SEGMENTATION' }
+                });
+                
+                if (usage) {
+                    // 已有记录，更新使用次数和积分消费
+                    let details = {};
+                    try {
+                        details = usage.details ? JSON.parse(usage.details) : {};
+                    } catch (e) {
+                        details = {};
+                    }
+                    
+                    if (!details.tasks) {
+                        details.tasks = [];
+                    }
+                    
+                    // 添加新的任务记录
+                    details.tasks.push({
+                        taskId: taskId,
+                        creditCost: creditCost,
+                        timestamp: new Date()
+                    });
+                    
+                    // 更新使用记录
+                    usage.usageCount += 1;
+                    usage.credits += creditCost;
+                    usage.details = JSON.stringify(details);
+                    usage.lastUsedAt = new Date();
+                    await usage.save();
+                } else {
+                    // 没有记录，创建新记录
+                    await FeatureUsage.create({
+                        userId: req.user.id,
+                        featureName: 'CLOTH_SEGMENTATION',
+                        usageCount: 1,
+                        credits: creditCost,
+                        details: JSON.stringify({
+                            tasks: [{
+                                taskId: taskId,
+                                creditCost: creditCost,
+                                timestamp: new Date()
+                            }]
+                        }),
+                        lastUsedAt: new Date()
+                    });
+                }
+                
+                // 从用户积分中扣除
+                if (user) {
+                    user.credits -= creditCost;
+                    await user.save();
+                    console.log(`已从用户 ${req.user.id} 扣除 ${creditCost} 积分，剩余积分: ${user.credits}`);
+                }
+            } catch (dbError) {
+                console.error('保存服饰分割使用记录失败:', dbError);
+                // 继续处理，不影响用户使用
+            }
+            
             // 返回标准API结果
             return res.status(200).json(apiResult);
         } catch (apiError) {

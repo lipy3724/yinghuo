@@ -37,6 +37,19 @@ const FeatureUsage = sequelize.define('FeatureUsage', {
     type: DataTypes.DATEONLY,
     allowNull: false,
     defaultValue: DataTypes.NOW
+  },
+  // 积分消费总额
+  credits: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+    comment: '该功能的积分消费总额'
+  },
+  // 详细使用记录，存储为JSON字符串
+  details: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '详细使用记录，包含任务ID、时间戳、积分消费等信息'
   }
 }, {
   tableName: 'feature_usages',

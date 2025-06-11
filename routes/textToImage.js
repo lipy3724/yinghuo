@@ -18,6 +18,7 @@ const API_TASK_URL = 'https://dashscope.aliyuncs.com/api/v1/tasks/';
 router.post('/generate', protect, checkFeatureAccess('TEXT_TO_IMAGE'), async (req, res) => {
   try {
     const { prompt, negativePrompt = '', size = '1024*1024', n = 1, prompt_extend = true, watermark = false } = req.body;
+    const userId = req.user.id;
 
     if (!prompt) {
       return res.status(400).json({
@@ -59,6 +60,19 @@ router.post('/generate', protect, checkFeatureAccess('TEXT_TO_IMAGE'), async (re
     if (response.data && response.data.output && response.data.output.task_id) {
       const taskId = response.data.output.task_id;
       const taskStatus = response.data.output.task_status;
+
+      // 获取功能配置信息
+      const { FEATURES } = require('../middleware/featureAccess');
+      const creditCost = FEATURES.TEXT_TO_IMAGE.creditCost;
+      
+      // 记录任务信息到全局变量，方便后续查询和积分统计
+      global.textToImageTasks[taskId] = {
+        userId: userId,
+        prompt: prompt,
+        timestamp: new Date(),
+        creditCost: creditCost,
+        hasChargedCredits: true
+      };
 
       return res.json({
         success: true,
@@ -124,6 +138,85 @@ router.get('/task/:taskId', protect, async (req, res) => {
 
     // 如果任务成功完成
     if (taskStatus === 'SUCCEEDED') {
+      // 记录任务完成状态到全局变量
+      if (global.textToImageTasks && global.textToImageTasks[taskId]) {
+        global.textToImageTasks[taskId].status = 'SUCCEEDED';
+        global.textToImageTasks[taskId].completedAt = new Date();
+        
+        // 查找或创建数据库中的使用记录
+        try {
+          const { FeatureUsage } = require('../models/FeatureUsage');
+          const userId = req.user.id;
+          
+          // 获取功能配置信息
+          const { FEATURES } = require('../middleware/featureAccess');
+          const creditCost = FEATURES.TEXT_TO_IMAGE.creditCost;
+          
+          // 查找现有记录
+          let usage = await FeatureUsage.findOne({
+            where: { userId, featureName: 'TEXT_TO_IMAGE' }
+          });
+          
+          if (usage) {
+            // 解析现有任务记录
+            let details = {};
+            try {
+              details = usage.details ? JSON.parse(usage.details) : {};
+            } catch (e) {
+              details = {};
+            }
+            
+            if (!details.tasks) {
+              details.tasks = [];
+            }
+            
+            // 检查任务是否已记录
+            const taskExists = details.tasks.some(task => task.taskId === taskId);
+            
+            if (!taskExists) {
+              // 添加新的任务记录
+              details.tasks.push({
+                taskId: taskId,
+                creditCost: creditCost,
+                timestamp: new Date(),
+                prompt: global.textToImageTasks[taskId].prompt
+              });
+              
+              // 更新使用记录
+              usage.usageCount += 1;
+              usage.credits += creditCost;
+              usage.details = JSON.stringify(details);
+              usage.lastUsedAt = new Date();
+              await usage.save();
+              
+              console.log(`已更新用户 ${userId} 的文生图片使用记录，添加任务 ${taskId}`);
+            }
+          } else {
+            // 创建新记录
+            await FeatureUsage.create({
+              userId: userId,
+              featureName: 'TEXT_TO_IMAGE',
+              usageCount: 1,
+              credits: creditCost,
+              details: JSON.stringify({
+                tasks: [{
+                  taskId: taskId,
+                  creditCost: creditCost,
+                  timestamp: new Date(),
+                  prompt: global.textToImageTasks[taskId].prompt
+                }]
+              }),
+              lastUsedAt: new Date()
+            });
+            
+            console.log(`已为用户 ${userId} 创建文生图片使用记录，任务 ${taskId}`);
+          }
+        } catch (dbError) {
+          console.error('保存文生图片使用记录失败:', dbError);
+          // 继续处理，不影响用户使用
+        }
+      }
+      
       // 根据文档返回格式处理结果
       if (response.data.output.results && response.data.output.results.length > 0) {
         // 获取图片URL列表 - 每个result对象中的url属性包含图片URL
@@ -179,6 +272,13 @@ router.get('/task/:taskId', protect, async (req, res) => {
     } 
     // 如果任务失败
     else if (taskStatus === 'FAILED') {
+      // 更新全局变量中的任务状态
+      if (global.textToImageTasks && global.textToImageTasks[taskId]) {
+        global.textToImageTasks[taskId].status = 'FAILED';
+        global.textToImageTasks[taskId].errorMessage = response.data.output.message || '未知错误';
+        global.textToImageTasks[taskId].completedAt = new Date();
+      }
+      
       return res.status(500).json({
         success: false,
         message: '图片生成任务失败',

@@ -799,4 +799,113 @@ router.get('/users-by-date', protect, checkAdmin, async (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/admin/delete-user-usage
+ * @desc    删除特定用户的所有功能使用记录
+ * @access  私有 (仅管理员)
+ */
+router.post('/delete-user-usage', protect, checkAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    // 验证用户ID
+    if (!userId || isNaN(parseInt(userId))) {
+      return res.status(400).json({
+        success: false,
+        message: '请提供有效的用户ID'
+      });
+    }
+    
+    console.log(`管理员 ${req.user.username}(ID: ${req.user.id}) 请求删除用户ID为 ${userId} 的所有功能使用记录`);
+    
+    // 步骤1：从数据库中删除记录
+    // 首先查询该用户有哪些功能使用记录
+    const userRecords = await FeatureUsage.findAll({
+      where: { userId: parseInt(userId) }
+    });
+    
+    if (userRecords.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `未找到用户ID为 ${userId} 的功能使用记录`
+      });
+    }
+    
+    // 记录删除前的信息
+    const usageInfo = userRecords.map(record => ({
+      featureName: record.featureName,
+      usageCount: record.usageCount,
+      credits: record.credits || 0,
+      lastUsedAt: record.lastUsedAt
+    }));
+    
+    // 执行删除操作
+    const deleteResult = await FeatureUsage.destroy({
+      where: { userId: parseInt(userId) }
+    });
+    
+    // 步骤2：清理全局变量中的记录
+    let globalCleanupResults = {};
+    
+    // 清理数字人视频任务
+    let count = 0;
+    if (global.digitalHumanTasks) {
+      for (const taskId in global.digitalHumanTasks) {
+        if (global.digitalHumanTasks[taskId].userId === parseInt(userId)) {
+          delete global.digitalHumanTasks[taskId];
+          count++;
+        }
+      }
+      globalCleanupResults.digitalHumanTasks = count;
+    }
+    
+    // 清理视频去除字幕任务
+    count = 0;
+    if (global.videoSubtitleTasks) {
+      for (const taskId in global.videoSubtitleTasks) {
+        if (global.videoSubtitleTasks[taskId].userId === parseInt(userId)) {
+          delete global.videoSubtitleTasks[taskId];
+          count++;
+        }
+      }
+      globalCleanupResults.videoSubtitleTasks = count;
+    }
+    
+    // 清理视频风格重绘任务
+    count = 0;
+    if (global.videoStyleRepaintTasks) {
+      for (const taskId in global.videoStyleRepaintTasks) {
+        if (global.videoStyleRepaintTasks[taskId].userId === parseInt(userId)) {
+          delete global.videoStyleRepaintTasks[taskId];
+          count++;
+        }
+      }
+      globalCleanupResults.videoStyleRepaintTasks = count;
+    }
+    
+    // 记录操作日志
+    console.log(`成功删除用户ID为 ${userId} 的 ${deleteResult} 条功能使用记录`);
+    console.log(`全局变量清理结果:`, globalCleanupResults);
+    
+    res.json({
+      success: true,
+      message: `成功删除用户ID为 ${userId} 的 ${deleteResult} 条功能使用记录`,
+      data: {
+        databaseRecords: {
+          deleted: deleteResult,
+          records: usageInfo
+        },
+        globalVariables: globalCleanupResults
+      }
+    });
+  } catch (error) {
+    console.error('删除用户功能使用记录错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，删除用户功能使用记录失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 module.exports = router; 

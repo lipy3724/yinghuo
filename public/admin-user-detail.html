@@ -214,7 +214,12 @@
             
             <!-- 功能使用记录 -->
             <div id="features-content" class="bg-white rounded-lg shadow-sm p-6 mb-6 hidden">
-                <h3 class="text-lg font-medium text-gray-800 mb-4">功能使用记录（最近一周）</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-900">功能使用记录</h2>
+                    <button id="delete-user-usage" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium">
+                        删除所有使用记录
+                    </button>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead>
@@ -298,6 +303,18 @@
                 loadUserFeatures(userId);
             } else {
                 window.location.href = '/admin-users.html';
+            }
+            
+            // 绑定删除用户功能使用记录按钮
+            const deleteUserUsageBtn = document.getElementById('delete-user-usage');
+            if (deleteUserUsageBtn) {
+                deleteUserUsageBtn.addEventListener('click', () => {
+                    if (userId) {
+                        deleteUserFeatureUsage(userId);
+                    } else {
+                        showAlert('error', '未找到用户ID');
+                    }
+                });
             }
         });
         
@@ -568,6 +585,46 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
+        }
+        
+        // 添加删除用户功能使用记录的函数
+        async function deleteUserFeatureUsage(userId) {
+            if (!confirm(`确定要删除用户ID为 ${userId} 的所有功能使用记录吗？此操作不可撤销！`)) {
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('未登录，请先登录');
+                }
+                
+                showLoading('正在删除用户功能使用记录...');
+                
+                const response = await fetch('/api/admin/delete-user-usage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ userId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('success', `成功删除 ${data.data.databaseRecords.deleted} 条功能使用记录`);
+                    // 重新加载功能使用记录
+                    loadUserFeatureUsage(userId);
+                } else {
+                    throw new Error(data.message || '删除用户功能使用记录失败');
+                }
+            } catch (error) {
+                console.error('删除用户功能使用记录错误:', error);
+                showAlert('error', error.message || '删除用户功能使用记录失败');
+            } finally {
+                hideLoading();
+            }
         }
     </script>
 </body>

@@ -65,26 +65,74 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
     // 创建任务
     const response = await createTask(requestData);
     
-    // 记录功能使用情况
+    // 获取当前用户ID和积分消费信息
+    const userId = req.user.id;
+    const creditCost = req.featureUsage?.creditCost || FEATURES['GLOBAL_STYLE'].creditCost;
+    
+    // 获取任务ID
+    const taskId = response.data.output?.task_id || `style-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    
+    // 保存任务信息到全局变量
+    if (!global.globalStyleTasks) {
+      global.globalStyleTasks = {};
+    }
+    
+    global.globalStyleTasks[taskId] = {
+      userId: userId,
+      creditCost: creditCost,
+      hasChargedCredits: true,
+      timestamp: new Date(),
+      prompt: sanitizedPrompt,
+      strength: strengthValue
+    };
+    
+    console.log(`全局风格化任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+    
+    // 将任务信息保存到数据库
     try {
-      const userId = req.user.id;
-      await FeatureUsage.create({
-        userId,
-        featureType: 'IMAGE_EDIT',
-        credits: 1, // 默认消耗1个积分，可根据实际定价调整
-        details: JSON.stringify({
-          taskId: response.data.output?.task_id || '',
-          function: 'stylization_all',
-          prompt: sanitizedPrompt,
-          strength: strengthValue
-        })
+      // 查找或创建FeatureUsage记录
+      const [usage, created] = await FeatureUsage.findOrCreate({
+        where: { 
+          userId: userId, 
+          featureName: 'GLOBAL_STYLE' 
+        },
+        defaults: {
+          usageCount: 0,
+          lastUsedAt: new Date(),
+          credits: 0,
+          details: '{}'
+        }
       });
       
-      // 扣除用户积分
-      await User.decrement('credits', { by: 1, where: { id: userId } });
-    } catch (recordError) {
-      console.error('记录功能使用失败:', recordError);
-      // 不中断流程，继续返回任务创建结果
+      // 解析现有详情
+      const details = JSON.parse(usage.details || '{}');
+      // 准备任务列表
+      const tasks = details.tasks || [];
+      // 添加新任务
+      tasks.push({
+        taskId: taskId,
+        creditCost: creditCost,
+        timestamp: new Date(),
+        prompt: sanitizedPrompt,
+        strength: strengthValue
+      });
+      
+      // 更新usage记录 - 同时记录credits字段
+      const currentCredits = usage.credits || 0;
+      usage.credits = currentCredits + creditCost;
+      usage.usageCount += 1;
+      usage.lastUsedAt = new Date();
+      usage.details = JSON.stringify({
+        ...details,
+        tasks: tasks
+      });
+      
+      // 保存更新
+      await usage.save();
+      console.log(`全局风格化任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+    } catch (saveError) {
+      console.error('保存全局风格化任务详情失败:', saveError);
+      // 继续响应，不中断流程
     }
     
     // 确保返回有效的JSON格式

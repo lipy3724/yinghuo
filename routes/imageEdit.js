@@ -6,9 +6,8 @@ const { checkFeatureAccess, FEATURES } = require('../middleware/featureAccess');
 const User = require('../models/User');
 const { FeatureUsage } = require('../models/FeatureUsage');
 
-// 通义万相API密钥
-const API_KEY = process.env.DASHSCOPE_API_KEY || 'sk-a53c9eb917ce49558997c6bc0edac820';
-// 修改回正确的API基础URL
+// 配置API密钥和基础URL
+const API_KEY = process.env.DASHSCOPE_API_KEY;
 const API_BASE_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/image2image/image-synthesis';
 
 /**
@@ -29,6 +28,68 @@ router.post('/create-task', protect, async (req, res) => {
       return checkFeatureAccess('IMAGE_COLORIZATION')(req, res, async () => {
         try {
           const response = await createTask(requestData);
+          
+          // 获取当前用户ID和积分消费信息
+          const userId = req.user.id;
+          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_COLORIZATION'].creditCost;
+          
+          // 生成唯一任务ID
+          const taskId = response.data.output?.task_id || `colorization-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // 保存任务信息到全局变量
+          if (!global.imageColorizationTasks) {
+            global.imageColorizationTasks = {};
+          }
+          
+          global.imageColorizationTasks[taskId] = {
+            userId: userId,
+            creditCost: creditCost,
+            hasChargedCredits: true,
+            timestamp: new Date(),
+            imageUrl: requestData.input?.base_image_url,
+            prompt: requestData.input?.prompt
+          };
+          
+          console.log(`图像上色任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          
+          // 将任务信息保存到数据库
+          try {
+            const usage = await FeatureUsage.findOne({
+              where: { 
+                userId: userId, 
+                featureName: 'IMAGE_COLORIZATION' 
+              }
+            });
+            
+            if (usage) {
+              // 解析现有详情
+              const details = JSON.parse(usage.details || '{}');
+              // 准备任务列表
+              const tasks = details.tasks || [];
+              // 添加新任务
+              tasks.push({
+                taskId: taskId,
+                creditCost: creditCost,
+                timestamp: new Date()
+              });
+              
+              // 更新usage记录 - 同时记录credits字段
+              const currentCredits = usage.credits || 0;
+              usage.credits = currentCredits + creditCost;
+              usage.details = JSON.stringify({
+                ...details,
+                tasks: tasks
+              });
+              
+              // 保存更新
+              await usage.save();
+              console.log(`图像上色任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            }
+          } catch (saveError) {
+            console.error('保存图像上色任务详情失败:', saveError);
+            // 继续响应，不中断流程
+          }
+          
           return res.status(response.status || 200).json(response.data);
         } catch (error) {
           handleApiError(error, res);
@@ -41,6 +102,68 @@ router.post('/create-task', protect, async (req, res) => {
       return checkFeatureAccess('LOCAL_REDRAW')(req, res, async () => {
         try {
           const response = await createTask(requestData);
+          
+          // 获取当前用户ID和积分消费信息
+          const userId = req.user.id;
+          const creditCost = req.featureUsage?.creditCost || FEATURES['LOCAL_REDRAW'].creditCost;
+          
+          // 生成唯一任务ID
+          const taskId = response.data.output?.task_id || `redraw-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // 保存任务信息到全局变量
+          if (!global.localRedrawTasks) {
+            global.localRedrawTasks = {};
+          }
+          
+          global.localRedrawTasks[taskId] = {
+            userId: userId,
+            creditCost: creditCost,
+            hasChargedCredits: true,
+            timestamp: new Date(),
+            imageUrl: requestData.input?.base_image_url,
+            prompt: requestData.input?.prompt
+          };
+          
+          console.log(`局部重绘任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          
+          // 将任务信息保存到数据库
+          try {
+            const usage = await FeatureUsage.findOne({
+              where: { 
+                userId: userId, 
+                featureName: 'LOCAL_REDRAW' 
+              }
+            });
+            
+            if (usage) {
+              // 解析现有详情
+              const details = JSON.parse(usage.details || '{}');
+              // 准备任务列表
+              const tasks = details.tasks || [];
+              // 添加新任务
+              tasks.push({
+                taskId: taskId,
+                creditCost: creditCost,
+                timestamp: new Date()
+              });
+              
+              // 更新usage记录 - 同时记录credits字段
+              const currentCredits = usage.credits || 0;
+              usage.credits = currentCredits + creditCost;
+              usage.details = JSON.stringify({
+                ...details,
+                tasks: tasks
+              });
+              
+              // 保存更新
+              await usage.save();
+              console.log(`局部重绘任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            }
+          } catch (saveError) {
+            console.error('保存局部重绘任务详情失败:', saveError);
+            // 继续响应，不中断流程
+          }
+          
           return res.status(response.status || 200).json(response.data);
         } catch (error) {
           handleApiError(error, res);
@@ -62,6 +185,68 @@ router.post('/create-task', protect, async (req, res) => {
       return checkFeatureAccess('IMAGE_EXPANSION')(req, res, async () => {
         try {
           const response = await createTask(requestData);
+          
+          // 获取当前用户ID和积分消费信息
+          const userId = req.user.id;
+          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_EXPANSION'].creditCost;
+          
+          // 生成唯一任务ID
+          const taskId = response.data.output?.task_id || `expand-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // 保存任务信息到全局变量
+          if (!global.imageExpansionTasks) {
+            global.imageExpansionTasks = {};
+          }
+          
+          global.imageExpansionTasks[taskId] = {
+            userId: userId,
+            creditCost: creditCost,
+            hasChargedCredits: true,
+            timestamp: new Date(),
+            imageUrl: requestData.input?.base_image_url,
+            prompt: requestData.input?.prompt
+          };
+          
+          console.log(`智能扩图任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          
+          // 将任务信息保存到数据库
+          try {
+            const usage = await FeatureUsage.findOne({
+              where: { 
+                userId: userId, 
+                featureName: 'IMAGE_EXPANSION' 
+              }
+            });
+            
+            if (usage) {
+              // 解析现有详情
+              const details = JSON.parse(usage.details || '{}');
+              // 准备任务列表
+              const tasks = details.tasks || [];
+              // 添加新任务
+              tasks.push({
+                taskId: taskId,
+                creditCost: creditCost,
+                timestamp: new Date()
+              });
+              
+              // 更新usage记录 - 同时记录credits字段
+              const currentCredits = usage.credits || 0;
+              usage.credits = currentCredits + creditCost;
+              usage.details = JSON.stringify({
+                ...details,
+                tasks: tasks
+              });
+              
+              // 保存更新
+              await usage.save();
+              console.log(`智能扩图任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            }
+          } catch (saveError) {
+            console.error('保存智能扩图任务详情失败:', saveError);
+            // 继续响应，不中断流程
+          }
+          
           return res.status(response.status || 200).json(response.data);
         } catch (error) {
           handleApiError(error, res);
@@ -74,6 +259,159 @@ router.post('/create-task', protect, async (req, res) => {
       return checkFeatureAccess('IMAGE_SHARPENING')(req, res, async () => {
         try {
           const response = await createTask(requestData);
+          
+          // 获取当前用户ID和积分消费信息
+          const userId = req.user.id;
+          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_SHARPENING'].creditCost;
+          
+          // 生成唯一任务ID
+          const taskId = response.data.output?.task_id || `sharpen-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // 保存任务信息到全局变量
+          if (!global.imageSharpeningTasks) {
+            global.imageSharpeningTasks = {};
+          }
+          
+          global.imageSharpeningTasks[taskId] = {
+            userId: userId,
+            creditCost: creditCost,
+            hasChargedCredits: true,
+            timestamp: new Date(),
+            imageUrl: requestData.input?.base_image_url,
+            prompt: requestData.input?.prompt
+          };
+          
+          console.log(`图像锐化任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          
+          // 将任务信息保存到数据库
+          try {
+            const usage = await FeatureUsage.findOne({
+              where: { 
+                userId: userId, 
+                featureName: 'IMAGE_SHARPENING' 
+              }
+            });
+            
+            if (usage) {
+              // 解析现有详情
+              const details = JSON.parse(usage.details || '{}');
+              // 准备任务列表
+              const tasks = details.tasks || [];
+              // 添加新任务
+              tasks.push({
+                taskId: taskId,
+                creditCost: creditCost,
+                timestamp: new Date()
+              });
+              
+              // 更新usage记录 - 同时记录credits字段
+              const currentCredits = usage.credits || 0;
+              usage.credits = currentCredits + creditCost;
+              usage.details = JSON.stringify({
+                ...details,
+                tasks: tasks
+              });
+              
+              // 保存更新
+              await usage.save();
+              console.log(`图像锐化任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            }
+          } catch (saveError) {
+            console.error('保存图像锐化任务详情失败:', saveError);
+            // 继续响应，不中断流程
+          }
+          
+          return res.status(response.status || 200).json(response.data);
+        } catch (error) {
+          handleApiError(error, res);
+        }
+      });
+    }
+    // 如果是垫图功能，需要验证DIANTU权限
+    else if (functionType === 'control_cartoon_feature') {
+      // 使用垫图权限检查中间件
+      return checkFeatureAccess('DIANTU')(req, res, async () => {
+        try {
+          const response = await createTask(requestData);
+          
+          // 获取当前用户ID和积分消费信息
+          const userId = req.user.id;
+          const creditCost = req.featureUsage?.creditCost || FEATURES['DIANTU']?.creditCost || 5;
+          
+          // 生成唯一任务ID
+          const taskId = response.data.output?.task_id || `diantu-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // 保存任务信息到全局变量
+          if (!global.diantuTasks) {
+            global.diantuTasks = {};
+          }
+          
+          global.diantuTasks[taskId] = {
+            userId: userId,
+            creditCost: creditCost,
+            hasChargedCredits: true,
+            timestamp: new Date(),
+            imageUrl: requestData.input?.base_image_url,
+            prompt: requestData.input?.prompt
+          };
+          
+          console.log(`垫图任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          
+          // 将任务信息保存到数据库
+          try {
+            const usage = await FeatureUsage.findOne({
+              where: { 
+                userId: userId, 
+                featureName: 'DIANTU' 
+              }
+            });
+            
+            if (usage) {
+              // 解析现有详情
+              const details = JSON.parse(usage.details || '{}');
+              // 准备任务列表
+              const tasks = details.tasks || [];
+              // 添加新任务
+              tasks.push({
+                taskId: taskId,
+                creditCost: creditCost,
+                timestamp: new Date()
+              });
+              
+              // 更新usage记录 - 同时记录credits字段
+              const currentCredits = usage.credits || 0;
+              usage.credits = currentCredits + creditCost;
+              usage.details = JSON.stringify({
+                ...details,
+                tasks: tasks
+              });
+              
+              // 保存更新
+              await usage.save();
+              console.log(`垫图任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            } else {
+              // 如果记录不存在，创建新记录
+              await FeatureUsage.create({
+                userId: userId,
+                featureName: 'DIANTU',
+                usageCount: 1,
+                lastUsedAt: new Date(),
+                credits: creditCost,
+                details: JSON.stringify({
+                  tasks: [{
+                    taskId: taskId,
+                    creditCost: creditCost,
+                    timestamp: new Date()
+                  }]
+                })
+              });
+              console.log(`垫图功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            }
+          } catch (saveError) {
+            console.error('保存垫图任务详情失败:', saveError);
+            // 继续响应，不中断流程
+          }
+          
           return res.status(response.status || 200).json(response.data);
         } catch (error) {
           handleApiError(error, res);
@@ -85,6 +423,96 @@ router.post('/create-task', protect, async (req, res) => {
       return checkFeatureAccess('IMAGE_EDIT')(req, res, async () => {
         try {
           const response = await createTask(requestData);
+          
+          // 获取当前用户ID和积分消费信息
+          const userId = req.user.id;
+          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_EDIT'].creditCost;
+          
+          // 生成唯一任务ID
+          const taskId = response.data.output?.task_id || `edit-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+          
+          // 保存任务信息到全局变量
+          if (!global.imageEditTasks) {
+            global.imageEditTasks = {};
+          }
+          
+          global.imageEditTasks[taskId] = {
+            userId: userId,
+            creditCost: creditCost,
+            hasChargedCredits: true,
+            timestamp: new Date(),
+            imageUrl: requestData.input?.base_image_url,
+            prompt: requestData.input?.prompt,
+            function: requestData.input?.function || 'general_edit'
+          };
+          
+          console.log(`指令编辑任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          
+          // 将任务信息保存到数据库
+          try {
+            // 查找现有记录
+            let usage = await FeatureUsage.findOne({
+              where: { 
+                userId: userId, 
+                featureName: 'IMAGE_EDIT' 
+              }
+            });
+            
+            if (usage) {
+              // 解析现有详情
+              let details = {};
+              try {
+                details = JSON.parse(usage.details || '{}');
+              } catch (parseError) {
+                details = {};
+              }
+              
+              // 准备任务列表
+              const tasks = details.tasks || [];
+              
+              // 添加新任务
+              tasks.push({
+                taskId: taskId,
+                creditCost: creditCost,
+                timestamp: new Date()
+              });
+              
+              // 更新usage记录 - 同时记录credits字段
+              const currentCredits = usage.credits || 0;
+              usage.credits = currentCredits + creditCost;
+              usage.usageCount = (usage.usageCount || 0) + 1;
+              usage.details = JSON.stringify({
+                ...details,
+                tasks: tasks
+              });
+              usage.lastUsedAt = new Date();
+              
+              // 保存更新
+              await usage.save();
+              console.log(`指令编辑任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            } else {
+              // 创建新记录
+              await FeatureUsage.create({
+                userId: userId,
+                featureName: 'IMAGE_EDIT',
+                usageCount: 1,
+                credits: creditCost,
+                lastUsedAt: new Date(),
+                details: JSON.stringify({
+                  tasks: [{
+                    taskId: taskId,
+                    creditCost: creditCost,
+                    timestamp: new Date()
+                  }]
+                })
+              });
+              console.log(`指令编辑功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            }
+          } catch (saveError) {
+            console.error('保存指令编辑任务详情失败:', saveError);
+            // 继续响应，不中断流程
+          }
+          
           return res.status(response.status || 200).json(response.data);
         } catch (error) {
           handleApiError(error, res);
@@ -135,6 +563,41 @@ router.get('/task-status/:taskId', protect, async (req, res) => {
             // 记录详细响应以便调试
             const responseData = response.data;
             console.log('详细响应数据:', JSON.stringify(responseData, null, 2));
+            
+            // 如果任务成功完成，更新全局变量中的状态
+            if (responseData.output?.task_status === 'SUCCEEDED') {
+                // 尝试获取图片URL
+                let resultUrl = '';
+                if (responseData.output.results && responseData.output.results.length > 0) {
+                    resultUrl = responseData.output.results[0].url;
+                } else if (responseData.output.result_url) {
+                    resultUrl = responseData.output.result_url;
+                }
+                
+                // 更新全局变量中的任务状态
+                const taskId = responseData.output.task_id;
+                
+                // 检查是否是指令编辑任务
+                if (global.imageEditTasks && global.imageEditTasks[taskId]) {
+                    global.imageEditTasks[taskId].status = 'SUCCEEDED';
+                    global.imageEditTasks[taskId].resultUrl = resultUrl;
+                    global.imageEditTasks[taskId].completedAt = new Date();
+                    console.log(`更新指令编辑任务状态: taskId=${taskId}, status=SUCCEEDED`);
+                }
+            }
+            // 如果任务失败，更新全局变量中的状态
+            else if (responseData.output?.task_status === 'FAILED') {
+                const taskId = responseData.output.task_id;
+                const errorMessage = responseData.output.message || '任务执行失败';
+                
+                // 检查是否是指令编辑任务
+                if (global.imageEditTasks && global.imageEditTasks[taskId]) {
+                    global.imageEditTasks[taskId].status = 'FAILED';
+                    global.imageEditTasks[taskId].errorMessage = errorMessage;
+                    global.imageEditTasks[taskId].completedAt = new Date();
+                    console.log(`更新指令编辑任务状态: taskId=${taskId}, status=FAILED, error=${errorMessage}`);
+                }
+            }
             
             // 直接返回原始响应，保持与官方文档完全一致的格式
             // 响应中包含:

@@ -24,6 +24,7 @@ const FEATURES = {
   'IMAGE_SHARPENING': { creditCost: 7, freeUsage: 1 }, // 模糊图片变清晰功能
   'CLOTH_SEGMENTATION': { creditCost: 2, freeUsage: 1 }, // 智能服饰分割功能
   'GLOBAL_STYLE': { creditCost: 7, freeUsage: 1 }, // 全局风格化功能
+  'DIANTU': { creditCost: 7, freeUsage: 1 }, // 垫图功能
   
   // 亚马逊功能
   'amazon_video_script': { creditCost: 1, freeUsage: 0 }, // 亚马逊广告视频脚本生成
@@ -224,6 +225,71 @@ const checkFeatureAccess = (featureName) => {
       // 更新使用记录
       usage.usageCount += 1;
       usage.lastUsedAt = new Date();
+      
+      // 对于亚马逊助手功能，保存更详细的使用记录
+      if (featureName.startsWith('amazon_') || featureName === 'product_comparison' || featureName === 'product_improvement_analysis' || featureName === 'fba_claim_email') {
+        try {
+          // 解析现有详情
+          let details = {};
+          try {
+            details = usage.details ? JSON.parse(usage.details) : {};
+          } catch (e) {
+            details = {};
+          }
+          
+          // 准备任务列表
+          const tasks = details.tasks || [];
+          
+          // 获取请求正文的摘要信息
+          let requestSummary = '';
+          if (req.body) {
+            if (req.body.prompt) {
+              requestSummary = req.body.prompt.substring(0, 100) + '...';
+            } else if (req.body.productName) {
+              requestSummary = req.body.productName;
+            } else if (req.body.review) {
+              requestSummary = req.body.review.substring(0, 100) + '...';
+            } else if (req.body.productKeywords) {
+              requestSummary = req.body.productKeywords;
+            } else {
+              // 尝试从请求体中获取任何可能的标识符
+              const keys = Object.keys(req.body);
+              if (keys.length > 0) {
+                const key = keys[0];
+                if (typeof req.body[key] === 'string') {
+                  requestSummary = `${key}: ${req.body[key].substring(0, 50)}...`;
+                } else {
+                  requestSummary = `使用了 ${keys.join(', ')} 参数`;
+                }
+              } else {
+                requestSummary = '使用了亚马逊助手功能';
+              }
+            }
+          }
+          
+          // 添加新的任务记录
+          const taskId = Date.now().toString(); // 使用时间戳作为任务ID
+          tasks.push({
+            taskId: taskId,
+            creditCost: creditCost,
+            timestamp: new Date(),
+            summary: requestSummary
+          });
+          
+          // 更新总积分消耗
+          usage.credits = (usage.credits || 0) + creditCost;
+          
+          // 更新使用记录详情
+          usage.details = JSON.stringify({
+            ...details,
+            tasks: tasks
+          });
+        } catch (detailsError) {
+          console.error('保存亚马逊助手功能使用详情失败:', detailsError);
+          // 继续处理，不影响用户使用
+        }
+      }
+      
       await usage.save();
       
       // 添加使用信息到请求对象

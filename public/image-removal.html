@@ -292,22 +292,46 @@
                     const imageNum = data?.imageNum || 1;
                     console.log("用户请求生成图片，数量:", imageNum);
                     
-                    // 记录功能使用并检查是否可以继续
-                    trackFeatureUsage('image-removal').then(canProceed => {
-                        // 响应编辑器请求
-                        iframeEle.contentWindow.postMessage({
-                            biz: receiveBiz,
-                            action: 'respond',
-                            success: canProceed // 根据是否可以继续返回成功或失败
-                        }, '*');
-                        
-                        if (!canProceed) {
-                            console.log("用户积分不足，已阻止生产");
-                            alert("积分不足，无法继续生成图片");
-                        } else {
-                            console.log("已允许继续生产流程");
-                        }
-                    });
+                    try {
+                        // 记录功能使用并检查是否可以继续
+                        trackFeatureUsage('image-removal').then(canProceed => {
+                            try {
+                                // 响应编辑器请求
+                                if (iframeEle && iframeEle.contentWindow) {
+                                    iframeEle.contentWindow.postMessage({
+                                        biz: receiveBiz,
+                                        action: 'respond',
+                                        success: canProceed // 根据是否可以继续返回成功或失败
+                                    }, '*');
+                                    
+                                    if (!canProceed) {
+                                        console.log("用户积分不足，已阻止生产");
+                                        alert("积分不足，无法继续生成图片");
+                                    } else {
+                                        console.log("已允许继续生产流程");
+                                    }
+                                } else {
+                                    console.error("iframe元素或其contentWindow不存在");
+                                }
+                            } catch (responseError) {
+                                console.error("响应编辑器请求时出错:", responseError);
+                                // 出错时默认允许继续，避免功能阻塞
+                                alert("处理请求时出现错误，但已允许继续");
+                            }
+                        }).catch(trackError => {
+                            console.error("记录功能使用出错:", trackError);
+                            // 出错时默认允许继续
+                            if (iframeEle && iframeEle.contentWindow) {
+                                iframeEle.contentWindow.postMessage({
+                                    biz: receiveBiz,
+                                    action: 'respond',
+                                    success: true
+                                }, '*');
+                            }
+                        });
+                    } catch (error) {
+                        console.error("处理生成请求出错:", error);
+                    }
                     return;
                 }
                 
@@ -319,10 +343,27 @@
                         return;
                     }
                     
-                    console.log("开始统一处理保存图片:", JSON.stringify(imageData));
+                    console.log("开始统一处理保存图片:", typeof imageData === 'object' ? JSON.stringify(imageData) : imageData);
                     
                     try {
-                        const success = await saveImageResult(imageData);
+                        // 增加安全处理
+                        let dataToSave = imageData;
+                        
+                        // 特殊处理图像智能消除编辑器返回的格式
+                        if (typeof imageData === 'object' && imageData !== null) {
+                            if (imageData.url) {
+                                // 直接使用url属性
+                                dataToSave = imageData.url;
+                            } else if (imageData.data && imageData.data.url) {
+                                // 从嵌套data对象中获取url
+                                dataToSave = imageData.data.url;
+                            } else if (imageData.image || imageData.imageUrl) {
+                                // 使用image或imageUrl属性
+                                dataToSave = imageData.image || imageData.imageUrl;
+                            }
+                        }
+                        
+                        const success = await saveImageResult(dataToSave);
                         if (success) {
                             console.log("图像消除结果保存成功");
                             alert('图片已保存到下载中心!');

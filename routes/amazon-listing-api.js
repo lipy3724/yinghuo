@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const logger = require('../utils/logger');
+const { protect } = require('../middleware/auth');
+const { checkFeatureAccess } = require('../middleware/featureAccess');
+const { FeatureUsage } = require('../models/FeatureUsage');
+const User = require('../models/User');
 
 // GLM-4 API配置
 const GLM4_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
@@ -16,7 +20,32 @@ const getAuthHeaders = () => {
 };
 
 // 生成亚马逊Listing
-router.post('/generate', async (req, res) => {
+router.post('/generate', protect, async (req, res) => {
+    // 根据生成类型动态判断使用的功能
+    const { generateType } = req.body;
+    let featureName = 'amazon_listing'; // 默认是Listing功能
+    
+    // 如果是视频脚本，则使用视频脚本功能
+    if (generateType === 'video-script') {
+        featureName = 'amazon_video_script';
+    }
+    
+    // 调用checkFeatureAccess中间件
+    try {
+        const middleware = checkFeatureAccess(featureName);
+        await new Promise((resolve, reject) => {
+            middleware(req, res, (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    } catch (error) {
+        return res.status(402).json({
+            success: false,
+            message: '积分不足或访问受限',
+            error: error.message
+        });
+    }
     try {
         const {
             productFeatureCount,
@@ -265,7 +294,7 @@ Please return in the following JSON format, with exactly ${featureCount} bullet 
 });
 
 // 优化亚马逊Listing
-router.post('/optimize', async (req, res) => {
+router.post('/optimize', protect, checkFeatureAccess('amazon_listing'), async (req, res) => {
     try {
         const {
             currentTitle,
@@ -467,7 +496,7 @@ ${currentDescription || '无'}
 });
 
 // AI推荐关键词
-router.post('/recommend-keywords', async (req, res) => {
+router.post('/recommend-keywords', protect, checkFeatureAccess('amazon_keyword_recommender'), async (req, res) => {
     try {
         const { productCategory, outputLanguage } = req.body;
 
@@ -541,7 +570,7 @@ Please return only the keywords, separated by commas, without any other content.
 });
 
 // 生成亚马逊后台搜索词
-router.post('/generate-search-term', async (req, res) => {
+router.post('/generate-search-term', protect, checkFeatureAccess('amazon_search_term'), async (req, res) => {
     try {
         const {
             productKeywords,
@@ -635,7 +664,7 @@ Please generate Amazon backend search terms (maximum 250 characters) in English.
 });
 
 // 分析亚马逊客户评论
-router.post('/analyze-review', async (req, res) => {
+router.post('/analyze-review', protect, checkFeatureAccess('amazon_review_analysis'), async (req, res) => {
     try {
         const {
             customerReview,
@@ -753,7 +782,7 @@ replyTemplate: 回复该客户的模板`;
 });
 
 // 亚马逊消费者洞察专家
-router.post('/consumer-insights', async (req, res) => {
+router.post('/consumer-insights', protect, checkFeatureAccess('amazon_consumer_insights'), async (req, res) => {
     try {
         const {
             productCategory,
@@ -1067,7 +1096,7 @@ unmetNeeds:
 });
 
 // 亚马逊客户邮件回复
-router.post('/customer-email', async (req, res) => {
+router.post('/customer-email', protect, checkFeatureAccess('amazon_customer_email'), async (req, res) => {
     try {
         const {
             customerEmail,
@@ -1207,7 +1236,7 @@ suggestion: 对此案例的进一步处理建议，包括可能的交叉销售�
 });
 
 // FBA索赔邮件
-router.post('/fba-claim', async (req, res) => {
+router.post('/fba-claim', protect, checkFeatureAccess('fba_claim_email'), async (req, res) => {
     try {
         const {
             orderIssue,
@@ -1343,7 +1372,7 @@ claimTips: 提高索赔成功率的实用建议（包括应附加哪些证据、
 });
 
 // 产品对比
-router.post('/product-comparison', async (req, res) => {
+router.post('/product-comparison', protect, checkFeatureAccess('product_comparison'), async (req, res) => {
     try {
         const {
             yourProduct,
@@ -1625,7 +1654,7 @@ ${focusPoints ? `特别关注的对比点: ${focusPoints}` : ''}
 });
 
 // 亚马逊评论生成
-router.post('/review-generator', async (req, res) => {
+router.post('/review-generator', protect, checkFeatureAccess('amazon_review_generator'), async (req, res) => {
     try {
         const {
             productName,
@@ -1975,7 +2004,7 @@ function generateRandomUsername(isEnglish) {
 }
 
 // 亚马逊评论回复
-router.post('/review-response', async (req, res) => {
+router.post('/review-response', protect, checkFeatureAccess('amazon_review_response'), async (req, res) => {
     try {
         const {
             reviewContent,
@@ -2050,7 +2079,7 @@ ${brandName ? `品牌名称：${brandName}` : ''}
 });
 
 // 亚马逊关键词推荐
-router.post('/keyword-recommender', async (req, res) => {
+router.post('/keyword-recommender', protect, checkFeatureAccess('amazon_keyword_recommender'), async (req, res) => {
     try {
         const {
             productDescription,
@@ -2220,7 +2249,7 @@ Product Description: ${productDescription}`
 });
 
 // 亚马逊品牌起名
-router.post('/brand-naming', async (req, res) => {
+router.post('/brand-naming', protect, checkFeatureAccess('amazon_brand_naming'), async (req, res) => {
     try {
         const {
             productDescription,
@@ -2440,7 +2469,7 @@ ${productDescription}
 });
 
 // 亚马逊Post生成
-router.post('/post-creator', async (req, res) => {
+router.post('/post-creator', protect, checkFeatureAccess('amazon_post_creator'), async (req, res) => {
     try {
         const {
             postTitle,
@@ -2766,7 +2795,7 @@ Return the translation in JSON format:
 });
 
 // 亚马逊客服case内容生成
-router.post('/case-creator', async (req, res) => {
+router.post('/case-creator', protect, checkFeatureAccess('amazon_case_creator'), async (req, res) => {
     try {
         const {
             issueDescription,
@@ -3027,7 +3056,7 @@ ${accountInfo ? `账户信息: ${accountInfo}` : ''}
 });
 
 // 选品的改款分析和建议
-router.post('/product-improvement', async (req, res) => {
+router.post('/product-improvement', protect, checkFeatureAccess('product_improvement_analysis'), async (req, res) => {
     try {
         const {
             title,
@@ -3280,7 +3309,7 @@ Description: ${descriptionText}
 });
 
 // 品牌信息收集和总结
-router.post('/brand-info', async (req, res) => {
+router.post('/brand-info', protect, checkFeatureAccess('amazon_brand_info'), async (req, res) => {
     try {
         const {
             brandName,
