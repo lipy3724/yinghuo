@@ -9,9 +9,9 @@ module.exports = {
       
       if (!tableDesc.remark) {
         console.log('添加 remark 字段到 users 表');
-        await queryInterface.addColumn('users', 'remark', {
-          type: Sequelize.STRING(200),
-          allowNull: true,
+    await queryInterface.addColumn('users', 'remark', {
+      type: Sequelize.STRING(200),
+      allowNull: true,
           defaultValue: null
         });
         console.log('remark 字段添加成功');
@@ -28,7 +28,7 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     try {
       // 回滚时删除字段
-      await queryInterface.removeColumn('users', 'remark');
+    await queryInterface.removeColumn('users', 'remark');
       return Promise.resolve();
     } catch (error) {
       console.error('回滚出错:', error);

@@ -494,7 +494,7 @@ router.get('/payment-records', protect, checkAdmin, async (req, res) => {
       offset,
       include: [{
         model: User,
-        as: 'user',
+        as: 'orderUser',
         attributes: ['id', 'username', 'phone']
       }]
     });
