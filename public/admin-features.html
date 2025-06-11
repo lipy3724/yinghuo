@@ -586,8 +586,8 @@
             // 添加功能选项
             features.forEach(feature => {
                 const option = document.createElement('option');
-                option.value = feature.name;
-                option.textContent = feature.name;
+                option.value = feature.originalName; // 使用原始英文名称作为值
+                option.textContent = feature.name;   // 显示中文名称
                 featureFilter.appendChild(option);
             });
         }
