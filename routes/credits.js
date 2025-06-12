@@ -874,25 +874,39 @@ router.get('/usage', protect, async (req, res) => {
                 const taskIds = new Set(tasks.map(task => task.taskId));
             console.log(`从数据库获取到${tasks.length}条${featureName}任务记录，唯一任务ID数量: ${taskIds.size}`);
             
-            // 首先进行去重处理
-                  if (taskIds.size < tasks.length) {
-              console.log(`检测到${featureName}功能的重复任务ID，进行去重处理`);
-                    const uniqueTasks = [];
-                    const processedTaskIds = new Set();
-                    
-                    for (const task of tasks) {
-                      if (!processedTaskIds.has(task.taskId)) {
-                        processedTaskIds.add(task.taskId);
-                        uniqueTasks.push(task);
-                      }
-                    }
-                    
+            // 进行去重处理 - 始终执行去重，防止多个记录条目引用同一任务ID
+              console.log(`对${featureName}功能的任务记录进行去重处理`);
+              const uniqueTasks = [];
+              const processedTaskIds = new Set();
+              
+              // 首先获取每个任务ID对应的最新任务记录
+              const taskMap = new Map();
+              for (const task of tasks) {
+                const taskId = task.taskId;
+                if (!taskId) continue; // 跳过没有任务ID的记录
+                
+                // 如果是首次遇到此任务ID或者此任务更新，则更新记录
+                if (!taskMap.has(taskId) || 
+                    (task.creditUpdated && !taskMap.get(taskId).creditUpdated) ||
+                    (task.timestamp && new Date(task.timestamp) > new Date(taskMap.get(taskId).timestamp || 0))) {
+                  taskMap.set(taskId, task);
+                }
+              }
+              
+              // 将最新的任务记录添加到结果中
+              for (const task of taskMap.values()) {
+                uniqueTasks.push(task);
+              }
+              
               console.log(`${featureName}功能去重后任务数量从${tasks.length}减少到${uniqueTasks.length}`);
-                    tasks = uniqueTasks;
-            }
+              tasks = uniqueTasks;
             
-            // 计算时间范围内的积分消费
-                totalFeatureCreditCost = tasks.reduce((total, task) => total + (task.creditCost || 0), 0);
+            // 计算时间范围内的积分消费 - 只统计非免费使用的积分消费
+                totalFeatureCreditCost = tasks.reduce((total, task) => {
+                  // 如果是免费使用，则不计入积分消费
+                  if (task.isFree) return total;
+                  return total + (task.creditCost || 0);
+                }, 0);
             console.log(`从${featureName}功能的任务记录计算的时间范围内积分消费: ${totalFeatureCreditCost}`);
             }
           } catch (parseError) {
@@ -905,16 +919,34 @@ router.get('/usage', protect, async (req, res) => {
         console.log(`将${featureName}功能的${tasks.length}条任务添加到使用记录中`);
         
         tasks.forEach(task => {
-          const creditCost = task.creditCost || 0;
+          // 免费使用时积分为0
+          const creditCost = task.isFree ? 0 : (task.creditCost || 0);
           const taskDate = new Date(task.timestamp || now);
           let description = `使用${getLocalFeatureName(featureName)}功能`;
           
           // 根据功能类型生成不同的描述
           if (featureName === 'DIGITAL_HUMAN_VIDEO') {
-            const videoDuration = task.videoDuration || task.duration || 0;
+            const videoDuration = task.videoDuration || task.duration || task.actualDuration || 0;
             description = `生成${videoDuration}秒视频`;
           } else if (featureName === 'MULTI_IMAGE_TO_VIDEO' || featureName === 'VIDEO_SUBTITLE_REMOVER' || featureName === 'VIDEO_STYLE_REPAINT') {
-            const duration = task.duration || 0;
+            // 视频风格重绘和视频相关功能可能在多个字段保存了视频时长
+            // 检查所有可能的时长字段，确保至少有一个有效值
+            let duration = task.actualDuration || task.duration || task.videoDuration || 0;
+            
+            // 特别针对视频风格重绘，从任务详情中寻找更多可能的字段
+            if (featureName === 'VIDEO_STYLE_REPAINT' && duration === 0) {
+              // 如果没找到时长信息，尝试查看是否有分辨率和计算的积分信息来估算时长
+              const creditCost = task.creditCost || 0;
+              const resolution = task.resolution || task.min_len || 540;
+              const rate = resolution <= 540 ? 3 : 6;
+              
+              // 如果有积分信息和费率，可以反推时长
+              if (creditCost > 0 && rate > 0) {
+                duration = Math.ceil(creditCost / rate);
+                console.log(`通过积分和费率估算视频时长: ${creditCost}积分 / ${rate}积分/秒 = ${duration}秒`);
+              }
+            }
+            
             description = `处理${duration}秒视频`;
           }
           
@@ -929,57 +961,95 @@ router.get('/usage', protect, async (req, res) => {
             }).replace(/\//g, '-'),
             feature: getLocalFeatureName(featureName),
             description: description,
-            credits: creditCost,
+            credits: task.isFree ? "免费" : creditCost, // 免费使用显示"免费"而不是数值0
             isFree: !!task.isFree // 确保将免费使用标记传递给前端
           });
           
-          // 更新对应日期的使用量
-          const dateIndex = dateLabels.findIndex(date => 
-            date === taskDate.toISOString().split('T')[0].substring(5)
-          );
-          if (dateIndex !== -1) {
-            usageData[dateIndex] += creditCost;
-        }
+          // 更新对应日期的使用量 - 仅统计非免费使用
+          // 对于免费使用，不更新积分消费数据
+          if (!task.isFree) {
+            const numericCreditCost = typeof creditCost === 'number' ? creditCost : 0;
+            if (numericCreditCost > 0) {
+              const dateIndex = dateLabels.findIndex(date => 
+                date === taskDate.toISOString().split('T')[0].substring(5)
+              );
+              if (dateIndex !== -1) {
+                usageData[dateIndex] += numericCreditCost;
+              }
+            }
+          }
         });
       }
       
       // 记录最终统计结果
       console.log(`${featureName}功能统计完成 - 任务数量:${tasks.length}, 积分消费:${totalFeatureCreditCost}`);
       
-      // 获取正确的使用次数 - 对于大多数功能，我们应该使用实际任务数
-      // 对于亚马逊助手功能，需要额外处理可能出现的重复计数问题
-      let actualUsageCount;
-      
-      // 对于亚马逊类型的功能，使用任务数作为实际使用次数，避免前端重复记录问题
-      if (featureName.startsWith('amazon_') || featureName === 'product_comparison' || 
-          featureName === 'product_improvement_analysis' || featureName === 'fba_claim_email') {
-        // 使用去重后的任务数作为实际使用次数，防止重复计数
-        actualUsageCount = tasks.length > 0 ? tasks.length : (usage ? usage.usageCount : 0);
-        console.log(`亚马逊助手功能${featureName}使用任务数作为实际使用次数: ${actualUsageCount}`);
+      // 开始处理图生视频功能的积分统计，用户ID: ${userId}
+      if (featureName === 'image-to-video') {
+        // 图生视频功能的特殊处理
+        // 修复积分计算重复问题，仅使用实际任务数量
+        let actualUsageCount = 0;
+        
+        // 如果有任务记录，使用任务的数量而不是数据库中的usageCount
+        if (tasks && tasks.length > 0) {
+          // 对于图生视频，统计实际任务数即可，数据库记录可能重复
+          actualUsageCount = tasks.length;
+          console.log(`图生视频功能使用任务数量作为实际使用次数: ${actualUsageCount}`);
+        } else {
+          // 没有任务记录则使用数据库中的记录
+          actualUsageCount = usage ? usage.usageCount : 0;
+        }
+        
+        // 将实际使用次数应用到featureUsageStats
+        featureUsageStats[featureName] = {
+          name: getLocalFeatureName(featureName),
+          credits: totalFeatureCreditCost,
+          count: actualUsageCount,
+          usageCount: actualUsageCount
+        };
+        
+        // 累加总积分消费和总使用次数
+        totalCreditsUsed += totalFeatureCreditCost;
+        totalAllTimeCreditsUsed += allTimeFeatureCreditCost;
+        totalUsageCount += actualUsageCount;
+        
+        console.log(`设置${featureName}功能的最终统计次数: ${featureUsageStats[featureName].usageCount}`);
       } else {
-        // 其他功能仍然使用数据库记录的使用次数
-        actualUsageCount = usage ? usage.usageCount : 0;
-      }
-      
-      // 对于数字人视频等特殊功能，已经在任务记录中计算了积分消费，直接使用任务记录的积分总和
-      if (featureName === 'DIGITAL_HUMAN_VIDEO' || featureName === 'MULTI_IMAGE_TO_VIDEO' || 
-          featureName === 'VIDEO_SUBTITLE_REMOVER' || featureName === 'VIDEO_STYLE_REPAINT' ||
-          featureName === 'IMAGE_EXPANSION' || featureName === 'IMAGE_SHARPENING' ||
-          featureName === 'image-upscaler' || featureName === 'scene-generator' ||
-          featureName === 'marketing-images' || featureName === 'translate' || featureName === 'cutout') {
-        // 这些功能已经在任务中计算了积分消费，不需要再使用数据库记录中的积分
-        console.log(`特殊功能${featureName}，使用任务记录中的积分消费: ${totalFeatureCreditCost}`);
-      } 
-      // 对于其他功能，仍然使用数据库记录的积分消费
-      else if (usage && usage.credits > 0) {
-        // 总积分使用最准确的来源是数据库记录
-        totalFeatureCreditCost = usage.credits;
-        console.log(`使用数据库记录的${featureName}功能积分消费作为最终统计: ${totalFeatureCreditCost}`);
-      }
-      
-      console.log(`${featureName}功能最终使用次数: ${actualUsageCount} (数据库记录: ${usage ? usage.usageCount : 0}, 任务数: ${tasks.length})`);
-      
-      // 将功能记录添加到统计数据中
+        // 获取正确的使用次数 - 对于大多数功能，我们应该使用实际任务数
+        // 对于亚马逊助手功能，需要额外处理可能出现的重复计数问题
+        let actualUsageCount;
+        
+        // 对于亚马逊类型的功能，使用任务数作为实际使用次数，避免前端重复记录问题
+        if (featureName.startsWith('amazon_') || featureName === 'product_comparison' || 
+            featureName === 'product_improvement_analysis' || featureName === 'fba_claim_email') {
+          // 使用去重后的任务数作为实际使用次数，防止重复计数
+          actualUsageCount = tasks.length > 0 ? tasks.length : (usage ? usage.usageCount : 0);
+          console.log(`亚马逊助手功能${featureName}使用任务数作为实际使用次数: ${actualUsageCount}`);
+        } else {
+          // 其他功能仍然使用数据库记录的使用次数
+          actualUsageCount = usage ? usage.usageCount : 0;
+        }
+        
+        // 对于数字人视频等特殊功能，已经在任务记录中计算了积分消费，直接使用任务记录的积分总和
+        if (featureName === 'DIGITAL_HUMAN_VIDEO' || featureName === 'MULTI_IMAGE_TO_VIDEO' || 
+            featureName === 'VIDEO_SUBTITLE_REMOVER' || featureName === 'VIDEO_STYLE_REPAINT' ||
+            featureName === 'IMAGE_EXPANSION' || featureName === 'IMAGE_SHARPENING' ||
+            featureName === 'image-upscaler' || featureName === 'scene-generator' ||
+            featureName === 'marketing-images' || featureName === 'translate' || featureName === 'cutout' ||
+            featureName === 'VIRTUAL_MODEL_VTON') {
+          // 这些功能已经在任务中计算了积分消费，不需要再使用数据库记录中的积分
+          console.log(`特殊功能${featureName}，使用任务记录中的积分消费: ${totalFeatureCreditCost}`);
+        } 
+        // 对于其他功能，仍然使用数据库记录的积分消费
+        else if (usage && usage.credits > 0) {
+          // 总积分使用最准确的来源是数据库记录
+          totalFeatureCreditCost = usage.credits;
+          console.log(`使用数据库记录的${featureName}功能积分消费作为最终统计: ${totalFeatureCreditCost}`);
+        }
+        
+        console.log(`${featureName}功能最终使用次数: ${actualUsageCount} (数据库记录: ${usage ? usage.usageCount : 0}, 任务数: ${tasks.length})`);
+        
+        // 将功能记录添加到统计数据中
           featureUsageStats[featureName] = {
             name: getLocalFeatureName(featureName),
             credits: totalFeatureCreditCost,
@@ -993,7 +1063,8 @@ router.get('/usage', protect, async (req, res) => {
       totalUsageCount += actualUsageCount;
       
       console.log(`设置${featureName}功能的最终统计次数: ${featureUsageStats[featureName].usageCount}`);
-    });
+    }
+  });
     
     // 按日期降序排序
     usageRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
