@@ -1070,6 +1070,45 @@ router.get('/usage', protect, async (req, res) => {
             featureName === 'VIRTUAL_MODEL_VTON') {
           // 这些功能已经在任务中计算了积分消费，不需要再使用数据库记录中的积分
           console.log(`特殊功能${featureName}，使用任务记录中的积分消费: ${totalFeatureCreditCost}`);
+          
+          // 修复多图转视频功能积分统计问题
+          if (featureName === 'MULTI_IMAGE_TO_VIDEO' && totalFeatureCreditCost === 0 && tasks.length > 0) {
+            // 根据任务数量和默认积分消耗计算
+            totalFeatureCreditCost = tasks.length * 30; // 每个任务默认30积分
+            console.log(`修复多图转视频功能积分统计: ${tasks.length}个任务 x 30积分 = ${totalFeatureCreditCost}积分`);
+            
+            // 确保每个任务都有正确的记录添加到usageRecords中
+            for (const task of tasks) {
+              // 为每个任务创建使用记录
+              if (!usageRecords.some(record => record.taskId === task.taskId)) {
+                // 添加到使用记录
+                const recordDate = formatDate(task.timestamp || new Date());
+                usageRecords.push({
+                  date: recordDate,
+                  feature: getLocalFeatureName(featureName),
+                  description: task.description || '多图转视频',
+                  credits: 30, // 每个任务30积分
+                  taskId: task.taskId,
+                  isFree: false
+                });
+                
+                // 更新时段积分消费统计
+                // 将30积分添加到对应日期的usageData中
+                const dateStr = recordDate.split(' ')[0]; // 只取日期部分
+                const dateIndex = dateLabels.indexOf(dateStr);
+                if (dateIndex !== -1) {
+                  usageData[dateIndex] += 30;
+                  console.log(`为日期 ${dateStr} 添加了30积分消费，累计: ${usageData[dateIndex]}`);
+                }
+                
+                console.log(`为多图转视频任务ID=${task.taskId}添加了使用记录`);
+              }
+            }
+            
+            // 确保总消费积分更新
+            totalCreditsUsed += totalFeatureCreditCost;
+            console.log(`更新总积分消费: ${totalCreditsUsed} (新增多图转视频积分: ${totalFeatureCreditCost})`);
+          }
         } 
         // 对于其他功能，仍然使用数据库记录的积分消费
         else if (usage && usage.credits > 0) {
@@ -1290,6 +1329,18 @@ function getLocalFeatureName(featureName) {
   };
   
   return featureNames[featureName] || featureName;
+}
+
+// 添加formatDate函数定义
+function formatDate(date) {
+  if (!date) return '';
+  try {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  } catch (e) {
+    console.error('日期格式化错误:', e);
+    return '';
+  }
 }
 
 // 创建支付宝支付订单

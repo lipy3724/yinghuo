@@ -67,7 +67,7 @@ const FeatureUsage = sequelize.define('FeatureUsage', {
 // 我们在同步后再设置外键关联，避免同步过程中的外键问题
 // 可以在启动服务器后手动执行
 const setupAssociations = () => {
-  FeatureUsage.belongsTo(User, { foreignKey: 'userId', as: 'featureUser' });
+  FeatureUsage.belongsTo(User, { foreignKey: 'userId', as: 'featureUsageUser' });
   User.hasMany(FeatureUsage, { foreignKey: 'userId', as: 'usages' });
 };
 

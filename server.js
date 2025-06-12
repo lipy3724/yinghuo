@@ -499,10 +499,62 @@ app.post('/api/multi-image-to-video', protect, checkFeatureAccess('MULTI_IMAGE_T
             hasChargedCredits: true,
             timestamp: new Date(),
             imageCount: images.length,
-            duration: duration || 10
+            duration: duration || 10,
+            description: '多图转视频',
+            taskId: taskId
         };
         
         console.log(`多图转视频任务信息已保存: 用户ID=${req.user.id}, 任务ID=${taskId}, 积分=${global.multiImageToVideoTasks[taskId].creditCost}`);
+        
+        // 同步将任务信息保存到数据库的FeatureUsage记录中
+        try {
+            // 修复导入方式 - 正确获取FeatureUsage模型
+            const { FeatureUsage } = require('./models/FeatureUsage');
+            const featureUsage = await FeatureUsage.findOne({
+                where: { 
+                    userId: req.user.id, 
+                    featureName: 'MULTI_IMAGE_TO_VIDEO' 
+                }
+            });
+            
+            if (featureUsage) {
+                // 解析现有details
+                let details = {};
+                if (featureUsage.details) {
+                    try {
+                        details = JSON.parse(featureUsage.details);
+                    } catch (e) {
+                        console.error('解析FeatureUsage.details失败:', e);
+                        details = {};
+                    }
+                }
+                
+                // 确保tasks数组存在
+                if (!details.tasks) {
+                    details.tasks = [];
+                }
+                
+                // 添加新任务
+                details.tasks.push({
+                    taskId: taskId,
+                    creditCost: global.multiImageToVideoTasks[taskId].creditCost,
+                    timestamp: new Date(),
+                    description: '多图转视频',
+                    imageCount: images.length,
+                    duration: duration || 10
+                });
+                
+                // 更新数据库记录
+                await featureUsage.update({
+                    details: JSON.stringify(details)
+                });
+                
+                console.log(`多图转视频任务ID=${taskId}已同步到数据库FeatureUsage记录`);
+            }
+        } catch (dbError) {
+            console.error('同步任务信息到数据库失败:', dbError);
+            // 继续处理，不影响主要功能
+        }
         
         // 返回任务ID给前端
         return res.json({
