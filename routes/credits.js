@@ -984,8 +984,39 @@ router.get('/usage', protect, async (req, res) => {
       // 记录最终统计结果
       console.log(`${featureName}功能统计完成 - 任务数量:${tasks.length}, 积分消费:${totalFeatureCreditCost}`);
       
+      // 开始处理图片翻译功能的积分统计，用户ID: ${userId}
+      if (featureName === 'translate') {
+        // 图片翻译功能的特殊处理
+        // 修复积分计算重复问题，仅使用实际任务数量
+        let actualUsageCount = 0;
+        
+        // 如果有任务记录，使用任务的数量而不是数据库中的usageCount
+        if (tasks && tasks.length > 0) {
+          // 对于图片翻译，统计实际任务数即可，数据库记录可能重复
+          actualUsageCount = tasks.length;
+          console.log(`图片翻译功能使用任务数量作为实际使用次数: ${actualUsageCount}`);
+        } else {
+          // 没有任务记录则使用数据库中的记录
+          actualUsageCount = usage ? usage.usageCount : 0;
+        }
+        
+        // 将实际使用次数应用到featureUsageStats
+        featureUsageStats[featureName] = {
+          name: getLocalFeatureName(featureName),
+          credits: totalFeatureCreditCost,
+          count: actualUsageCount,
+          usageCount: actualUsageCount
+        };
+        
+        // 累加总积分消费和总使用次数
+        totalCreditsUsed += totalFeatureCreditCost;
+        totalAllTimeCreditsUsed += allTimeFeatureCreditCost;
+        totalUsageCount += actualUsageCount;
+        
+        console.log(`设置${featureName}功能的最终统计次数: ${featureUsageStats[featureName].usageCount}`);
+      } 
       // 开始处理图生视频功能的积分统计，用户ID: ${userId}
-      if (featureName === 'image-to-video') {
+      else if (featureName === 'image-to-video') {
         // 图生视频功能的特殊处理
         // 修复积分计算重复问题，仅使用实际任务数量
         let actualUsageCount = 0;
