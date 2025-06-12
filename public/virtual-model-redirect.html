@@ -312,7 +312,7 @@
             debugInfo.style.display = 'block';
         }
         
-        // 消息处理函数 - 按照官方文档示例处理
+        // 处理消息处理函数 - 按照官方文档示例处理
         function handleMessageEvent(event) {
             // 根据官方示例，首先检查消息来源
             console.log('收到消息事件:', event.origin, event.data);
@@ -353,10 +353,15 @@
                                 action: "generateConfirm",
                                 payload: true, // 校验结果 true通过，false不通过
                             }, "*");
+                            
+                            // 在用户点击生成按钮时记录功能使用情况
+                            recordUsage();
                             break;
                         case "save":
                             // 处理保存事件
                             console.log("收到保存事件:", data);
+                            // 用户保存设计时记录功能使用情况
+                            recordUsage();
                             break;
                         case "ready":
                             console.log('编辑器初始化完成');
@@ -414,6 +419,44 @@
                 }
             } catch (error) {
                 console.error('处理iframe消息时出错:', error, event.data);
+            }
+        }
+
+        // 记录功能使用情况的函数 - 只在用户实际使用功能时调用
+        let usageRecorded = false;
+        async function recordUsage() {
+            // 防止重复记录
+            if (usageRecorded) {
+                console.log('功能使用已记录，不重复记录');
+                return;
+            }
+            
+            try {
+                console.log('记录虚拟模特试穿功能使用情况');
+                
+                const response = await fetch('/api/virtual-model/usage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+                    },
+                    body: JSON.stringify({
+                        timestamp: Date.now()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('功能使用记录结果:', result);
+                
+                // 标记为已记录，避免重复扣除积分
+                usageRecorded = true;
+            } catch (error) {
+                console.error('记录功能使用情况失败:', error);
+                // 失败时不阻止用户继续使用
             }
         }
 

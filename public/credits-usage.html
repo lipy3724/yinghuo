@@ -664,7 +664,7 @@
                 
                 // 处理免费使用的显示
                 let creditDisplay;
-                if (record.isFree || record.credits === 0) {
+                if (record.isFree === true || record.credits === 0) {
                     creditDisplay = '<span class="text-green-500 font-medium">免费</span>';
                 } else {
                     creditDisplay = `<span class="text-red-500 font-medium">-${record.credits} 积分</span>`;

@@ -69,6 +69,9 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
     const userId = req.user.id;
     const creditCost = req.featureUsage?.creditCost || FEATURES['GLOBAL_STYLE'].creditCost;
     
+    // 判断是否是免费使用
+    const isFree = req.featureUsage?.usageType === 'free';
+    
     // 获取任务ID
     const taskId = response.data.output?.task_id || `style-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
     
@@ -79,14 +82,15 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
     
     global.globalStyleTasks[taskId] = {
       userId: userId,
-      creditCost: creditCost,
-      hasChargedCredits: true,
+      creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+      hasChargedCredits: !isFree, // 免费使用不需要扣除积分
       timestamp: new Date(),
       prompt: sanitizedPrompt,
-      strength: strengthValue
+      strength: strengthValue,
+      isFree: isFree // 添加免费使用标记
     };
     
-    console.log(`全局风格化任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+    console.log(`全局风格化任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
     
     // 将任务信息保存到数据库
     try {
@@ -111,15 +115,15 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
       // 添加新任务
       tasks.push({
         taskId: taskId,
-        creditCost: creditCost,
+        creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
         timestamp: new Date(),
-          prompt: sanitizedPrompt,
-          strength: strengthValue
+        prompt: sanitizedPrompt,
+        strength: strengthValue,
+        isFree: isFree // 添加免费使用标记
       });
       
-      // 更新usage记录 - 同时记录credits字段
-      const currentCredits = usage.credits || 0;
-      usage.credits = currentCredits + creditCost;
+      // 更新usage记录 - 不再重复累加积分
+      // 积分已经在checkFeatureAccess中间件中扣除，这里不需要再次累加
       usage.usageCount += 1;
       usage.lastUsedAt = new Date();
       usage.details = JSON.stringify({
@@ -129,7 +133,7 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
       
       // 保存更新
       await usage.save();
-      console.log(`全局风格化任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+      console.log(`全局风格化任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
     } catch (saveError) {
       console.error('保存全局风格化任务详情失败:', saveError);
       // 继续响应，不中断流程

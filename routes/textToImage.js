@@ -183,8 +183,10 @@ router.get('/task/:taskId', protect, async (req, res) => {
               });
               
               // 更新使用记录
-              usage.usageCount += 1;
-              usage.credits += creditCost;
+              // 不要再次增加usageCount，已经在featureAccess中间件中增加过一次
+              // usage.usageCount += 1;
+              // 不要累加积分，已在checkFeatureAccess中间件中扣除
+              // usage.credits += creditCost;
               usage.details = JSON.stringify(details);
               usage.lastUsedAt = new Date();
               await usage.save();
@@ -197,7 +199,7 @@ router.get('/task/:taskId', protect, async (req, res) => {
               userId: userId,
               featureName: 'TEXT_TO_IMAGE',
               usageCount: 1,
-              credits: creditCost,
+              credits: 0, // 设置为0，因为积分已在checkFeatureAccess中间件中扣除
               details: JSON.stringify({
                 tasks: [{
                   taskId: taskId,

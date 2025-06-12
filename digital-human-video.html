@@ -560,6 +560,12 @@
                 generationStatus.classList.remove('hidden');
                 resultPlaceholder.classList.add('hidden');
                 
+                // 显示加载遮罩
+                const loadingOverlay = document.getElementById('loading-overlay');
+                const loadingMessage = document.getElementById('loading-message');
+                loadingOverlay.classList.remove('hidden');
+                loadingMessage.textContent = '视频数字人生成中，请稍候...';
+                
                 // 禁用生成按钮
                 generateBtn.disabled = true;
                 generateBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-2"></i>生成中...';
@@ -572,6 +578,8 @@
             async function uploadFiles() {
                 try {
                     updateProgress('准备上传文件...', 10);
+                    const loadingMessage = document.getElementById('loading-message');
+                    loadingMessage.textContent = '准备上传文件...';
                     
                     // 创建FormData对象
                     const formData = new FormData();
@@ -583,6 +591,7 @@
                     formData.append('videoExtension', videoExtension.checked);
                     
                     updateProgress('上传文件中...', 30);
+                    loadingMessage.textContent = '上传文件中...';
                     
                     // 获取认证Token
                     const token = localStorage.getItem('authToken');
@@ -616,6 +625,7 @@
                     taskId = data.taskId;
                     
                     updateProgress('任务已提交，开始处理...', 50);
+                    loadingMessage.textContent = '任务已提交，开始处理...';
                     
                     // 开始轮询任务状态
                     checkTaskStatus();
@@ -623,6 +633,9 @@
                 } catch (error) {
                     console.error('上传文件失败:', error);
                     updateProgress('上传失败: ' + error.message, 0);
+                    
+                    // 隐藏加载遮罩
+                    document.getElementById('loading-overlay').classList.add('hidden');
                     
                     // 恢复生成按钮
                     generateBtn.disabled = false;
@@ -665,7 +678,11 @@
                         if (data.status === 'SUCCEEDED') {
                             // 任务完成
                             updateProgress('处理完成', 100);
+                            loadingMessage.textContent = '处理完成';
                             clearInterval(statusCheckInterval);
+                            
+                            // 隐藏加载遮罩
+                            document.getElementById('loading-overlay').classList.add('hidden');
                             
                             // 显示结果视频
                             resultVideo.src = data.videoUrl;
@@ -726,7 +743,11 @@
                         } else if (data.status === 'FAILED') {
                             // 任务失败
                             updateProgress('处理失败: ' + data.message, 0);
+                            loadingMessage.textContent = '处理失败: ' + data.message;
                             clearInterval(statusCheckInterval);
+                            
+                            // 隐藏加载遮罩
+                            document.getElementById('loading-overlay').classList.add('hidden');
                             
                             // 恢复生成按钮
                             generateBtn.disabled = false;
@@ -738,11 +759,16 @@
                             // 任务正在处理中
                             let progress = data.status === 'PENDING' ? 50 : 70;
                             updateProgress('处理中...', progress);
+                            loadingMessage.textContent = '视频处理中，请稍候...';
                         }
                         
                     } catch (error) {
                         console.error('查询任务状态失败:', error);
                         updateProgress('查询状态失败', 0);
+                        loadingMessage.textContent = '查询状态失败';
+                        
+                        // 隐藏加载遮罩
+                        document.getElementById('loading-overlay').classList.add('hidden');
                         
                         // 恢复生成按钮
                         generateBtn.disabled = false;
@@ -775,5 +801,15 @@
             checkGenerateButtonState();
         });
     </script>
+    
+    <!-- 加载中遮罩 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <div class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+                <p id="loading-message" class="text-gray-700 text-center">处理中，请稍候...</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

@@ -5,14 +5,14 @@ const { Op } = require('sequelize');
 // 功能配置
 const FEATURES = {
   // 图像处理功能
-  'image-upscaler': { creditCost: 5, freeUsage: 2 },
-  'marketing-images': { creditCost: 15, freeUsage: 2 },
-  'cutout': { creditCost: 3, freeUsage: 2 },
-  'translate': { creditCost: 4, freeUsage: 2 },
-  'scene-generator': { creditCost: 10, freeUsage: 2 },
-  'image-removal': { creditCost: 5, freeUsage: 2 },
-  'model-skin-changer': { creditCost: 20, freeUsage: 2 },
-  'clothing-simulation': { creditCost: 20, freeUsage: 2 },
+  'image-upscaler': { creditCost: 10, freeUsage: 1 }, // 图片高清放大
+  'marketing-images': { creditCost: 7, freeUsage: 1 }, // 产品营销图
+  'cutout': { creditCost: 5, freeUsage: 1 }, // 抠图
+  'translate': { creditCost: 5, freeUsage: 1 }, // 智能翻译
+  'scene-generator': { creditCost: 7, freeUsage: 1 }, // 场景生成
+  'image-removal': { creditCost: 7, freeUsage: 1 }, // 图像物体移除 
+  'model-skin-changer': { creditCost: 10, freeUsage: 1 }, // 模特肤色替换
+  'clothing-simulation': { creditCost: 5, freeUsage: 1 }, // 模拟试衣
   'text-to-video': { creditCost: 66, freeUsage: 1 }, // 文生视频功能，较高积分消耗
   'image-to-video': { creditCost: 66, freeUsage: 1 }, // 图生视频功能
   'IMAGE_EDIT': { creditCost: 7, freeUsage: 1 }, // 图像指令编辑功能
@@ -119,19 +119,23 @@ const checkFeatureAccess = (featureName) => {
       
       // 检查是否在免费使用次数内
       if (usage.usageCount < featureConfig.freeUsage) {
+        // 在免费使用次数内，不扣除积分
+        console.log(`用户ID ${userId} 使用 ${featureName} 功能的免费次数 ${usage.usageCount + 1}/${featureConfig.freeUsage}`);
+        
         // 更新使用记录
         usage.usageCount += 1;
         usage.lastUsedAt = new Date();
         await usage.save();
         
-        // 添加使用信息到请求对象
+        // 将免费使用信息添加到请求对象
         req.featureUsage = {
           usageType: 'free',
-          remainingFreeUsage: featureConfig.freeUsage - usage.usageCount,
-          creditCost: 0
+          creditCost: 0,
+          remainingCredits: user.credits
         };
         
-        return next();
+        next();
+        return;
       }
       
       // 处理积分计算
@@ -218,9 +222,28 @@ const checkFeatureAccess = (featureName) => {
         return;
       }
       
-      // 扣除积分 (对于非数字人视频功能)
-      user.credits -= creditCost;
-      await user.save();
+      // 检查是否已经通过track-usage扣除过积分
+      // 方法1: 检查请求体中是否有creditAlreadyCharged标记
+      // 方法2: 检查session中是否有该功能的扣费记录
+      // 方法3: 实时检查最近一分钟内是否有该用户使用该功能的track-usage记录
+
+      // 使用简单有效的方法: 检查是否是在一分钟内重复使用同一功能
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+      
+      // 如果上次使用时间在一分钟内，并且已经扣除过积分(credits字段存在)，则可能是重复扣费
+      const potentialDuplicate = usage.lastUsedAt && 
+                                 new Date(usage.lastUsedAt) > oneMinuteAgo && 
+                                 usage.credits > 0;
+      
+      if (!potentialDuplicate) {
+        // 非重复请求，正常扣除积分
+        user.credits -= creditCost;
+        await user.save();
+        console.log(`用户ID ${userId} 使用 ${featureName} 功能，扣除 ${creditCost} 积分，剩余 ${user.credits} 积分`);
+      } else {
+        console.log(`检测到用户ID ${userId} 一分钟内重复使用 ${featureName} 功能，避免重复扣费`);
+      }
       
       // 更新使用记录
       usage.usageCount += 1;
@@ -276,8 +299,9 @@ const checkFeatureAccess = (featureName) => {
             summary: requestSummary
           });
           
-          // 更新总积分消耗
-          usage.credits = (usage.credits || 0) + creditCost;
+          // 不重复累加积分消耗，因为已经从用户账户中扣除了积分
+          // 这里移除累加积分的代码，避免双重计费
+          // usage.credits = (usage.credits || 0) + creditCost;
           
           // 更新使用记录详情
           usage.details = JSON.stringify({

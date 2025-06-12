@@ -33,6 +33,9 @@ router.post('/create-task', protect, async (req, res) => {
           const userId = req.user.id;
           const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_COLORIZATION'].creditCost;
           
+          // 判断是否是免费使用
+          const isFree = req.featureUsage?.usageType === 'free';
+          
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `colorization-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
           
@@ -43,14 +46,15 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.imageColorizationTasks[taskId] = {
             userId: userId,
-            creditCost: creditCost,
-            hasChargedCredits: true,
+            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
-            prompt: requestData.input?.prompt
+            prompt: requestData.input?.prompt,
+            isFree: isFree // 添加免费使用标记
           };
           
-          console.log(`图像上色任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          console.log(`图像上色任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
           
           // 将任务信息保存到数据库
           try {
@@ -69,13 +73,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: creditCost,
-                timestamp: new Date()
+                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                timestamp: new Date(),
+                isFree: isFree // 添加免费使用标记
               });
               
-              // 更新usage记录 - 同时记录credits字段
-              const currentCredits = usage.credits || 0;
-              usage.credits = currentCredits + creditCost;
+              // 更新usage记录 - 更新details字段但不重复累加积分
+              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -107,6 +111,9 @@ router.post('/create-task', protect, async (req, res) => {
           const userId = req.user.id;
           const creditCost = req.featureUsage?.creditCost || FEATURES['LOCAL_REDRAW'].creditCost;
           
+          // 判断是否是免费使用
+          const isFree = req.featureUsage?.usageType === 'free';
+          
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `redraw-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
           
@@ -117,14 +124,15 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.localRedrawTasks[taskId] = {
             userId: userId,
-            creditCost: creditCost,
-            hasChargedCredits: true,
+            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
-            prompt: requestData.input?.prompt
+            prompt: requestData.input?.prompt,
+            isFree: isFree // 添加免费使用标记
           };
           
-          console.log(`局部重绘任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          console.log(`局部重绘任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
           
           // 将任务信息保存到数据库
           try {
@@ -143,13 +151,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: creditCost,
-                timestamp: new Date()
+                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                timestamp: new Date(),
+                isFree: isFree // 添加免费使用标记
               });
               
-              // 更新usage记录 - 同时记录credits字段
-              const currentCredits = usage.credits || 0;
-              usage.credits = currentCredits + creditCost;
+              // 更新usage记录 - 更新details字段但不重复累加积分
+              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -158,6 +166,24 @@ router.post('/create-task', protect, async (req, res) => {
               // 保存更新
               await usage.save();
               console.log(`局部重绘任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            } else {
+              // 创建新记录
+              await FeatureUsage.create({
+                userId: userId,
+                featureName: 'LOCAL_REDRAW',
+                usageCount: 1,
+                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                lastUsedAt: new Date(),
+                details: JSON.stringify({
+                  tasks: [{
+                    taskId: taskId,
+                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    timestamp: new Date(),
+                    isFree: isFree // 添加免费使用标记
+                  }]
+                })
+              });
+              console.log(`局部重绘功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
             }
           } catch (saveError) {
             console.error('保存局部重绘任务详情失败:', saveError);
@@ -190,6 +216,9 @@ router.post('/create-task', protect, async (req, res) => {
           const userId = req.user.id;
           const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_EXPANSION'].creditCost;
           
+          // 判断是否是免费使用
+          const isFree = req.featureUsage?.usageType === 'free';
+          
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `expand-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
           
@@ -200,14 +229,15 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.imageExpansionTasks[taskId] = {
             userId: userId,
-            creditCost: creditCost,
-            hasChargedCredits: true,
+            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
-            prompt: requestData.input?.prompt
+            prompt: requestData.input?.prompt,
+            isFree: isFree // 添加免费使用标记
           };
           
-          console.log(`智能扩图任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          console.log(`智能扩图任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
           
           // 将任务信息保存到数据库
           try {
@@ -226,13 +256,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: creditCost,
-                timestamp: new Date()
+                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                timestamp: new Date(),
+                isFree: isFree // 添加免费使用标记
               });
               
-              // 更新usage记录 - 同时记录credits字段
-              const currentCredits = usage.credits || 0;
-              usage.credits = currentCredits + creditCost;
+              // 更新usage记录 - 更新details字段但不重复累加积分
+              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -241,6 +271,24 @@ router.post('/create-task', protect, async (req, res) => {
               // 保存更新
               await usage.save();
               console.log(`智能扩图任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            } else {
+              // 如果记录不存在，创建新记录
+              await FeatureUsage.create({
+                userId: userId,
+                featureName: 'IMAGE_EXPANSION',
+                usageCount: 1,
+                lastUsedAt: new Date(),
+                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                details: JSON.stringify({
+                  tasks: [{
+                    taskId: taskId,
+                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    timestamp: new Date(),
+                    isFree: isFree // 添加免费使用标记
+                  }]
+                })
+              });
+              console.log(`智能扩图功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
             }
           } catch (saveError) {
             console.error('保存智能扩图任务详情失败:', saveError);
@@ -264,6 +312,9 @@ router.post('/create-task', protect, async (req, res) => {
           const userId = req.user.id;
           const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_SHARPENING'].creditCost;
           
+          // 判断是否是免费使用
+          const isFree = req.featureUsage?.usageType === 'free';
+          
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `sharpen-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
           
@@ -274,14 +325,15 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.imageSharpeningTasks[taskId] = {
             userId: userId,
-            creditCost: creditCost,
-            hasChargedCredits: true,
+            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
-            prompt: requestData.input?.prompt
+            prompt: requestData.input?.prompt,
+            isFree: isFree // 添加免费使用标记
           };
           
-          console.log(`图像锐化任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          console.log(`图像锐化任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
           
           // 将任务信息保存到数据库
           try {
@@ -300,13 +352,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: creditCost,
-                timestamp: new Date()
+                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                timestamp: new Date(),
+                isFree: isFree // 添加免费使用标记
               });
               
-              // 更新usage记录 - 同时记录credits字段
-              const currentCredits = usage.credits || 0;
-              usage.credits = currentCredits + creditCost;
+              // 更新usage记录 - 更新details字段但不重复累加积分
+              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -315,6 +367,24 @@ router.post('/create-task', protect, async (req, res) => {
               // 保存更新
               await usage.save();
               console.log(`图像锐化任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            } else {
+              // 如果记录不存在，创建新记录
+              await FeatureUsage.create({
+                userId: userId,
+                featureName: 'IMAGE_SHARPENING',
+                usageCount: 1,
+                lastUsedAt: new Date(),
+                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                details: JSON.stringify({
+                  tasks: [{
+                    taskId: taskId,
+                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    timestamp: new Date(),
+                    isFree: isFree // 添加免费使用标记
+                  }]
+                })
+              });
+              console.log(`图像锐化功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
             }
           } catch (saveError) {
             console.error('保存图像锐化任务详情失败:', saveError);
@@ -338,6 +408,9 @@ router.post('/create-task', protect, async (req, res) => {
           const userId = req.user.id;
           const creditCost = req.featureUsage?.creditCost || FEATURES['DIANTU']?.creditCost || 5;
           
+          // 判断是否是免费使用
+          const isFree = req.featureUsage?.usageType === 'free';
+          
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `diantu-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
           
@@ -348,14 +421,15 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.diantuTasks[taskId] = {
             userId: userId,
-            creditCost: creditCost,
-            hasChargedCredits: true,
+            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
-            prompt: requestData.input?.prompt
+            prompt: requestData.input?.prompt,
+            isFree: isFree // 添加免费使用标记
           };
           
-          console.log(`垫图任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+          console.log(`垫图任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
           
           // 将任务信息保存到数据库
           try {
@@ -374,13 +448,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: creditCost,
-                timestamp: new Date()
+                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                timestamp: new Date(),
+                isFree: isFree // 添加免费使用标记
               });
               
-              // 更新usage记录 - 同时记录credits字段
-              const currentCredits = usage.credits || 0;
-              usage.credits = currentCredits + creditCost;
+              // 更新usage记录 - 更新details字段但不重复累加积分
+              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -396,12 +470,13 @@ router.post('/create-task', protect, async (req, res) => {
                 featureName: 'DIANTU',
                 usageCount: 1,
                 lastUsedAt: new Date(),
-                credits: creditCost,
+                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
                 details: JSON.stringify({
                   tasks: [{
                     taskId: taskId,
-                    creditCost: creditCost,
-                    timestamp: new Date()
+                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    timestamp: new Date(),
+                    isFree: isFree // 添加免费使用标记
                   }]
                 })
               });
@@ -477,15 +552,12 @@ router.post('/create-task', protect, async (req, res) => {
                 timestamp: new Date()
               });
               
-              // 更新usage记录 - 同时记录credits字段
-              const currentCredits = usage.credits || 0;
-              usage.credits = currentCredits + creditCost;
-              usage.usageCount = (usage.usageCount || 0) + 1;
+              // 更新usage记录 - 更新details字段但不重复累加积分
+              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
               });
-              usage.lastUsedAt = new Date();
               
               // 保存更新
               await usage.save();
@@ -496,7 +568,7 @@ router.post('/create-task', protect, async (req, res) => {
                 userId: userId,
                 featureName: 'IMAGE_EDIT',
                 usageCount: 1,
-                credits: creditCost,
+                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
                 lastUsedAt: new Date(),
                 details: JSON.stringify({
                   tasks: [{
@@ -721,4 +793,4 @@ function handleApiError(error, res) {
   });
 }
 
-module.exports = router; 
+module.exports = router;

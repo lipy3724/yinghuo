@@ -2171,16 +2171,27 @@ app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUp
             timestamp: new Date()
           });
           
-          // 更新usage记录 - 同时记录credits字段
-          const currentCredits = usage.credits || 0;
-          usage.credits = currentCredits + creditCost;
-          usage.details = JSON.stringify({
+          // 更新usage记录 - 更新details字段但不重复累加积分
+          // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
+          
+          // 创建details更新对象
+          const updatedDetails = JSON.stringify({
             ...details,
             tasks: tasks
           });
           
-          // 保存更新
-          await usage.save();
+          // 直接只更新details字段，不更新credits字段
+          await FeatureUsage.update(
+            { 
+              details: updatedDetails,
+              updatedAt: new Date()
+            },
+            { 
+              where: { id: usage.id },
+              fields: ['details', 'updatedAt'] // 明确指定只更新这两个字段
+            }
+          );
+          
           console.log(`图像高清放大任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
         }
       } catch (saveError) {
@@ -2453,108 +2464,6 @@ app.post('/api/get-virtual-model-signature', async (req, res) => {
         } catch (error) {
           console.error('解析cookie token失败:', error.message);
         }
-      }
-    }
-    
-    // 如果获取到了用户ID，记录使用情况
-    if (currentUserId) {
-      try {
-        // 获取功能的积分消费配置
-        const { FEATURES } = require('./middleware/featureAccess');
-        const featureConfig = FEATURES['VIRTUAL_MODEL_VTON'];
-        const creditCost = featureConfig ? featureConfig.creditCost : 40; // 默认消费40积分
-        
-        // 生成唯一任务ID
-        const taskId = require('uuid').v4();
-        
-        // 保存任务信息到全局变量
-        if (!global.virtualModelVtonTasks) {
-          global.virtualModelVtonTasks = {};
-        }
-        
-        // 记录任务信息
-        global.virtualModelVtonTasks[taskId] = {
-          userId: currentUserId,
-          creditCost: creditCost,
-          timestamp: new Date(),
-          status: 'completed',
-          details: {
-            timeStamp: numericTimeStamp,
-            ak: APP_KEY,
-            sign: sign
-          }
-        };
-        
-        // 保存使用记录到数据库
-        try {
-          const { FeatureUsage } = require('./models/FeatureUsage');
-          const User = require('./models/User');
-          
-          // 获取用户信息
-          const user = await User.findByPk(currentUserId);
-          
-          // 更新数据库中的使用记录
-          let usage = await FeatureUsage.findOne({
-            where: { userId: currentUserId, featureName: 'VIRTUAL_MODEL_VTON' }
-          });
-          
-          if (usage) {
-            // 已有记录，更新使用次数和积分消费
-            let details = {};
-            try {
-              details = usage.details ? JSON.parse(usage.details) : {};
-            } catch (e) {
-              details = {};
-            }
-            
-            if (!details.tasks) {
-              details.tasks = [];
-            }
-            
-            // 添加新的任务记录
-            details.tasks.push({
-              taskId: taskId,
-              creditCost: creditCost,
-              timestamp: new Date()
-            });
-            
-            // 更新使用记录
-            usage.usageCount += 1;
-            usage.credits += creditCost;
-            usage.details = JSON.stringify(details);
-            usage.lastUsedAt = new Date();
-            await usage.save();
-          } else {
-            // 没有记录，创建新记录
-            await FeatureUsage.create({
-              userId: currentUserId,
-              featureName: 'VIRTUAL_MODEL_VTON',
-              usageCount: 1,
-              credits: creditCost,
-              details: JSON.stringify({
-                tasks: [{
-                  taskId: taskId,
-                  creditCost: creditCost,
-                  timestamp: new Date()
-                }]
-              }),
-              lastUsedAt: new Date()
-            });
-          }
-          
-          // 从用户积分中扣除
-          if (user) {
-            user.credits -= creditCost;
-            await user.save();
-            console.log(`已从用户 ${currentUserId} 扣除 ${creditCost} 积分，剩余积分: ${user.credits}`);
-          }
-        } catch (dbError) {
-          console.error('保存虚拟模特试穿使用记录失败:', dbError);
-          // 继续处理，不影响用户使用
-        }
-      } catch (error) {
-        console.error('记录虚拟模特试穿使用情况失败:', error);
-        // 继续处理，不影响用户使用
       }
     }
     
@@ -3558,6 +3467,9 @@ app.post('/api/video-style-repaint/create-task', protect, async (req, res) => {
     const { checkFeatureAccess } = require('./middleware/featureAccess');
     const featureAccessMiddleware = checkFeatureAccess('VIDEO_STYLE_REPAINT');
     
+    // 定义变量存储免费使用信息
+    let isFree = false;
+    
     try {
       // 使用自定义中间件执行功能访问检查
       await new Promise((resolve, reject) => {
@@ -3567,6 +3479,9 @@ app.post('/api/video-style-repaint/create-task', protect, async (req, res) => {
             reject(err);
             return;
           }
+          // 保存免费使用信息
+          isFree = req.featureUsage?.usageType === 'free';
+          console.log(`视频风格重绘功能免费使用检查结果: ${isFree ? '免费使用' : '付费使用'}`);
           resolve();
         });
       });
@@ -3628,19 +3543,78 @@ app.post('/api/video-style-repaint/create-task', protect, async (req, res) => {
       // 记录功能使用情况
       try {
         const userId = req.user.id;
+        const taskId = response.data.output?.task_id || '';
         
-        await FeatureUsage.create({
-          userId,
-          featureName: 'VIDEO_STYLE_REPAINT', // 使用正确的列名featureName而不是featureType
-          credits: 0, // 暂不扣除积分，任务完成后再扣
-          details: JSON.stringify({
-            taskId: response.data.output?.task_id || '',
-            style: styleValue,
-            min_len: minLen, // 保存分辨率参数，用于后续计算
-          resolution: minLen, // 同时使用统一的字段名保存分辨率
-            creditUpdated: false // 标记尚未更新积分
-          })
+        // 先查找是否已存在相同用户和功能名称的记录
+        const existingRecord = await FeatureUsage.findOne({
+          where: {
+            userId: userId,
+            featureName: 'VIDEO_STYLE_REPAINT'
+          }
         });
+        
+        if (existingRecord) {
+          // 如果已存在记录，则更新它
+          console.log(`找到现有记录ID=${existingRecord.id}，更新任务信息`);
+          
+          try {
+            const details = JSON.parse(existingRecord.details || '{}');
+            // 更新或添加新任务信息
+            const tasks = details.tasks || [];
+            tasks.push({
+              taskId: taskId,
+              style: styleValue,
+              min_len: minLen,
+              resolution: minLen,
+              timestamp: new Date(),
+              isFree: isFree
+            });
+            
+            // 更新整个details字段
+            existingRecord.details = JSON.stringify({
+              ...details,
+              taskId: taskId, // 更新最新的任务ID
+              style: styleValue,
+              min_len: minLen,
+              resolution: minLen,
+              creditUpdated: false,
+              isFree: isFree,
+              tasks: tasks
+            });
+            
+            await existingRecord.save();
+            console.log(`更新视频风格重绘任务记录成功: 用户ID=${userId}, 任务ID=${taskId}, 是否免费=${isFree}`);
+          } catch (updateError) {
+            console.error('更新视频风格重绘任务记录失败:', updateError);
+          }
+        } else {
+          // 如果不存在，则创建新记录
+          await FeatureUsage.create({
+            userId,
+            featureName: 'VIDEO_STYLE_REPAINT',
+            usageCount: 1, // 设置初始使用次数
+            lastUsedAt: new Date(),
+            resetDate: new Date().toISOString().split('T')[0],
+            credits: 0, // 暂不扣除积分，任务完成后再扣
+            details: JSON.stringify({
+              taskId: taskId,
+              style: styleValue,
+              min_len: minLen, // 保存分辨率参数，用于后续计算
+              resolution: minLen, // 同时使用统一的字段名保存分辨率
+              creditUpdated: false, // 标记尚未更新积分
+              isFree: isFree, // 添加免费使用标记
+              tasks: [{
+                taskId: taskId,
+                style: styleValue,
+                min_len: minLen,
+                resolution: minLen,
+                timestamp: new Date(),
+                isFree: isFree
+              }]
+            })
+          });
+          console.log(`新建视频风格重绘任务记录: 用户ID=${userId}, 任务ID=${taskId}, 是否免费=${isFree}`);
+        }
       } catch (recordError) {
         console.error('记录功能使用失败:', recordError);
         // 不中断流程，继续返回任务创建结果
@@ -3747,17 +3721,47 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
                   global.videoStyleRepaintTasks = {};
                 }
                 
+                // 查找创建任务时的记录，获取isFree标记
+                const taskRecords = await FeatureUsage.findAll({
+                  where: {
+                    userId: req.user.id,
+                    featureName: 'VIDEO_STYLE_REPAINT'
+                  }
+                });
+                
+                // 查找包含当前taskId的记录以获取isFree信息
+                let taskRecordIsFree = false;
+                for (const record of taskRecords) {
+                  try {
+                    const details = JSON.parse(record.details || '{}');
+                    if (details.taskId === taskId) {
+                      taskRecordIsFree = details.isFree || false;
+                      console.log(`找到任务记录，isFree=${taskRecordIsFree}`);
+                      break;
+                    }
+                  } catch (parseError) {
+                    console.error('解析任务记录详情失败:', parseError);
+                  }
+                }
+                
+                // 使用找到的isFree值
+                isFree = taskRecordIsFree;
+                
+                // 计算积分成本
+                const calculatedCreditCost = duration * (resolution <= 540 ? 3 : 6);
+                
                 // 记录用户的任务信息
                 global.videoStyleRepaintTasks[taskId] = {
                   userId: req.user.id,
-                  creditCost: duration * (resolution <= 540 ? 3 : 6), // 根据分辨率和时长计算积分
-                  hasChargedCredits: true,
+                  creditCost: isFree ? 0 : calculatedCreditCost, // 免费使用积分为0
+                  hasChargedCredits: !isFree, // 免费使用不需要扣除积分
                   timestamp: new Date(),
                   videoDuration: duration,
-                  resolution: resolution
+                  resolution: resolution,
+                  isFree: isFree // 添加免费使用标记
                 };
                 
-                console.log(`视频风格重绘任务信息已保存: 用户ID=${req.user.id}, 任务ID=${taskId}, 时长=${duration}秒, 分辨率=${resolution}P, 积分=${global.videoStyleRepaintTasks[taskId].creditCost}`);
+                console.log(`视频风格重绘任务信息已保存: 用户ID=${req.user.id}, 任务ID=${taskId}, 时长=${duration}秒, 分辨率=${resolution}P, 积分=${isFree ? 0 : calculatedCreditCost}, 是否免费=${isFree}`);
               } catch (error) {
                 console.error('保存视频风格重绘任务信息到全局变量失败:', error);
               }
@@ -3769,7 +3773,7 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
               // 确保分辨率是数字
               resolution = parseInt(resolution);
               console.log(`最终确定的值 - 时长: ${duration}秒, 分辨率: ${resolution}P`);
-            
+              
               // 记录key用于任务标识
               let taskKey = `task:${taskId}`;
               
@@ -3780,27 +3784,39 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
                   featureName: 'VIDEO_STYLE_REPAINT'
                 }
               });
+              
               console.log(`查询到用户的风格重绘记录数量: ${taskRecords.length}`);
               
               // 查找包含当前taskId的记录
               let taskRecord = null;
+              let isFree = false; // 默认非免费
+              
               for (const record of taskRecords) {
                 try {
                   const details = JSON.parse(record.details || '{}');
                   console.log(`检查记录ID=${record.id}, 详情:`, details);
-                  if (details.taskId === taskId) {
-                    taskRecord = record;
-                    console.log(`找到匹配的任务记录: ID=${record.id}`);
-                    
-                    // 打印任务记录中的分辨率，但不覆盖API返回的分辨率
-                    // 从任务记录中读取分辨率，使用统一的字段名
-                    const recordResolution = parseInt(details.min_len || details.resolution) || 540;
-                    console.log(`任务记录中的分辨率: ${recordResolution}P，API返回的分辨率: ${resolution}P`);
-                    
-                    // 确认使用API返回的分辨率
-                    console.log(`确认使用API返回的分辨率: ${resolution}P作为计费标准`);
-                    break;
+                  
+                  // 检查记录中的任务列表
+                  if (details.tasks && Array.isArray(details.tasks)) {
+                    for (const task of details.tasks) {
+                      if (task.taskId === taskId) {
+                        taskRecord = record;
+                        isFree = task.isFree || false;
+                        console.log(`在任务列表中找到匹配的任务: ID=${taskId}, 是否免费=${isFree}`);
+                        break;
+                      }
+                    }
                   }
+                  
+                  // 如果在任务列表中没找到，检查顶层taskId
+                  if (!taskRecord && details.taskId === taskId) {
+                    taskRecord = record;
+                    isFree = details.isFree || false;
+                    console.log(`找到匹配的任务记录: ID=${record.id}, 是否免费=${isFree}`);
+                  }
+                  
+                  if (taskRecord) break;
+                  
                 } catch (e) {
                   console.error('解析任务详情出错:', e);
                   continue;
@@ -3860,13 +3876,28 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
                   if (user) {
                     console.log(`当前用户积分: ${user.credits}`);
                     
-                    // 直接使用计算出的积分
-                    let finalCost = creditCost;
+                    // 如果是免费使用，则不扣除积分
+                    let finalCost = isFree ? 0 : creditCost;
                     
-                    // 直接扣除积分
-                    user.credits = user.credits - finalCost;
-                    await user.save();
-                    console.log(`扣除积分成功: ${finalCost}积分`);
+                    // 只有在非免费使用时才扣除积分
+                    if (!isFree) {
+                      user.credits = user.credits - finalCost;
+                      await user.save();
+                      console.log(`扣除积分成功: ${finalCost}积分`);
+                      
+                      // 同时更新FeatureUsage表中的credits字段，记录实际积分消耗
+                      if (taskRecord && typeof taskRecord.credits !== 'undefined') {
+                        // 获取当前积分消费记录
+                        const currentCredits = taskRecord.credits || 0;
+                        // 更新总积分消费
+                        taskRecord.credits = currentCredits + finalCost;
+                        // 不使用await，让它在后台更新，不阻塞主流程
+                        taskRecord.save().catch(e => console.error('更新任务记录积分消费失败:', e));
+                        console.log(`更新FeatureUsage积分消费记录: ${currentCredits} + ${finalCost} = ${currentCredits + finalCost}积分`);
+                      }
+                    } else {
+                      console.log(`免费使用，不扣除积分`);
+                    }
                     
                     // 初始化全局已扣费任务记录
                     if (typeof global.chargedTasks === 'undefined') {
@@ -3887,6 +3918,43 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
                       taskDetails.creditUpdated = true;
                       taskDetails.actualDuration = duration;
                       taskDetails.creditCost = finalCost || creditCost;
+                      taskDetails.isFree = isFree; // 添加免费使用标记
+                      
+                      // 更新任务列表中的对应任务
+                      if (taskDetails.tasks && Array.isArray(taskDetails.tasks)) {
+                        const taskIndex = taskDetails.tasks.findIndex(task => task.taskId === taskId);
+                        if (taskIndex !== -1) {
+                          // 更新任务信息
+                          taskDetails.tasks[taskIndex].creditCost = finalCost || creditCost;
+                          taskDetails.tasks[taskIndex].isFree = isFree;
+                          taskDetails.tasks[taskIndex].actualDuration = duration;
+                          taskDetails.tasks[taskIndex].creditUpdated = true;
+                          console.log(`更新任务列表中的任务记录: 任务ID=${taskId}, 积分=${finalCost || creditCost}, 是否免费=${isFree}`);
+                        } else {
+                          // 如果未找到，则添加到任务列表
+                          taskDetails.tasks.push({
+                            taskId: taskId,
+                            creditCost: finalCost || creditCost,
+                            isFree: isFree,
+                            actualDuration: duration,
+                            creditUpdated: true,
+                            timestamp: new Date()
+                          });
+                          console.log(`添加新任务到任务列表: 任务ID=${taskId}, 积分=${finalCost || creditCost}, 是否免费=${isFree}`);
+                        }
+                      } else {
+                        // 如果没有任务列表，则创建
+                        taskDetails.tasks = [{
+                          taskId: taskId,
+                          creditCost: finalCost || creditCost,
+                          isFree: isFree,
+                          actualDuration: duration,
+                          creditUpdated: true,
+                          timestamp: new Date()
+                        }];
+                        console.log(`创建任务列表并添加任务: 任务ID=${taskId}, 积分=${finalCost || creditCost}, 是否免费=${isFree}`);
+                      }
+                      
                       taskRecord.details = JSON.stringify(taskDetails);
                       await taskRecord.save();
                     } else {
@@ -3913,8 +3981,55 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
                           existingDetails.actualDuration = duration;
                           existingDetails.creditCost = finalCost || creditCost;
                           existingDetails.creditUpdated = true;
+                          existingDetails.isFree = isFree; // 添加免费使用标记
+                          
+                          // 更新任务列表
+                          if (existingDetails.tasks && Array.isArray(existingDetails.tasks)) {
+                            const taskIndex = existingDetails.tasks.findIndex(task => task.taskId === taskId);
+                            if (taskIndex !== -1) {
+                              // 更新任务信息
+                              existingDetails.tasks[taskIndex].creditCost = finalCost || creditCost;
+                              existingDetails.tasks[taskIndex].isFree = isFree;
+                              existingDetails.tasks[taskIndex].actualDuration = duration;
+                              existingDetails.tasks[taskIndex].resolution = resolution;
+                              existingDetails.tasks[taskIndex].creditUpdated = true;
+                              console.log(`更新现有记录的任务列表: 任务ID=${taskId}, 积分=${finalCost || creditCost}, 是否免费=${isFree}`);
+                            } else {
+                              // 如果未找到，则添加到任务列表
+                              existingDetails.tasks.push({
+                                taskId: taskId,
+                                creditCost: finalCost || creditCost,
+                                isFree: isFree,
+                                actualDuration: duration,
+                                resolution: resolution,
+                                creditUpdated: true,
+                                timestamp: new Date()
+                              });
+                              console.log(`添加新任务到现有记录的任务列表: 任务ID=${taskId}, 积分=${finalCost || creditCost}, 是否免费=${isFree}`);
+                            }
+                          } else {
+                            // 如果没有任务列表，则创建
+                            existingDetails.tasks = [{
+                              taskId: taskId,
+                              creditCost: finalCost || creditCost,
+                              isFree: isFree,
+                              actualDuration: duration,
+                              resolution: resolution,
+                              creditUpdated: true,
+                              timestamp: new Date()
+                            }];
+                            console.log(`创建任务列表并添加到现有记录: 任务ID=${taskId}, 积分=${finalCost || creditCost}, 是否免费=${isFree}`);
+                          }
                           
                           existingRecord.details = JSON.stringify(existingDetails);
+                          
+                          // 如果是付费使用，更新credits字段，记录积分消耗
+                          if (!isFree && (finalCost > 0 || creditCost > 0)) {
+                            const currentCredits = existingRecord.credits || 0;
+                            existingRecord.credits = currentCredits + (finalCost || creditCost);
+                            console.log(`更新FeatureUsage记录积分消费: ${currentCredits} + ${finalCost || creditCost} = ${currentCredits + (finalCost || creditCost)}积分`);
+                          }
+                          
                           await existingRecord.save();
                           console.log(`更新用户记录成功，ID=${existingRecord.id}`);
                         } else {
@@ -3934,7 +4049,17 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
                               actual_resolution: resolution, // 保存API返回的实际分辨率
                               actualDuration: duration,
                               creditCost: finalCost || creditCost,
-                              creditUpdated: true
+                              creditUpdated: true,
+                              isFree: isFree, // 添加免费使用标记
+                              tasks: [{
+                                taskId: taskId,
+                                creditCost: finalCost || creditCost,
+                                isFree: isFree,
+                                actualDuration: duration,
+                                resolution: resolution,
+                                creditUpdated: true,
+                                timestamp: new Date()
+                              }]
                             })
                           });
                         }
@@ -5452,4 +5577,60 @@ startServer().then(() => {
 if (!global.multiImageToVideoTasks) {
   global.multiImageToVideoTasks = {};
 }
+
+// 添加虚拟模特使用记录API - 在实际使用功能时才扣除积分
+app.post('/api/virtual-model/usage', protect, async (req, res) => {
+  try {
+    console.log('接收虚拟模特使用记录请求:', req.body);
+    
+    // 使用featureAccess中间件进行积分检查和扣除
+    const { checkFeatureAccess } = require('./middleware/featureAccess');
+    const featureAccessMiddleware = checkFeatureAccess('VIRTUAL_MODEL_VTON');
+    
+    // 定义变量存储免费使用信息
+    let isFree = false;
+    
+    try {
+      // 使用自定义中间件执行功能访问检查
+      await new Promise((resolve, reject) => {
+        featureAccessMiddleware(req, res, (err) => {
+          if (err) {
+            console.error('功能访问检查失败:', err);
+            reject(err);
+            return;
+          }
+          // 保存免费使用信息
+          isFree = req.featureUsage?.usageType === 'free';
+          console.log(`虚拟模特试穿功能免费使用检查结果: ${isFree ? '免费使用' : '付费使用'}`);
+          resolve();
+        });
+      });
+    } catch (featureAccessError) {
+      console.error('功能访问权限检查异常:', featureAccessError);
+      return res.status(500).json({
+        success: false,
+        message: '功能访问检查失败：' + (featureAccessError.message || '未知错误')
+      });
+    }
+    
+    // 如果res.headersSent为true，说明featureAccess中间件已经发送了响应
+    if (res.headersSent) {
+      console.log('featureAccess中间件已经处理了响应，不再继续处理');
+      return;
+    }
+    
+    // 记录使用情况成功
+    return res.json({
+      success: true,
+      message: '使用记录已保存',
+      isFree: isFree
+    });
+  } catch (error) {
+    console.error('记录虚拟模特使用情况失败:', error);
+    return res.status(500).json({
+      success: false,
+      message: '服务器内部错误: ' + error.message
+    });
+  }
+});
 

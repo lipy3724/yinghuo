@@ -23,13 +23,7 @@
         .result-section {
             border-left: 1px solid #e5e7eb;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
+        /* 使用Tailwind自带的animate-spin替代自定义spinner */
         .prompt-input {
             resize: none;
             min-height: 120px;
@@ -179,10 +173,12 @@
     
     <!-- 加载中遮罩 -->
     <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white p-8 rounded-lg shadow-xl flex flex-col items-center">
-            <div class="spinner rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-            <p id="loading-message" class="text-lg font-medium">图像处理中，请耐心等待...</p>
-            <p class="text-sm text-gray-500 mt-2">处理时间约为5-10秒</p>
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <div class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+                <p id="loading-message" class="text-gray-700 text-center">处理中，请耐心等待...</p>
+                <p class="text-sm text-gray-500 mt-2">处理时间约为5-10秒</p>
+            </div>
         </div>
     </div>
 
