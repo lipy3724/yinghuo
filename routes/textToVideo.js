@@ -1246,84 +1246,84 @@ router.get('/task-status/:taskId', protect, async (req, res) => {
         
         // 检查图生视频任务
         if (global.imageToVideoTasks && global.imageToVideoTasks[taskId]) {
-                            // 如果任务成功完成
-                if (currentTaskStatus === 'SUCCEEDED') {
+            // 如果任务成功完成
+            if (currentTaskStatus === 'SUCCEEDED') {
                     // 标记已扣除积分标志，避免重复计算积分
                     const hasChargedCredits = global.imageToVideoTasks[taskId].hasChargedCredits || false;
                     
-                    global.imageToVideoTasks[taskId].status = 'SUCCEEDED';
-                    global.imageToVideoTasks[taskId].videoUrl = dashscopeResponse.output.video_url;
-                    global.imageToVideoTasks[taskId].completedAt = new Date();
-                    
+                global.imageToVideoTasks[taskId].status = 'SUCCEEDED';
+                global.imageToVideoTasks[taskId].videoUrl = dashscopeResponse.output.video_url;
+                global.imageToVideoTasks[taskId].completedAt = new Date();
+                
                     // 更新数据库中的使用记录，仅在未扣除积分时执行
                     if (!hasChargedCredits) {
-                        try {
-                            const userId = global.imageToVideoTasks[taskId].userId;
-                            
-                            // 检查是否为免费使用
-                            const isFree = global.imageToVideoTasks[taskId].isFree;
-                            // 确定实际积分消耗，免费使用为0
-                            const creditCost = isFree ? 0 : (global.imageToVideoTasks[taskId].creditCost || 0);
-                            
+                try {
+                    const userId = global.imageToVideoTasks[taskId].userId;
+                    
+                    // 检查是否为免费使用
+                    const isFree = global.imageToVideoTasks[taskId].isFree;
+                    // 确定实际积分消耗，免费使用为0
+                    const creditCost = isFree ? 0 : (global.imageToVideoTasks[taskId].creditCost || 0);
+                    
                             console.log(`图生视频任务完成(首次计费): 任务ID=${taskId}, 用户ID=${userId}, 免费使用=${isFree}, 实际积分消耗=${creditCost}`);
-                            
-                            let usage = await FeatureUsage.findOne({
-                                where: { userId, featureName: 'image-to-video' }
+                    
+                    let usage = await FeatureUsage.findOne({
+                        where: { userId, featureName: 'image-to-video' }
+                    });
+                    
+                    if (usage) {
+                        // 解析现有详情
+                        let details = {};
+                        try {
+                            details = usage.details ? JSON.parse(usage.details) : {};
+                        } catch (e) {
+                            details = {};
+                        }
+                        
+                        // 准备任务列表
+                        const tasks = details.tasks || [];
+                        
+                        // 检查任务是否已记录
+                        const taskExists = tasks.some(task => task.taskId === taskId);
+                        
+                        if (!taskExists) {
+                            // 添加新的任务记录
+                            tasks.push({
+                                taskId: taskId,
+                                creditCost: creditCost,
+                                isFree: isFree,  // 保存免费使用标记
+                                timestamp: new Date(),
+                                prompt: global.imageToVideoTasks[taskId].prompt || '图生视频任务'
                             });
                             
-                            if (usage) {
-                                // 解析现有详情
-                                let details = {};
-                                try {
-                                    details = usage.details ? JSON.parse(usage.details) : {};
-                                } catch (e) {
-                                    details = {};
-                                }
-                                
-                                // 准备任务列表
-                                const tasks = details.tasks || [];
-                                
-                                // 检查任务是否已记录
-                                const taskExists = tasks.some(task => task.taskId === taskId);
-                                
-                                if (!taskExists) {
-                                    // 添加新的任务记录
-                                    tasks.push({
-                                        taskId: taskId,
-                                        creditCost: creditCost,
-                                        isFree: isFree,  // 保存免费使用标记
-                                        timestamp: new Date(),
-                                        prompt: global.imageToVideoTasks[taskId].prompt || '图生视频任务'
-                                    });
-                                    
-                                    // 更新使用记录
-                                    usage.usageCount += 1;
-                                    usage.credits += creditCost;
-                                    usage.details = JSON.stringify({
-                                        ...details,
-                                        tasks: tasks
-                                    });
-                                    usage.lastUsedAt = new Date();
-                                    await usage.save();
+                            // 更新使用记录
+                            usage.usageCount += 1;
+                            usage.credits += creditCost;
+                            usage.details = JSON.stringify({
+                                ...details,
+                                tasks: tasks
+                            });
+                            usage.lastUsedAt = new Date();
+                            await usage.save();
                                     
                                     // 标记为已扣除积分，避免重复计算
                                     global.imageToVideoTasks[taskId].hasChargedCredits = true;
-                                    
-                                    console.log(`已更新用户 ${userId} 的图生视频使用记录，添加任务 ${taskId}`);
+                            
+                            console.log(`已更新用户 ${userId} 的图生视频使用记录，添加任务 ${taskId}`);
                                 } else {
                                     console.log(`任务 ${taskId} 已在使用记录中存在，跳过积分计算`);
-                                }
-                            }
-                        } catch (dbError) {
-                            console.error('保存图生视频使用记录失败:', dbError);
-                            // 继续处理，不影响用户使用
+                        }
+                    }
+                } catch (dbError) {
+                    console.error('保存图生视频使用记录失败:', dbError);
+                    // 继续处理，不影响用户使用
                         }
                     } else {
                         console.log(`任务 ${taskId} 已扣除积分，跳过重复计算`);
-                    }
-                    
-                    console.log(`更新图生视频任务状态: taskId=${taskId}, status=SUCCEEDED`);
                 }
+                
+                console.log(`更新图生视频任务状态: taskId=${taskId}, status=SUCCEEDED`);
+            }
             // 如果任务失败
             else if (currentTaskStatus === 'FAILED') {
                 global.imageToVideoTasks[taskId].status = 'FAILED';
@@ -1506,19 +1506,19 @@ router.post('/save-video-result', protect, async (req, res) => {
         
         if (!existingResult) {
             console.log(`保存新的视频结果记录: taskId=${taskId}, type=${type || 'image-to-video'}`);
-            
-            // 保存视频结果到数据库
-            // 这里使用与文生视频相同的数据模型，但添加了type字段区分
-            const result = new VideoResult({
-                user: req.user.id,
-                taskId: taskId,
-                videoUrl: videoUrl,
-                prompt: prompt,
-                type: type || 'image-to-video',
-                createdAt: new Date()
-            });
-            
-            await result.save();
+        
+        // 保存视频结果到数据库
+        // 这里使用与文生视频相同的数据模型，但添加了type字段区分
+        const result = new VideoResult({
+            user: req.user.id,
+            taskId: taskId,
+            videoUrl: videoUrl,
+            prompt: prompt,
+            type: type || 'image-to-video',
+            createdAt: new Date()
+        });
+        
+        await result.save();
             
             // 保存视频结果到历史记录但不显示在下载中心
             try {

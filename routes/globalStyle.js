@@ -117,7 +117,7 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
         taskId: taskId,
         creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
         timestamp: new Date(),
-        prompt: sanitizedPrompt,
+          prompt: sanitizedPrompt,
         strength: strengthValue,
         isFree: isFree // 添加免费使用标记
       });

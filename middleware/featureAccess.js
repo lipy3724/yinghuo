@@ -122,15 +122,100 @@ const checkFeatureAccess = (featureName) => {
         // 在免费使用次数内，不扣除积分
         console.log(`用户ID ${userId} 使用 ${featureName} 功能的免费次数 ${usage.usageCount + 1}/${featureConfig.freeUsage}`);
         
+        // 获取用户信息，以便正确设置remainingCredits
+        const user = await User.findByPk(userId);
+        
         // 更新使用记录
         usage.usageCount += 1;
         usage.lastUsedAt = new Date();
+        
+        // 对于异步任务类功能，不在这里添加任务记录，而是在任务创建时添加
+        // 这样可以避免生成多条记录
+        if (featureName !== 'VIDEO_STYLE_REPAINT' && 
+            featureName !== 'DIGITAL_HUMAN_VIDEO' && 
+            featureName !== 'TEXT_TO_IMAGE' && 
+            featureName !== 'IMAGE_COLORIZATION' &&
+            featureName !== 'LOCAL_REDRAW' &&
+            featureName !== 'IMAGE_EXPANSION' &&
+            featureName !== 'text-to-video' &&
+            featureName !== 'image-to-video' &&
+            featureName !== 'MULTI_IMAGE_TO_VIDEO' &&
+            featureName !== 'VIDEO_SUBTITLE_REMOVER' &&
+            featureName !== 'IMAGE_SHARPENING' &&
+            featureName !== 'image-upscaler' &&
+            featureName !== 'GLOBAL_STYLE' &&
+            featureName !== 'DIANTU') {
+          // 在details字段中明确标记这是免费使用
+          try {
+            const details = JSON.parse(usage.details || '{}');
+            // 准备任务列表
+            const tasks = details.tasks || [];
+            // 添加新的免费任务记录
+            const taskId = `${featureName.toLowerCase()}-free-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+            tasks.push({
+              taskId: taskId,
+              creditCost: 0,
+              isFree: true,
+              timestamp: new Date()
+            });
+            
+            usage.details = JSON.stringify({
+              ...details,
+              tasks: tasks,
+              lastUsage: {
+                timestamp: new Date(),
+                isFree: true,
+                creditCost: 0
+              }
+            });
+          } catch (e) {
+            console.error('处理免费使用记录失败:', e);
+            // 创建新的details对象
+            usage.details = JSON.stringify({
+              tasks: [{
+                taskId: `${featureName.toLowerCase()}-free-${Date.now()}`,
+                creditCost: 0,
+                isFree: true,
+                timestamp: new Date()
+              }],
+              lastUsage: {
+                timestamp: new Date(),
+                isFree: true,
+                creditCost: 0
+              }
+            });
+          }
+        } else {
+          // 对于视频风格重绘和数字人视频功能，只标记免费使用状态
+          try {
+            const details = JSON.parse(usage.details || '{}');
+            usage.details = JSON.stringify({
+              ...details,
+              lastUsage: {
+                timestamp: new Date(),
+                isFree: true,
+                creditCost: 0
+              }
+            });
+          } catch (e) {
+            console.error('处理免费使用记录失败:', e);
+            usage.details = JSON.stringify({
+              lastUsage: {
+                timestamp: new Date(),
+                isFree: true,
+                creditCost: 0
+              }
+            });
+          }
+        }
+        
         await usage.save();
         
         // 将免费使用信息添加到请求对象
         req.featureUsage = {
           usageType: 'free',
           creditCost: 0,
+          isFree: true,
           remainingCredits: user.credits
         };
         
@@ -204,18 +289,32 @@ const checkFeatureAccess = (featureName) => {
         });
       }
       
-      // 对于数字人视频功能和视频风格重绘功能，不在此扣除积分，而是在任务完成后根据实际生成视频时长扣除
-      if (featureName === 'DIGITAL_HUMAN_VIDEO' || featureName === 'VIDEO_STYLE_REPAINT') {
+      // 对于所有异步任务类功能，不在此扣除积分，而是在任务创建/完成后根据结果扣除
+      if (featureName === 'DIGITAL_HUMAN_VIDEO' || 
+          featureName === 'VIDEO_STYLE_REPAINT' || 
+          featureName === 'TEXT_TO_IMAGE' ||
+          featureName === 'IMAGE_COLORIZATION' ||
+          featureName === 'LOCAL_REDRAW' ||
+          featureName === 'IMAGE_EXPANSION' ||
+          featureName === 'text-to-video' ||
+          featureName === 'image-to-video' ||
+          featureName === 'MULTI_IMAGE_TO_VIDEO' ||
+          featureName === 'VIDEO_SUBTITLE_REMOVER' ||
+          featureName === 'IMAGE_SHARPENING' ||
+          featureName === 'image-upscaler' ||
+          featureName === 'GLOBAL_STYLE' ||
+          featureName === 'DIANTU') {
         // 更新使用记录，但不扣除积分
         usage.usageCount += 1;
         usage.lastUsedAt = new Date();
         await usage.save();
         
-        // 添加使用信息到请求对象
+        // 添加使用信息到请求对象 - 这里已经超过免费次数，应该标记为付费
         req.featureUsage = {
-          usageType: 'delayed_payment',
-          creditCost: 0, // 实际积分消耗将在任务完成后计算
-          remainingCredits: user.credits
+          usageType: 'paid', // 超过免费次数，标记为付费
+          creditCost: creditCost, // 传递积分消耗给任务处理函数
+          remainingCredits: user.credits,
+          shouldChargeCredits: true // 明确标记需要扣除积分
         };
         
         next();
@@ -241,8 +340,24 @@ const checkFeatureAccess = (featureName) => {
         user.credits -= creditCost;
         await user.save();
         console.log(`用户ID ${userId} 使用 ${featureName} 功能，扣除 ${creditCost} 积分，剩余 ${user.credits} 积分`);
+        
+        // 在任务记录中设置支付状态
+        req.featureUsage = {
+          usageType: 'paid',
+          creditCost: creditCost,
+          isFree: false, // 非免费使用
+          remainingCredits: user.credits
+        };
       } else {
         console.log(`检测到用户ID ${userId} 一分钟内重复使用 ${featureName} 功能，避免重复扣费`);
+        
+        // 防止重复扣费时，也添加使用信息到请求对象
+        req.featureUsage = {
+          usageType: 'duplicate',
+          creditCost: 0, // 重复请求不扣费
+          isFree: true, // 标记为免费
+          remainingCredits: user.credits
+        };
       }
       
       // 更新使用记录

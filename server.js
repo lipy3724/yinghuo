@@ -1011,7 +1011,7 @@ app.get('/api/digital-human/task/:taskId', async (req, res) => {
     // 如果不是mock ID，调用真实API
     const status = await checkVideoRetalkTaskStatus(taskId);
     
-    // 如果任务成功完成且有视频URL，计算并扣除积分
+              // 如果任务成功完成且有视频URL，计算并扣除积分
     if (status.status === 'SUCCEEDED' && status.videoUrl) {
       try {
         // 检查是否需要扣除积分
@@ -1063,114 +1063,136 @@ app.get('/api/digital-human/task/:taskId', async (req, res) => {
                 // 记录当前用户积分
                 console.log(`用户当前积分: ${user.credits}`);
                 
-                if (user.credits >= creditCost) {
+                // 检查是否是免费使用
+                let isFree = false;
+                let usage = null;
+                
+                // 检查该用户的功能使用记录
+                usage = await FeatureUsage.findOne({
+                  where: {
+                    userId: userId,
+                    featureName: 'DIGITAL_HUMAN_VIDEO'
+                  }
+                });
+                
+                // 如果是第一次使用或者在免费次数范围内
+                if (!usage || usage.usageCount <= featureConfig.freeUsage) {
+                  isFree = true;
+                  console.log(`用户ID ${userId} 使用数字人视频的免费次数 ${usage ? usage.usageCount : 1}/${featureConfig.freeUsage}`);
+                  console.log(`免费使用，不扣除积分`);
+                } else if (user.credits >= creditCost) {
                   // 扣除积分
                   user.credits -= creditCost;
                   await user.save();
                   console.log(`已从用户ID ${userId} 扣除 ${creditCost} 积分，剩余积分: ${user.credits}`);
+                } else {
+                  console.log(`用户积分不足，需要 ${creditCost}，当前有 ${user.credits}`);
+                }
+                
+                // 记录功能使用
+                try {
+                  // 查找现有记录
+                  let featureUsage = await FeatureUsage.findOne({
+                    where: {
+                      userId: userId,
+                      featureName: 'DIGITAL_HUMAN_VIDEO'
+                    }
+                  });
                   
-                  // 记录功能使用
-                  try {
-                    // 查找现有记录
-                    let usage = await FeatureUsage.findOne({
-                      where: {
-                        userId: userId,
-                        featureName: 'DIGITAL_HUMAN_VIDEO'
-                      }
-                    });
+                  if (featureUsage) {
+                    // 更新现有记录
+                    console.log(`找到用户ID ${userId} 的现有数字人视频功能使用记录`);
                     
-                    if (usage) {
-                      // 更新现有记录
-                      console.log(`找到用户ID ${userId} 的现有数字人视频功能使用记录`);
-                      
-                      // 更新积分记录和最后使用时间，但不累加usageCount
-                      // usageCount将基于实际任务数量统计，而不是简单累加
-                      usage.credits = (usage.credits || 0) + creditCost;
-                      usage.lastUsedAt = new Date();
-                      
-                      // 更新详细信息 - 添加任务记录
-                      let details = {};
-                      try {
-                        details = JSON.parse(usage.details || '{}');
-                      } catch (e) {
-                        console.error('解析details出错，重置为空对象:', e);
-                      }
-                      
-                      if (!details.tasks) {
-                        details.tasks = [];
-                      }
-                      
-                      // 检查是否已存在相同的任务ID，避免重复添加
-                      const isTaskExists = details.tasks.some(task => task.taskId === taskId);
-                      
-                      if (!isTaskExists) {
-                        // 添加新任务信息
-                        details.tasks.push({
-                          taskId: taskId,
-                          videoDuration: videoDuration,
-                          creditCost: creditCost,
-                          timestamp: new Date()
-                        });
-                        
-                        // 更新记录
-                        usage.details = JSON.stringify(details);
-                      } else {
-                        console.log(`任务ID ${taskId} 已存在于数据库中，跳过添加`);
-                      }
-                      
-                      // 只有在当前任务是新任务时才更新usageCount和credits
-                      if (!isTaskExists) {
-                        // 递增使用次数，而不是设置为tasks的长度
-                        usage.usageCount += 1;
-                        // 只有新任务才累加积分消费
-                        usage.credits = (usage.credits || 0) + creditCost;
-                      }
-                      
-                      await usage.save();
-                      console.log(`成功更新用户ID ${userId} 的数字人视频功能使用记录，任务总数: ${details.tasks.length}`);
-                    } else {
-                      // 创建新记录
-                      console.log(`未找到用户ID ${userId} 的数字人视频功能使用记录，创建新记录`);
-                      
-                      // 创建详细信息对象
-                      const details = {
-                        tasks: [{
-                          taskId: taskId,
-                          videoDuration: videoDuration,
-                          creditCost: creditCost,
-                          timestamp: new Date()
-                        }]
-                      };
-                      
-                      await FeatureUsage.create({
-                        userId: userId,
-                        featureName: 'DIGITAL_HUMAN_VIDEO',
-                        usageCount: 1,
-                        credits: creditCost,
-                        lastUsedAt: new Date(),
-                        resetDate: new Date().toISOString().split('T')[0],
-                        details: JSON.stringify(details)
+                    // 更新积分记录和最后使用时间，但不累加usageCount
+                    // usageCount将基于实际任务数量统计，而不是简单累加
+                    featureUsage.lastUsedAt = new Date();
+                    
+                    // 更新详细信息 - 添加任务记录
+                    let details = {};
+                    try {
+                      details = JSON.parse(featureUsage.details || '{}');
+                    } catch (e) {
+                      console.error('解析details出错，重置为空对象:', e);
+                    }
+                    
+                    if (!details.tasks) {
+                      details.tasks = [];
+                    }
+                    
+                    // 检查是否已存在相同的任务ID，避免重复添加
+                    const isTaskExists = details.tasks.some(task => task.taskId === taskId);
+                    
+                    if (!isTaskExists) {
+                      // 添加新任务信息并标记是否为免费使用
+                      details.tasks.push({
+                        taskId: taskId,
+                        videoDuration: videoDuration,
+                        creditCost: isFree ? 0 : creditCost,
+                        isFree: isFree,
+                        timestamp: new Date()
                       });
                       
-                      console.log(`成功创建用户ID ${userId} 的数字人视频功能使用记录`);
+                      // 更新记录
+                      featureUsage.details = JSON.stringify(details);
+                    } else {
+                      console.log(`任务ID ${taskId} 已存在于数据库中，跳过添加`);
                     }
-                  } catch (dbError) {
-                    console.error('保存数字人视频功能使用记录到数据库失败:', dbError);
+                    
+                    // 只有在当前任务是新任务时才更新usageCount和credits
+                    if (!isTaskExists) {
+                      // 递增使用次数，而不是设置为tasks的长度
+                      featureUsage.usageCount += 1;
+                      // 只有新任务才累加积分消费，免费使用不累加积分
+                      if (!isFree) {
+                        featureUsage.credits = (featureUsage.credits || 0) + creditCost;
+                      }
+                    }
+                    
+                    await featureUsage.save();
+                    console.log(`成功更新用户ID ${userId} 的数字人视频功能使用记录，任务总数: ${details.tasks.length}`);
+                  } else {
+                    // 创建新记录
+                    console.log(`未找到用户ID ${userId} 的数字人视频功能使用记录，创建新记录`);
+                    
+                    // 创建详细信息对象
+                    const details = {
+                      tasks: [{
+                        taskId: taskId,
+                        videoDuration: videoDuration,
+                        creditCost: isFree ? 0 : creditCost,
+                        isFree: isFree,
+                        timestamp: new Date()
+                      }]
+                    };
+                    
+                    await FeatureUsage.create({
+                      userId: userId,
+                      featureName: 'DIGITAL_HUMAN_VIDEO',
+                      usageCount: 1,
+                      credits: isFree ? 0 : creditCost,
+                      lastUsedAt: new Date(),
+                      resetDate: new Date().toISOString().split('T')[0],
+                      details: JSON.stringify(details)
+                    });
+                    
+                    console.log(`成功创建用户ID ${userId} 的数字人视频功能使用记录`);
                   }
                   
                   // 标记为已扣除积分，并添加更多信息用于统计
                   global.digitalHumanTasks[taskId].hasChargedCredits = true;
-                  global.digitalHumanTasks[taskId].creditCost = creditCost;
+                  global.digitalHumanTasks[taskId].creditCost = isFree ? 0 : creditCost;
                   global.digitalHumanTasks[taskId].videoDuration = videoDuration;
                   global.digitalHumanTasks[taskId].timestamp = new Date();
+                  global.digitalHumanTasks[taskId].isFree = isFree;
                   
                   // 任务信息已经在上面的代码中保存到数据库了，不需要重复保存
                   // 记录日志以便调试
-                  console.log(`视频数字人任务ID ${taskId} 处理完成，积分 ${creditCost}，时长 ${videoDuration}秒`);
-                } else {
-                  console.log(`用户积分不足，需要 ${creditCost}，当前有 ${user.credits}`);
-                  // 可以选择在这里处理积分不足的情况
+                  console.log(`视频数字人任务ID ${taskId} 处理完成，积分 ${isFree ? 0 : creditCost} (${isFree ? '免费' : '付费'})，时长 ${videoDuration}秒`);
+                } catch (dbError) {
+                  console.error('保存数字人视频功能使用记录到数据库失败:', dbError);
                 }
+              } else {
+                console.log(`找不到用户ID ${userId}`);
               }
             }
           }

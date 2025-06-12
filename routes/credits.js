@@ -828,6 +828,9 @@ router.get('/usage', protect, async (req, res) => {
     let totalAllTimeCreditsUsed = 0;
     let totalUsageCount = 0;
     
+    // 添加跟踪统计
+    console.log(`开始处理用户ID=${userId}的积分使用统计，总共${usages.length}条功能使用记录`);
+    
     // 从featureAccess模块获取功能配置
     const { FEATURES } = require('../middleware/featureAccess');
     
@@ -909,8 +912,13 @@ router.get('/usage', protect, async (req, res) => {
             // 计算时间范围内的积分消费 - 只统计非免费使用的积分消费
                 totalFeatureCreditCost = tasks.reduce((total, task) => {
                   // 如果是免费使用，则不计入积分消费
-                  if (task.isFree) return total;
-                  return total + (task.creditCost || 0);
+                  if (task.isFree) {
+                    console.log(`跳过免费使用的任务ID=${task.taskId || '未知'}, 积分=0`);
+                    return total;
+                  }
+                  const cost = task.creditCost || 0;
+                  console.log(`统计付费任务ID=${task.taskId || '未知'}, 积分=${cost}`);
+                  return total + cost;
                 }, 0);
             console.log(`从${featureName}功能的任务记录计算的时间范围内积分消费: ${totalFeatureCreditCost}`);
             }
@@ -1050,6 +1058,112 @@ router.get('/usage', protect, async (req, res) => {
         totalUsageCount += actualUsageCount;
         
         console.log(`设置${featureName}功能的最终统计次数: ${featureUsageStats[featureName].usageCount}`);
+      } 
+      // 特别处理图片高清放大功能(IMAGE_SHARPENING)
+      else if (featureName === 'IMAGE_SHARPENING' || featureName === 'image-upscaler' || featureName === 'IMAGE_COLORIZATION' || 
+               featureName === 'GLOBAL_STYLE' || featureName === 'LOCAL_REDRAW' || featureName === 'DIANTU' ||
+               featureName === 'text-to-video' || featureName === 'image-to-video' || 
+               featureName === 'MULTI_IMAGE_TO_VIDEO' || featureName === 'VIDEO_STYLE_REPAINT') {
+        // 图片和视频相关功能的特殊处理（图片高清放大、图片上色、全局风格化、局部重绘、垫图、文生视频、图生视频、多图转视频、视频风格重绘）
+        // 修复积分计算重复问题，仅使用实际任务数量
+        let actualUsageCount = 0;
+        
+        // 如果有任务记录，使用任务的数量而不是数据库中的usageCount
+        if (tasks && tasks.length > 0) {
+          // 统计实际任务数即可，数据库记录可能重复
+          actualUsageCount = tasks.length;
+          
+          // 根据功能名称设置显示名称
+          let featureNameDisplay = '';
+          switch(featureName) {
+            case 'IMAGE_COLORIZATION': 
+              featureNameDisplay = '图片上色'; 
+              break;
+            case 'IMAGE_SHARPENING':
+            case 'image-upscaler':
+              featureNameDisplay = '图片高清放大';
+              break;
+            case 'GLOBAL_STYLE':
+              featureNameDisplay = '全局风格化';
+              break;
+            case 'LOCAL_REDRAW':
+              featureNameDisplay = '局部重绘';
+              break;
+            case 'DIANTU':
+              featureNameDisplay = '垫图';
+              break;
+            default:
+              featureNameDisplay = getLocalFeatureName(featureName);
+          }
+          
+          console.log(`${featureNameDisplay}功能使用任务数量作为实际使用次数: ${actualUsageCount}`);
+          
+          // 计算免费任务和付费任务的数量
+          const freeTasks = tasks.filter(task => task.isFree === true);
+          const paidTasks = tasks.filter(task => !task.isFree);
+          console.log(`${featureNameDisplay}功能免费任务数: ${freeTasks.length}, 付费任务数: ${paidTasks.length}`);
+          
+          // 验证积分消费是否正确
+          const calculatedCost = paidTasks.reduce((sum, task) => sum + (task.creditCost || 0), 0);
+          console.log(`${featureNameDisplay}功能积分计算: 从任务计算=${calculatedCost}，当前值=${totalFeatureCreditCost}`);
+          
+          // 始终使用从任务计算得出的积分消费，这样可以确保免费任务不会被计入
+          totalFeatureCreditCost = calculatedCost;
+          
+          // 更新任务列表，确保免费任务正确标记
+          for (const task of tasks) {
+            if (task.isFree === undefined) {
+              console.log(`发现未标记是否免费的任务ID=${task.taskId || '未知'}，检查积分值确定是否免费`);
+              task.isFree = !task.creditCost || task.creditCost === 0;
+              console.log(`根据积分值${task.creditCost}将任务标记为${task.isFree ? '免费' : '付费'}`);
+            }
+          }
+        } else {
+          // 没有任务记录则使用数据库中的记录
+          actualUsageCount = usage ? usage.usageCount : 0;
+          
+          // 根据功能名称设置显示名称
+          let featureNameDisplay = '';
+          switch(featureName) {
+            case 'IMAGE_COLORIZATION': 
+              featureNameDisplay = '图片上色'; 
+              break;
+            case 'IMAGE_SHARPENING':
+            case 'image-upscaler':
+              featureNameDisplay = '图片高清放大';
+              break;
+            case 'GLOBAL_STYLE':
+              featureNameDisplay = '全局风格化';
+              break;
+            case 'LOCAL_REDRAW':
+              featureNameDisplay = '局部重绘';
+              break;
+            case 'DIANTU':
+              featureNameDisplay = '垫图';
+              break;
+            default:
+              featureNameDisplay = getLocalFeatureName(featureName);
+          }
+          
+          console.log(`${featureNameDisplay}功能没有任务记录，使用数据库记录的使用次数: ${actualUsageCount}`);
+        }
+        
+        // 确保功能统计数据正确反映实际使用情况，包括免费使用和付费使用
+        featureUsageStats[featureName] = {
+          name: getLocalFeatureName(featureName),
+          credits: totalFeatureCreditCost,
+          count: actualUsageCount,
+          usageCount: actualUsageCount,
+          freeTasks: tasks ? tasks.filter(task => task.isFree === true).length : 0,
+          paidTasks: tasks ? tasks.filter(task => !task.isFree).length : 0
+        };
+        
+        // 仅累加付费使用的积分消费
+        totalCreditsUsed += totalFeatureCreditCost;
+        totalAllTimeCreditsUsed += allTimeFeatureCreditCost;
+        totalUsageCount += actualUsageCount;
+        
+        console.log(`设置${featureName}功能的最终统计: 总次数=${featureUsageStats[featureName].usageCount}, 积分消费=${totalFeatureCreditCost}, 免费次数=${featureUsageStats[featureName].freeTasks}, 付费次数=${featureUsageStats[featureName].paidTasks}`);
       } else {
         // 获取正确的使用次数 - 对于大多数功能，我们应该使用实际任务数
         // 对于亚马逊助手功能，需要额外处理可能出现的重复计数问题
@@ -1074,7 +1188,7 @@ router.get('/usage', protect, async (req, res) => {
             featureName === 'marketing-images' || featureName === 'translate' || featureName === 'cutout' ||
             featureName === 'VIRTUAL_MODEL_VTON' || featureName === 'IMAGE_COLORIZATION' ||
             featureName === 'GLOBAL_STYLE' || featureName === 'DIANTU' || featureName === 'image-removal' ||
-            featureName === 'LOCAL_REDRAW') {
+            featureName === 'LOCAL_REDRAW' || featureName === 'text-to-video' || featureName === 'image-to-video') {
           // 这些功能已经在任务中计算了积分消费，不需要再使用数据库记录中的积分
           console.log(`特殊功能${featureName}，使用任务记录中的积分消费: ${totalFeatureCreditCost}`);
           

@@ -66,12 +66,30 @@ router.post('/generate', protect, checkFeatureAccess('TEXT_TO_IMAGE'), async (re
       const creditCost = FEATURES.TEXT_TO_IMAGE.creditCost;
       
       // 记录任务信息到全局变量，方便后续查询和积分统计
+      // 检查是否是免费使用
+      let isFree = false;
+      
+      // 检查请求对象中的featureUsage信息
+      if (req.featureUsage) {
+        if (req.featureUsage.usageType === 'free' || 
+            (req.featureUsage.usageType === 'delayed_payment' && !req.featureUsage.shouldChargeCredits)) {
+          // 这是免费使用的情况
+          isFree = true;
+        } else if (req.featureUsage.usageType === 'paid' || req.featureUsage.shouldChargeCredits) {
+          // 这是付费使用的情况
+          isFree = false;
+        }
+        console.log(`文生图片功能使用类型: ${req.featureUsage.usageType}, 是否免费: ${isFree}, 需要扣费: ${req.featureUsage.shouldChargeCredits || false}`);
+      }
+      
       global.textToImageTasks[taskId] = {
         userId: userId,
         prompt: prompt,
         timestamp: new Date(),
-        creditCost: creditCost,
-        hasChargedCredits: true
+        creditCost: isFree ? 0 : creditCost,
+        hasChargedCredits: !isFree, // 只有非免费使用才标记为已扣除积分
+        isFree: isFree,
+        shouldChargeCredits: req.featureUsage && req.featureUsage.shouldChargeCredits
       };
 
       return res.json({
@@ -175,18 +193,31 @@ router.get('/task/:taskId', protect, async (req, res) => {
             
             if (!taskExists) {
               // 添加新的任务记录
+              const isFree = global.textToImageTasks[taskId].isFree || false;
+              const actualCreditCost = isFree ? 0 : creditCost;
+              
               details.tasks.push({
                 taskId: taskId,
-                creditCost: creditCost,
+                creditCost: actualCreditCost,
                 timestamp: new Date(),
-                prompt: global.textToImageTasks[taskId].prompt
+                prompt: global.textToImageTasks[taskId].prompt,
+                isFree: isFree
               });
               
+              // 如果是付费使用，需要扣除积分
+              if (!isFree && global.textToImageTasks[taskId].shouldChargeCredits) {
+                const User = require('../models/User');
+                const user = await User.findByPk(userId);
+                if (user && user.credits >= actualCreditCost) {
+                  user.credits -= actualCreditCost;
+                  await user.save();
+                  console.log(`文生图片任务完成，从用户ID ${userId} 扣除 ${actualCreditCost} 积分，剩余积分: ${user.credits}`);
+                } else {
+                  console.error(`用户ID ${userId} 积分不足，无法扣除 ${actualCreditCost} 积分`);
+                }
+              }
+              
               // 更新使用记录
-              // 不要再次增加usageCount，已经在featureAccess中间件中增加过一次
-              // usage.usageCount += 1;
-              // 不要累加积分，已在checkFeatureAccess中间件中扣除
-              // usage.credits += creditCost;
               usage.details = JSON.stringify(details);
               usage.lastUsedAt = new Date();
               await usage.save();
@@ -203,9 +234,10 @@ router.get('/task/:taskId', protect, async (req, res) => {
               details: JSON.stringify({
                 tasks: [{
                   taskId: taskId,
-                  creditCost: creditCost,
+                  creditCost: global.textToImageTasks[taskId].isFree ? 0 : creditCost,
                   timestamp: new Date(),
-                  prompt: global.textToImageTasks[taskId].prompt
+                  prompt: global.textToImageTasks[taskId].prompt,
+                  isFree: global.textToImageTasks[taskId].isFree || false
                 }]
               }),
               lastUsedAt: new Date()

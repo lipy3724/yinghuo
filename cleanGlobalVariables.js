@@ -49,6 +49,118 @@ function cleanGlobalVariables() {
     console.log('全局变量 videoStyleRepaintTasks 不存在');
   }
   
+  // 清理图片上色任务
+  count = 0;
+  if (global.imageColorizationTasks) {
+    for (const taskId in global.imageColorizationTasks) {
+      if (global.imageColorizationTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.imageColorizationTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 imageColorizationTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 imageColorizationTasks 不存在');
+  }
+
+  // 清理图片锐化任务
+  count = 0;
+  if (global.imageSharpeningTasks) {
+    for (const taskId in global.imageSharpeningTasks) {
+      if (global.imageSharpeningTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.imageSharpeningTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 imageSharpeningTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 imageSharpeningTasks 不存在');
+  }
+  
+  // 清理局部重绘任务
+  count = 0;
+  if (global.localRedrawTasks) {
+    for (const taskId in global.localRedrawTasks) {
+      if (global.localRedrawTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.localRedrawTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 localRedrawTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 localRedrawTasks 不存在');
+  }
+  
+  // 清理全局风格化任务
+  count = 0;
+  if (global.globalStyleTasks) {
+    for (const taskId in global.globalStyleTasks) {
+      if (global.globalStyleTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.globalStyleTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 globalStyleTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 globalStyleTasks 不存在');
+  }
+  
+  // 清理垫图任务
+  count = 0;
+  if (global.diantuTasks) {
+    for (const taskId in global.diantuTasks) {
+      if (global.diantuTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.diantuTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 diantuTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 diantuTasks 不存在');
+  }
+  
+  // 清理文生视频任务
+  count = 0;
+  if (global.textToVideoTasks) {
+    for (const taskId in global.textToVideoTasks) {
+      if (global.textToVideoTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.textToVideoTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 textToVideoTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 textToVideoTasks 不存在');
+  }
+  
+  // 清理图生视频任务
+  count = 0;
+  if (global.imageToVideoTasks) {
+    for (const taskId in global.imageToVideoTasks) {
+      if (global.imageToVideoTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.imageToVideoTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 imageToVideoTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 imageToVideoTasks 不存在');
+  }
+  
+  // 清理多图转视频任务
+  count = 0;
+  if (global.multiImageToVideoTasks) {
+    for (const taskId in global.multiImageToVideoTasks) {
+      if (global.multiImageToVideoTasks[taskId].userId === TARGET_USER_ID) {
+        delete global.multiImageToVideoTasks[taskId];
+        count++;
+      }
+    }
+    console.log(`已从 multiImageToVideoTasks 中移除 ${count} 条记录`);
+  } else {
+    console.log('全局变量 multiImageToVideoTasks 不存在');
+  }
+  
   // 清理其他可能存在的全局任务变量
   // 根据系统中实际使用的全局变量添加更多清理代码
   
