@@ -81,6 +81,18 @@ router.get('/', protect, async (req, res) => {
     const whereCondition = { userId };
     if (type) {
       whereCondition.type = type;
+    } else {
+      // 排除特定类型，不在下载中心显示
+      whereCondition.type = {
+        [Op.notIn]: [
+          'TEXT_TO_VIDEO_NO_DOWNLOAD',
+          'IMAGE_TO_VIDEO_NO_DOWNLOAD',
+          'MULTI_IMAGE_TO_VIDEO_NO_DOWNLOAD',
+          'DIGITAL_HUMAN_VIDEO_NO_DOWNLOAD',
+          'VIDEO_STYLE_REPAINT_NO_DOWNLOAD',
+          'VIDEO_SUBTITLE_REMOVER_NO_DOWNLOAD'
+        ]
+      };
     }
     
     // 添加12小时过期条件 - 只返回12小时内的图片

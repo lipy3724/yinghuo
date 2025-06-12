@@ -683,9 +683,10 @@ router.get('/status/:taskId', protect, async (req, res) => {
               metadata: JSON.stringify({
                 model: userTasks[userId][userTaskIndex].model,
                 size: userTasks[userId][userTaskIndex].size
-              })
+              }),
+              type: 'TEXT_TO_VIDEO_NO_DOWNLOAD' // 使用特殊类型标记，不显示在下载中心
             });
-            console.log('视频记录已保存到历史记录');
+            console.log('视频记录已保存到历史记录，但不会显示在下载中心');
           } catch (historyError) {
             console.error('保存历史记录失败:', historyError);
             // 继续处理，不影响主要功能
@@ -1518,6 +1519,25 @@ router.post('/save-video-result', protect, async (req, res) => {
             });
             
             await result.save();
+            
+            // 保存视频结果到历史记录但不显示在下载中心
+            try {
+                await ImageHistory.create({
+                    userId: req.user.id,
+                    imageUrl: videoUrl,
+                    processType: type === 'text-to-video' ? '文生视频' : '图生视频',
+                    description: prompt || '',
+                    type: type === 'text-to-video' ? 'TEXT_TO_VIDEO_NO_DOWNLOAD' : 'IMAGE_TO_VIDEO_NO_DOWNLOAD',
+                    metadata: JSON.stringify({
+                        taskId: taskId
+                    }),
+                    createdAt: new Date()
+                });
+                console.log(`视频结果已保存到历史记录但不会显示在下载中心: taskId=${taskId}`);
+            } catch (historyError) {
+                console.error('保存视频历史记录失败:', historyError);
+                // 继续处理，不影响主要功能
+            }
             
             // 检查全局变量中是否已经扣除过积分，避免重复扣费
             const taskRecordType = type === 'text-to-video' ? 'textToVideoTasks' : 'imageToVideoTasks';
