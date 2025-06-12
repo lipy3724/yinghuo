@@ -534,7 +534,8 @@ router.post('/track-usage', protect, async (req, res) => {
           const currentCredits = usage.credits || 0;
           // 只有付费使用才累加积分
           if (usageType === 'paid') {
-            usage.credits = currentCredits + creditCost;
+            // 将这一行注释掉，避免重复计入积分
+            // usage.credits = currentCredits + creditCost;
           }
           usage.details = JSON.stringify({
             ...details,
@@ -584,7 +585,8 @@ router.post('/track-usage', protect, async (req, res) => {
           const currentCredits = usage.credits || 0;
           // 只有付费使用才累加积分
           if (usageType === 'paid') {
-            usage.credits = currentCredits + creditCost;
+            // 将这一行注释掉，避免重复计入积分
+            // usage.credits = currentCredits + creditCost;
           }
           usage.details = JSON.stringify({
             ...details,
@@ -633,7 +635,8 @@ router.post('/track-usage', protect, async (req, res) => {
           const currentCredits = usage.credits || 0;
           // 只有付费使用才累加积分
           if (usageType === 'paid') {
-            usage.credits = currentCredits + creditCost;
+            // 将这一行注释掉，避免重复计入积分
+            // usage.credits = currentCredits + creditCost;
           }
           usage.details = JSON.stringify({
             ...details,
@@ -682,7 +685,8 @@ router.post('/track-usage', protect, async (req, res) => {
           const currentCredits = usage.credits || 0;
           // 只有付费使用才累加积分
           if (usageType === 'paid') {
-            usage.credits = currentCredits + creditCost;
+            // 将这一行注释掉，避免重复计入积分
+            // usage.credits = currentCredits + creditCost;
           }
           usage.details = JSON.stringify({
             ...details,
@@ -731,7 +735,8 @@ router.post('/track-usage', protect, async (req, res) => {
           const currentCredits = usage.credits || 0;
           // 只有付费使用才累加积分
           if (usageType === 'paid') {
-            usage.credits = currentCredits + creditCost;
+            // 将这一行注释掉，避免重复计入积分
+            // usage.credits = currentCredits + creditCost;
           }
           usage.details = JSON.stringify({
             ...details,
@@ -1067,7 +1072,9 @@ router.get('/usage', protect, async (req, res) => {
             featureName === 'IMAGE_EXPANSION' || featureName === 'IMAGE_SHARPENING' ||
             featureName === 'image-upscaler' || featureName === 'scene-generator' ||
             featureName === 'marketing-images' || featureName === 'translate' || featureName === 'cutout' ||
-            featureName === 'VIRTUAL_MODEL_VTON') {
+            featureName === 'VIRTUAL_MODEL_VTON' || featureName === 'IMAGE_COLORIZATION' ||
+            featureName === 'GLOBAL_STYLE' || featureName === 'DIANTU' || featureName === 'image-removal' ||
+            featureName === 'LOCAL_REDRAW') {
           // 这些功能已经在任务中计算了积分消费，不需要再使用数据库记录中的积分
           console.log(`特殊功能${featureName}，使用任务记录中的积分消费: ${totalFeatureCreditCost}`);
           

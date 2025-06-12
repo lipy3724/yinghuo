@@ -2187,20 +2187,24 @@ app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUp
       const userId = req.user.id;
       const creditCost = req.featureUsage?.creditCost || FEATURES['image-upscaler'].creditCost;
       
+      // 判断是否是免费使用
+      const isFree = req.featureUsage?.usageType === 'free';
+      
       // 生成唯一任务ID
       const taskId = `upscale-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
       
       // 保存任务信息到全局变量
       global.imageUpscalerTasks[taskId] = {
         userId: userId,
-        creditCost: creditCost,
-        hasChargedCredits: true,
+        creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+        hasChargedCredits: !isFree, // 免费使用不需要扣除积分
         timestamp: new Date(),
         imageUrl: imageUrl,
-        upscaleFactor: upscaleFactor
+        upscaleFactor: upscaleFactor,
+        isFree: isFree // 添加免费使用标记
       };
       
-      console.log(`图像高清放大任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+      console.log(`图像高清放大任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
       
       // 将任务信息保存到数据库
       try {
@@ -2219,8 +2223,9 @@ app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUp
           // 添加新任务
           tasks.push({
             taskId: taskId,
-            creditCost: creditCost,
-            timestamp: new Date()
+            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+            timestamp: new Date(),
+            isFree: isFree // 添加免费使用标记
           });
           
           // 更新usage记录 - 更新details字段但不重复累加积分
@@ -2245,6 +2250,24 @@ app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUp
           );
           
           console.log(`图像高清放大任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+        } else {
+          // 创建新记录
+          await FeatureUsage.create({
+            userId: userId,
+            featureName: 'image-upscaler',
+            usageCount: 1,
+            credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+            lastUsedAt: new Date(),
+            details: JSON.stringify({
+              tasks: [{
+                taskId: taskId,
+                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                timestamp: new Date(),
+                isFree: isFree // 添加免费使用标记
+              }]
+            })
+          });
+          console.log(`图像高清放大功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
         }
       } catch (saveError) {
         console.error('保存图像高清放大任务详情失败:', saveError);

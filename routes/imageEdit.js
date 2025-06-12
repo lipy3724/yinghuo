@@ -88,6 +88,24 @@ router.post('/create-task', protect, async (req, res) => {
               // 保存更新
               await usage.save();
               console.log(`图像上色任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
+            } else {
+              // 创建新记录
+              await FeatureUsage.create({
+                userId: userId,
+                featureName: 'IMAGE_COLORIZATION',
+                usageCount: 1,
+                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                lastUsedAt: new Date(),
+                details: JSON.stringify({
+                  tasks: [{
+                    taskId: taskId,
+                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    timestamp: new Date(),
+                    isFree: isFree // 添加免费使用标记
+                  }]
+                })
+              });
+              console.log(`图像上色功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
             }
           } catch (saveError) {
             console.error('保存图像上色任务详情失败:', saveError);
