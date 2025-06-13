@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { checkFeatureAccess } = require('../middleware/featureAccess');
+const { createUnifiedFeatureMiddleware } = require('../middleware/unifiedFeatureUsage');
 const { uploadToOSS } = require('../api-utils');
 
 // 通义万相API密钥
@@ -15,7 +15,7 @@ const API_TASK_URL = 'https://dashscope.aliyuncs.com/api/v1/tasks/';
  * @desc    生成文生图片 - 创建任务
  * @access  私有
  */
-router.post('/generate', protect, checkFeatureAccess('TEXT_TO_IMAGE'), async (req, res) => {
+router.post('/generate', protect, createUnifiedFeatureMiddleware('TEXT_TO_IMAGE'), async (req, res) => {
   try {
     const { prompt, negativePrompt = '', size = '1024*1024', n = 1, prompt_extend = true, watermark = false } = req.body;
     const userId = req.user.id;
@@ -61,35 +61,18 @@ router.post('/generate', protect, checkFeatureAccess('TEXT_TO_IMAGE'), async (re
       const taskId = response.data.output.task_id;
       const taskStatus = response.data.output.task_status;
 
-      // 获取功能配置信息
-      const { FEATURES } = require('../middleware/featureAccess');
-      const creditCost = FEATURES.TEXT_TO_IMAGE.creditCost;
-      
       // 记录任务信息到全局变量，方便后续查询和积分统计
-      // 检查是否是免费使用
-      let isFree = false;
-      
-      // 检查请求对象中的featureUsage信息
-      if (req.featureUsage) {
-        if (req.featureUsage.usageType === 'free' || 
-            (req.featureUsage.usageType === 'delayed_payment' && !req.featureUsage.shouldChargeCredits)) {
-          // 这是免费使用的情况
-          isFree = true;
-        } else if (req.featureUsage.usageType === 'paid' || req.featureUsage.shouldChargeCredits) {
-          // 这是付费使用的情况
-          isFree = false;
-        }
-        console.log(`文生图片功能使用类型: ${req.featureUsage.usageType}, 是否免费: ${isFree}, 需要扣费: ${req.featureUsage.shouldChargeCredits || false}`);
-      }
+      // 积分已在统一中间件中扣除，这里只记录任务信息
+      const isFree = req.featureUsage?.isFree || false;
+      const creditCost = req.featureUsage?.creditCost || 0;
       
       global.textToImageTasks[taskId] = {
         userId: userId,
         prompt: prompt,
         timestamp: new Date(),
-        creditCost: isFree ? 0 : creditCost,
-        hasChargedCredits: !isFree, // 只有非免费使用才标记为已扣除积分
-        isFree: isFree,
-        shouldChargeCredits: req.featureUsage && req.featureUsage.shouldChargeCredits
+        creditCost: creditCost,
+        hasChargedCredits: true, // 积分已在中间件中扣除
+        isFree: isFree
       };
 
       return res.json({
@@ -192,9 +175,9 @@ router.get('/task/:taskId', protect, async (req, res) => {
             const taskExists = details.tasks.some(task => task.taskId === taskId);
             
             if (!taskExists) {
-              // 添加新的任务记录
+              // 添加新的任务记录（积分已在中间件中扣除）
               const isFree = global.textToImageTasks[taskId].isFree || false;
-              const actualCreditCost = isFree ? 0 : creditCost;
+              const actualCreditCost = global.textToImageTasks[taskId].creditCost || 0;
               
               details.tasks.push({
                 taskId: taskId,
@@ -203,19 +186,6 @@ router.get('/task/:taskId', protect, async (req, res) => {
                 prompt: global.textToImageTasks[taskId].prompt,
                 isFree: isFree
               });
-              
-              // 如果是付费使用，需要扣除积分
-              if (!isFree && global.textToImageTasks[taskId].shouldChargeCredits) {
-                const User = require('../models/User');
-                const user = await User.findByPk(userId);
-                if (user && user.credits >= actualCreditCost) {
-                  user.credits -= actualCreditCost;
-                  await user.save();
-                  console.log(`文生图片任务完成，从用户ID ${userId} 扣除 ${actualCreditCost} 积分，剩余积分: ${user.credits}`);
-                } else {
-                  console.error(`用户ID ${userId} 积分不足，无法扣除 ${actualCreditCost} 积分`);
-                }
-              }
               
               // 更新使用记录
               usage.details = JSON.stringify(details);
@@ -230,7 +200,7 @@ router.get('/task/:taskId', protect, async (req, res) => {
               userId: userId,
               featureName: 'TEXT_TO_IMAGE',
               usageCount: 1,
-              credits: 0, // 设置为0，因为积分已在checkFeatureAccess中间件中扣除
+              credits: 0, // 设置为0，因为积分已在统一中间件中扣除
               details: JSON.stringify({
                 tasks: [{
                   taskId: taskId,

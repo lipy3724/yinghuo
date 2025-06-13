@@ -2,7 +2,8 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { checkFeatureAccess, FEATURES } = require('../middleware/featureAccess');
+const { FEATURES } = require('../middleware/featureAccess');
+const { createUnifiedFeatureMiddleware } = require('../middleware/unifiedFeatureUsage');
 const User = require('../models/User');
 const { FeatureUsage } = require('../models/FeatureUsage');
 
@@ -24,17 +25,15 @@ router.post('/create-task', protect, async (req, res) => {
     
     // 如果是图像上色功能，需要验证IMAGE_COLORIZATION权限
     if (functionType === 'colorization') {
-      // 使用图像上色权限检查中间件
-      return checkFeatureAccess('IMAGE_COLORIZATION')(req, res, async () => {
+      // 使用统一的功能中间件（正确扣除积分）
+      return createUnifiedFeatureMiddleware('IMAGE_COLORIZATION')(req, res, async () => {
         try {
           const response = await createTask(requestData);
           
-          // 获取当前用户ID和积分消费信息
+          // 获取当前用户ID和积分消费信息（积分已在中间件中扣除）
           const userId = req.user.id;
-          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_COLORIZATION'].creditCost;
-          
-          // 判断是否是免费使用
-          const isFree = req.featureUsage?.usageType === 'free';
+          const creditCost = req.featureUsage?.creditCost || 0;
+          const isFree = req.featureUsage?.isFree || false;
           
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `colorization-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -46,8 +45,8 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.imageColorizationTasks[taskId] = {
             userId: userId,
-            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
+            creditCost: creditCost, // 积分已在中间件中扣除
+            hasChargedCredits: true, // 积分已在中间件中扣除
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
             prompt: requestData.input?.prompt,
@@ -73,13 +72,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                creditCost: creditCost, // 积分已在中间件中扣除
                 timestamp: new Date(),
                 isFree: isFree // 添加免费使用标记
               });
               
               // 更新usage记录 - 更新details字段但不重复累加积分
-              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
+              // 积分已在统一中间件中扣除，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -94,12 +93,12 @@ router.post('/create-task', protect, async (req, res) => {
                 userId: userId,
                 featureName: 'IMAGE_COLORIZATION',
                 usageCount: 1,
-                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                credits: 0, // 设置为0，积分已在统一中间件中扣除
                 lastUsedAt: new Date(),
                 details: JSON.stringify({
                   tasks: [{
                     taskId: taskId,
-                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    creditCost: creditCost, // 积分已在中间件中扣除
                     timestamp: new Date(),
                     isFree: isFree // 添加免费使用标记
                   }]
@@ -120,17 +119,17 @@ router.post('/create-task', protect, async (req, res) => {
     } 
     // 如果是局部重绘功能，需要验证LOCAL_REDRAW权限
     else if (functionType === 'inpainting' || functionType === 'description_edit_with_mask') {
-      // 使用局部重绘权限检查中间件
-      return checkFeatureAccess('LOCAL_REDRAW')(req, res, async () => {
+      // 使用统一的功能中间件（正确扣除积分）
+      return createUnifiedFeatureMiddleware('LOCAL_REDRAW')(req, res, async () => {
         try {
           const response = await createTask(requestData);
           
           // 获取当前用户ID和积分消费信息
           const userId = req.user.id;
-          const creditCost = req.featureUsage?.creditCost || FEATURES['LOCAL_REDRAW'].creditCost;
+          const creditCost = req.featureUsage?.creditCost || 0;
           
           // 判断是否是免费使用
-          const isFree = req.featureUsage?.usageType === 'free';
+          const isFree = req.featureUsage?.isFree || false;
           
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `redraw-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -142,8 +141,8 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.localRedrawTasks[taskId] = {
             userId: userId,
-            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
+            creditCost: creditCost, // 积分已在中间件中扣除
+            hasChargedCredits: true, // 积分已在中间件中扣除
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
             prompt: requestData.input?.prompt,
@@ -169,13 +168,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                creditCost: creditCost, // 积分已在中间件中扣除
                 timestamp: new Date(),
                 isFree: isFree // 添加免费使用标记
               });
               
               // 更新usage记录 - 更新details字段但不重复累加积分
-              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
+              // 积分已在统一中间件中扣除，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -190,12 +189,12 @@ router.post('/create-task', protect, async (req, res) => {
                 userId: userId,
                 featureName: 'LOCAL_REDRAW',
                 usageCount: 1,
-                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                credits: 0, // 设置为0，积分已在统一中间件中扣除
                 lastUsedAt: new Date(),
                 details: JSON.stringify({
                   tasks: [{
                     taskId: taskId,
-                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    creditCost: creditCost, // 积分已在中间件中扣除
                     timestamp: new Date(),
                     isFree: isFree // 添加免费使用标记
                   }]
@@ -225,17 +224,17 @@ router.post('/create-task', protect, async (req, res) => {
                requestData.parameters?.bottom_scale ||
                requestData.parameters?.left_scale ||
                requestData.parameters?.right_scale))) {
-      // 使用智能扩图权限检查中间件
-      return checkFeatureAccess('IMAGE_EXPANSION')(req, res, async () => {
+      // 使用统一的功能中间件（正确扣除积分）
+      return createUnifiedFeatureMiddleware('IMAGE_EXPANSION')(req, res, async () => {
         try {
           const response = await createTask(requestData);
           
           // 获取当前用户ID和积分消费信息
           const userId = req.user.id;
-          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_EXPANSION'].creditCost;
+          const creditCost = req.featureUsage?.creditCost || 0;
           
           // 判断是否是免费使用
-          const isFree = req.featureUsage?.usageType === 'free';
+          const isFree = req.featureUsage?.isFree || false;
           
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `expand-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -247,8 +246,8 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.imageExpansionTasks[taskId] = {
             userId: userId,
-            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
+            creditCost: creditCost, // 积分已在中间件中扣除
+            hasChargedCredits: true, // 积分已在中间件中扣除
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
             prompt: requestData.input?.prompt,
@@ -274,13 +273,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                creditCost: creditCost, // 积分已在中间件中扣除
                 timestamp: new Date(),
                 isFree: isFree // 添加免费使用标记
               });
               
               // 更新usage记录 - 更新details字段但不重复累加积分
-              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
+              // 积分已在统一中间件中扣除，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -296,11 +295,11 @@ router.post('/create-task', protect, async (req, res) => {
                 featureName: 'IMAGE_EXPANSION',
                 usageCount: 1,
                 lastUsedAt: new Date(),
-                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                credits: 0, // 设置为0，积分已在统一中间件中扣除
                 details: JSON.stringify({
                   tasks: [{
                     taskId: taskId,
-                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    creditCost: creditCost, // 积分已在中间件中扣除
                     timestamp: new Date(),
                     isFree: isFree // 添加免费使用标记
                   }]
@@ -321,17 +320,17 @@ router.post('/create-task', protect, async (req, res) => {
     }
     // 如果是模糊图片变清晰功能，需要验证IMAGE_SHARPENING权限
     else if (functionType === 'super_resolution') {
-      // 使用模糊图片变清晰权限检查中间件
-      return checkFeatureAccess('IMAGE_SHARPENING')(req, res, async () => {
+      // 使用统一的功能中间件（正确扣除积分）
+      return createUnifiedFeatureMiddleware('IMAGE_SHARPENING')(req, res, async () => {
         try {
           const response = await createTask(requestData);
           
           // 获取当前用户ID和积分消费信息
           const userId = req.user.id;
-          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_SHARPENING'].creditCost;
+          const creditCost = req.featureUsage?.creditCost || 0;
           
           // 判断是否是免费使用
-          const isFree = req.featureUsage?.usageType === 'free';
+          const isFree = req.featureUsage?.isFree || false;
           
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `sharpen-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -343,8 +342,8 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.imageSharpeningTasks[taskId] = {
             userId: userId,
-            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
+            creditCost: creditCost, // 积分已在中间件中扣除
+            hasChargedCredits: true, // 积分已在中间件中扣除
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
             prompt: requestData.input?.prompt,
@@ -370,13 +369,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                creditCost: creditCost, // 积分已在中间件中扣除
                 timestamp: new Date(),
                 isFree: isFree // 添加免费使用标记
               });
               
               // 更新usage记录 - 更新details字段但不重复累加积分
-              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
+              // 积分已在统一中间件中扣除，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -392,11 +391,11 @@ router.post('/create-task', protect, async (req, res) => {
                 featureName: 'IMAGE_SHARPENING',
                 usageCount: 1,
                 lastUsedAt: new Date(),
-                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                credits: 0, // 设置为0，积分已在统一中间件中扣除
                 details: JSON.stringify({
                   tasks: [{
                     taskId: taskId,
-                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    creditCost: creditCost, // 积分已在中间件中扣除
                     timestamp: new Date(),
                     isFree: isFree // 添加免费使用标记
                   }]
@@ -417,8 +416,8 @@ router.post('/create-task', protect, async (req, res) => {
     }
     // 如果是垫图功能，需要验证DIANTU权限
     else if (functionType === 'control_cartoon_feature') {
-      // 使用垫图权限检查中间件
-      return checkFeatureAccess('DIANTU')(req, res, async () => {
+      // 使用统一的功能中间件（正确扣除积分）
+      return createUnifiedFeatureMiddleware('DIANTU')(req, res, async () => {
         try {
           const response = await createTask(requestData);
           
@@ -427,7 +426,7 @@ router.post('/create-task', protect, async (req, res) => {
           const creditCost = req.featureUsage?.creditCost || FEATURES['DIANTU']?.creditCost || 5;
           
           // 判断是否是免费使用
-          const isFree = req.featureUsage?.usageType === 'free';
+          const isFree = req.featureUsage?.isFree || false;
           
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `diantu-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -439,8 +438,8 @@ router.post('/create-task', protect, async (req, res) => {
           
           global.diantuTasks[taskId] = {
             userId: userId,
-            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-            hasChargedCredits: !isFree, // 免费使用不需要扣除积分
+            creditCost: creditCost, // 积分已在中间件中扣除
+            hasChargedCredits: true, // 积分已在中间件中扣除
             timestamp: new Date(),
             imageUrl: requestData.input?.base_image_url,
             prompt: requestData.input?.prompt,
@@ -466,13 +465,13 @@ router.post('/create-task', protect, async (req, res) => {
               // 添加新任务
               tasks.push({
                 taskId: taskId,
-                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                creditCost: creditCost, // 积分已在中间件中扣除
                 timestamp: new Date(),
                 isFree: isFree // 添加免费使用标记
               });
               
               // 更新usage记录 - 更新details字段但不重复累加积分
-              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
+              // 积分已在统一中间件中扣除，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -488,11 +487,11 @@ router.post('/create-task', protect, async (req, res) => {
                 featureName: 'DIANTU',
                 usageCount: 1,
                 lastUsedAt: new Date(),
-                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                credits: 0, // 设置为0，积分已在统一中间件中扣除
                 details: JSON.stringify({
                   tasks: [{
                     taskId: taskId,
-                    creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+                    creditCost: creditCost, // 积分已在中间件中扣除
                     timestamp: new Date(),
                     isFree: isFree // 添加免费使用标记
                   }]
@@ -513,13 +512,13 @@ router.post('/create-task', protect, async (req, res) => {
     }
     // 其他功能类型使用默认的IMAGE_EDIT权限
     else {
-      return checkFeatureAccess('IMAGE_EDIT')(req, res, async () => {
+      return createUnifiedFeatureMiddleware('IMAGE_EDIT')(req, res, async () => {
         try {
           const response = await createTask(requestData);
           
           // 获取当前用户ID和积分消费信息
           const userId = req.user.id;
-          const creditCost = req.featureUsage?.creditCost || FEATURES['IMAGE_EDIT'].creditCost;
+          const creditCost = req.featureUsage?.creditCost || 0;
           
           // 生成唯一任务ID
           const taskId = response.data.output?.task_id || `edit-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -571,7 +570,7 @@ router.post('/create-task', protect, async (req, res) => {
               });
               
               // 更新usage记录 - 更新details字段但不重复累加积分
-              // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
+              // 积分已在统一中间件中扣除，这里不需要再次累加
               usage.details = JSON.stringify({
                 ...details,
                 tasks: tasks
@@ -586,7 +585,7 @@ router.post('/create-task', protect, async (req, res) => {
                 userId: userId,
                 featureName: 'IMAGE_EDIT',
                 usageCount: 1,
-                credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
+                credits: 0, // 设置为0，积分已在统一中间件中扣除
                 lastUsedAt: new Date(),
                 details: JSON.stringify({
                   tasks: [{

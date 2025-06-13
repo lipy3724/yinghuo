@@ -361,10 +361,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkAuthStatus();
             
-            // 特性追踪
-            if (typeof trackFeatureUsage === 'function') {
-                trackFeatureUsage('page_view', 'amazon_video_script');
-            }
+            // 页面加载时不需要记录使用
         });
         
         // 获取页面元素
@@ -408,17 +405,7 @@
             
             try {
                 // 获取认证令牌
-                const token = localStorage.getItem('authToken');
-                
-                // 记录功能使用并检查积分
-                const canProceed = await trackFeatureUsage('amazon_video_script');
-                if (!canProceed) {
-                    loadingContent.classList.add('hidden');
-                    initialContent.classList.remove('hidden');
-                    return;
-                }
-                
-                // 构建提示模板
+                const token = localStorage.getItem('authToken');// 构建提示模板
                 const promptTemplate = `你作为一个产品品牌广告商，精通几乎所有产品的视频广告脚本写作。
 我有一款产品：${productName}，产品具有以下特点：${productFeatures.join(', ')}，请以一个产品使用者的身份，写一个视频广告脚本。`;
                 
@@ -468,6 +455,11 @@
                         loadingContent.classList.add('hidden');
                         resultContent.classList.remove('hidden');
                         
+                        // 特性追踪
+                        if (typeof trackFeatureUsage === 'function') {
+                            trackFeatureUsage('amazon_video_script');
+                        }
+                        
                         return;
                     } else {
                         throw new Error(alternativeResult.error || '生成失败');
@@ -488,6 +480,11 @@
                     scriptContent.textContent = scriptText;
                     loadingContent.classList.add('hidden');
                     resultContent.classList.remove('hidden');
+                    
+                    // 特性追踪
+                    if (typeof trackFeatureUsage === 'function') {
+                        trackFeatureUsage('amazon_video_script');
+                    }
                     
                 } else {
                     throw new Error(result.error || result.message || '生成失败');

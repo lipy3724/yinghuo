@@ -3,9 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { protect } = require('../middleware/auth');
-const { checkFeatureAccess } = require('../middleware/featureAccess');
-const { FeatureUsage } = require('../models/FeatureUsage');
-const User = require('../models/User');
+const { createUnifiedFeatureMiddleware } = require('../middleware/unifiedFeatureUsage');
 
 // GLM-4 API配置
 const GLM4_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
@@ -19,8 +17,8 @@ const getAuthHeaders = () => {
     };
 };
 
-// 生成亚马逊Listing
-router.post('/generate', protect, async (req, res) => {
+// 生成亚马逊Listing - 使用动态中间件
+const generateMiddleware = async (req, res, next) => {
     // 根据生成类型动态判断使用的功能
     const { generateType } = req.body;
     let featureName = 'amazon_listing'; // 默认是Listing功能
@@ -30,22 +28,12 @@ router.post('/generate', protect, async (req, res) => {
         featureName = 'amazon_video_script';
     }
     
-    // 调用checkFeatureAccess中间件
-    try {
-        const middleware = checkFeatureAccess(featureName);
-        await new Promise((resolve, reject) => {
-            middleware(req, res, (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
-    } catch (error) {
-        return res.status(402).json({
-            success: false,
-            message: '积分不足或访问受限',
-            error: error.message
-        });
-    }
+    // 调用统一中间件
+    const middleware = createUnifiedFeatureMiddleware(featureName);
+    middleware(req, res, next);
+};
+
+router.post('/generate', protect, generateMiddleware, async (req, res) => {
     try {
         const {
             productFeatureCount,
@@ -294,7 +282,7 @@ Please return in the following JSON format, with exactly ${featureCount} bullet 
 });
 
 // 优化亚马逊Listing
-router.post('/optimize', protect, checkFeatureAccess('amazon_listing'), async (req, res) => {
+router.post('/optimize', protect, createUnifiedFeatureMiddleware('amazon_listing'), async (req, res) => {
     try {
         const {
             currentTitle,
@@ -496,7 +484,7 @@ ${currentDescription || '无'}
 });
 
 // AI推荐关键词
-router.post('/recommend-keywords', protect, checkFeatureAccess('amazon_keyword_recommender'), async (req, res) => {
+router.post('/recommend-keywords', protect, createUnifiedFeatureMiddleware('amazon_keyword_recommender'), async (req, res) => {
     try {
         const { productCategory, outputLanguage } = req.body;
 
@@ -570,7 +558,7 @@ Please return only the keywords, separated by commas, without any other content.
 });
 
 // 生成亚马逊后台搜索词
-router.post('/generate-search-term', protect, checkFeatureAccess('amazon_search_term'), async (req, res) => {
+router.post('/generate-search-term', protect, createUnifiedFeatureMiddleware('amazon_search_term'), async (req, res) => {
     try {
         const {
             productKeywords,
@@ -664,7 +652,7 @@ Please generate Amazon backend search terms (maximum 250 characters) in English.
 });
 
 // 分析亚马逊客户评论
-router.post('/analyze-review', protect, checkFeatureAccess('amazon_review_analysis'), async (req, res) => {
+router.post('/analyze-review', protect, createUnifiedFeatureMiddleware('amazon_review_analysis'), async (req, res) => {
     try {
         const {
             customerReview,
@@ -782,7 +770,7 @@ replyTemplate: 回复该客户的模板`;
 });
 
 // 亚马逊消费者洞察专家
-router.post('/consumer-insights', protect, checkFeatureAccess('amazon_consumer_insights'), async (req, res) => {
+router.post('/consumer-insights', protect, createUnifiedFeatureMiddleware('amazon_consumer_insights'), async (req, res) => {
     try {
         const {
             productCategory,
@@ -798,13 +786,13 @@ router.post('/consumer-insights', protect, checkFeatureAccess('amazon_consumer_i
         }
         
         // 根据选择的语言设置system消息
-        const systemMessage = outputLanguage !== 'zh' 
-            ? "You are an Amazon product comparison and evaluation expert. Task: Conduct in-depth comparison and analysis of two Amazon products. As an Amazon product comparison and evaluation expert, based on the product information provided, you will compare the products across various dimensions. Additionally, you will analyze the strengths and weaknesses of the products based on the comparison results, taking into account factors such as brand reputation and after-sales service, to provide an in-depth comparison and evaluation. You will also provide improvement and optimization suggestions for the user's product. Please output the comparison results in a table format where appropriate. IMPORTANT: You must respond in English only."
-            : "你是一个亚马逊产品对比和评估专家。任务：进行两款亚马逊产品的深度对比和分析。作为一名亚马逊产品对比和评估专家，根据我给你的产品信息，对产品在各个维度进行对比。不仅如此，我还会根据对比结果，结合产品的品牌口碑、售后服务等因素，分析产品的优缺点，进行深度对比和评估。并对我的产品提出改进，优化建议。请以表格形式输出对比结果。重要：你必须只用中文回复，禁止使用英文。";
+        const systemMessage = outputLanguage === 'en' 
+            ? "You are an Amazon consumer insights expert. Your task is to provide comprehensive consumer insights and analysis for specific product categories and target markets. Based on the product category and target market information provided, you will analyze user personas, usage scenarios, pain points, purchase motivations, and unmet needs. Your analysis should be detailed, practical, and actionable for Amazon sellers. IMPORTANT: You must respond in English only."
+            : "你是一个亚马逊消费者洞察专家。你的任务是为特定的产品类目和目标市场提供全面的消费者洞察和分析。根据提供的产品类目和目标市场信息，你将分析用户画像、使用场景、痛点、购买动机和未满足的需求。你的分析应该详细、实用，并且对亚马逊卖家具有可操作性。重要：你必须只用中文回复，禁止使用英文。";
         
         // 构建用户提示词
         let prompt;
-        if (outputLanguage !== 'zh') {
+        if (outputLanguage === 'en') {
             prompt = `Please provide consumer insights for the following product category and target market in English:
 
 Product Category: ${productCategory}
@@ -1096,7 +1084,7 @@ unmetNeeds:
 });
 
 // 亚马逊客户邮件回复
-router.post('/customer-email', protect, checkFeatureAccess('amazon_customer_email'), async (req, res) => {
+router.post('/customer-email', protect, createUnifiedFeatureMiddleware('amazon_customer_email'), async (req, res) => {
     try {
         const {
             customerEmail,
@@ -1236,7 +1224,7 @@ suggestion: 对此案例的进一步处理建议，包括可能的交叉销售�
 });
 
 // FBA索赔邮件
-router.post('/fba-claim', protect, checkFeatureAccess('fba_claim_email'), async (req, res) => {
+router.post('/fba-claim', protect, createUnifiedFeatureMiddleware('fba_claim_email'), async (req, res) => {
     try {
         const {
             orderIssue,
@@ -1256,13 +1244,13 @@ router.post('/fba-claim', protect, checkFeatureAccess('fba_claim_email'), async 
         }
         
         // 根据选择的语言设置system消息
-        const systemMessage = outputLanguage !== 'zh' 
+        const systemMessage = outputLanguage === 'en' 
             ? "As an Amazon top operations expert, you are proficient in Amazon's policies and rules, and familiar with techniques for communicating with Amazon customer service. Now I need you to write an FBA claim email as a seller based on the order issue description. Here are the requirements for this email: 1. Be polite 2. Ensure a high success rate for the claim. Please respond in English only."
             : "作为一个亚马逊顶级运营专家，你精通亚马逊的各项政策和规则要求，并熟悉与亚马逊客服沟通的技巧。现在我需要你以卖家身份根据订单的问题描述撰写一封FBA索赔邮件。以下是这封邮件的要求:\n1.保持礼貌\n2.保障索赔成功率\n请只用中文回复，不要使用任何英文。";
         
         // 构建用户提示词
         let prompt;
-        if (outputLanguage !== 'zh') {
+        if (outputLanguage === 'en') {
             prompt = `Please generate a professional FBA claim email based on the following information:
 
 Order Issue Description: ${orderIssue}
@@ -1372,7 +1360,7 @@ claimTips: 提高索赔成功率的实用建议（包括应附加哪些证据、
 });
 
 // 产品对比
-router.post('/product-comparison', protect, checkFeatureAccess('product_comparison'), async (req, res) => {
+router.post('/product-comparison', protect, createUnifiedFeatureMiddleware('product_comparison'), async (req, res) => {
     try {
         const {
             yourProduct,
@@ -1392,13 +1380,13 @@ router.post('/product-comparison', protect, checkFeatureAccess('product_comparis
         }
         
         // 根据选择的语言设置system消息
-        const systemMessage = outputLanguage !== 'zh' 
+        const systemMessage = outputLanguage === 'en' 
             ? "You are an Amazon product comparison and evaluation expert. Task: Conduct in-depth comparison and analysis of two Amazon products. As an Amazon product comparison and evaluation expert, based on the product information provided, you will compare the products across various dimensions. Additionally, you will analyze the strengths and weaknesses of the products based on the comparison results, taking into account factors such as brand reputation and after-sales service, to provide an in-depth comparison and evaluation. You will also provide improvement and optimization suggestions for the user's product. Please output the comparison results in a table format where appropriate. IMPORTANT: You must respond in English only."
             : "你是一个亚马逊产品对比和评估专家。任务：进行两款亚马逊产品的深度对比和分析。作为一名亚马逊产品对比和评估专家，根据我给你的产品信息，对产品在各个维度进行对比。不仅如此，我还会根据对比结果，结合产品的品牌口碑、售后服务等因素，分析产品的优缺点，进行深度对比和评估。并对我的产品提出改进，优化建议。请以表格形式输出对比结果。重要：你必须只用中文回复，禁止使用英文。";
         
         // 构建用户提示词
         let prompt;
-        if (outputLanguage !== 'zh') {
+        if (outputLanguage === 'en') {
             prompt = `Please compare the following two products and provide a detailed analysis IN ENGLISH ONLY:
 
 Your Product: ${yourProduct}
@@ -1654,7 +1642,7 @@ ${focusPoints ? `特别关注的对比点: ${focusPoints}` : ''}
 });
 
 // 亚马逊评论生成
-router.post('/review-generator', protect, checkFeatureAccess('amazon_review_generator'), async (req, res) => {
+router.post('/review-generator', protect, createUnifiedFeatureMiddleware('amazon_review_generator'), async (req, res) => {
     try {
         const {
             productName,
@@ -1674,12 +1662,14 @@ router.post('/review-generator', protect, checkFeatureAccess('amazon_review_gene
             });
         }
         
-        // 设置系统提示词
-        const systemMessage = "你是一个热心且细心的亚马逊购物者，我需要你根据我提供的产品信息和例子，帮我生成产品好评。评论要真实自然，像真正的消费者写的，包含具体使用体验和细节，突出产品优点。每条评论应包含标题和内容两部分。";
+        // 根据输出语言设置系统提示词
+        const systemMessage = outputLanguage === 'en' 
+            ? "You are an enthusiastic and detail-oriented Amazon shopper. I need you to generate positive product reviews based on the product information I provide. The reviews should be authentic and natural, like those written by real consumers, including specific usage experiences and details that highlight the product's advantages. Each review should include a title and content."
+            : "你是一个热心且细心的亚马逊购物者，我需要你根据我提供的产品信息和例子，帮我生成产品好评。评论要真实自然，像真正的消费者写的，包含具体使用体验和细节，突出产品优点。每条评论应包含标题和内容两部分。";
         
         // 构建用户提示词
         let prompt;
-        if (outputLanguage !== 'zh') {
+        if (outputLanguage === 'en') {
             prompt = `Please generate ${reviewCount || 5} positive Amazon reviews for the following product in English:
 
 Product Name: ${productName}
@@ -1703,7 +1693,9 @@ Guidelines for the reviews:
 2. Include specific details about product features and benefits
 3. Mention personal experiences and use cases
 4. Vary the writing style and length for each review
-5. All reviews should be positive (4-5 stars)`;
+5. All reviews should be positive (4-5 stars)
+6. Generate exactly ${reviewCount || 5} reviews
+7. Use English only`;
         } else {
             prompt = `请为以下产品生成${reviewCount || 5}条亚马逊好评：
 
@@ -1728,7 +1720,9 @@ ${productDescription ? `产品描述: ${productDescription}` : ''}
 2. 包含产品特性和优点的具体细节
 3. 提及个人使用体验和使用场景
 4. 每条评论的写作风格和长度应有所不同
-5. 所有评论都应该是正面的(4-5星)`;
+5. 所有评论都应该是正面的(4-5星)
+6. 必须生成恰好${reviewCount || 5}条评论
+7. 只使用中文`;
         }
 
         // 调用GLM-4 API
@@ -1784,180 +1778,68 @@ ${productDescription ? `产品描述: ${productDescription}` : ''}
                         .replace(/([^\\])\\t/g, '$1\\\\t'); // 修复制表符
                     
                     logger.info(`尝试清理后的JSON: ${cleanedJson}`);
-                    
-                    try {
-                        result = JSON.parse(cleanedJson);
-                    } catch (innerError) {
-                        // 如果仍然解析失败，尝试从内容中提取标题和正文
-                        logger.warn(`JSON解析失败，尝试从内容中提取标题和正文`);
-                        
-                        // 尝试提取标题和内容
-                        const titleMatch = content.match(/[""]title[""]:\s*[""]([^""]+)[""]/);
-                        const contentMatch = content.match(/[""]content[""]:\s*[""]([^""]+)[""]/);
-                        
-                        result = {
-                            title: titleMatch ? titleMatch[1] : productName,
-                            content: contentMatch ? contentMatch[1] : content
-                        };
-                    }
+                    result = JSON.parse(cleanedJson);
                 } else {
-                    // 如果没有找到JSON格式，尝试分析内容提取标题和正文
-                    logger.warn(`未找到JSON格式，尝试分析内容提取标题和正文`);
-                    
-                    // 尝试通过段落分割提取标题和内容
-                    const paragraphs = content.split(/\n\n+/);
-                    if (paragraphs.length >= 2) {
-                        result = {
-                            title: paragraphs[0].replace(/^[#\s]*/, '').trim(),
-                            content: paragraphs.slice(1).join('\n\n').trim()
-                        };
-                    } else {
-                        result = {
-                            title: productName,
-                            content: content.trim()
-                        };
-                    }
+                    // 如果没有找到JSON格式，创建默认评论
+                    logger.warn(`未找到JSON格式，创建默认评论`);
+                    throw new Error('无法解析JSON格式');
                 }
             }
             
-            // 确保结果包含标题和内容
-            if (!result.title) {
-                result.title = productName;
+            // 验证结果格式
+            if (!result.reviews || !Array.isArray(result.reviews)) {
+                throw new Error('返回格式不正确，缺少reviews数组');
             }
             
-            // 设置语言变量
-            const language = outputLanguage === 'en' ? 'en' : 'zh';
+            // 确保每个评论都有必要的字段
+            result.reviews = result.reviews.map((review, index) => ({
+                title: review.title || `${productName} 评论 ${index + 1}`,
+                content: review.content || (outputLanguage === 'en' ? 'Great product!' : '很棒的产品！'),
+                username: review.username || generateRandomUsername(outputLanguage === 'en')
+            }));
             
-            if (!result.content) {
-                result.content = language === 'en'
-                    ? "Content generation failed. Please try again with more specific keywords."
-                    : "内容生成失败。请尝试使用更具体的关键词再次尝试。";
+            // 如果评论数量不足，补充到要求的数量
+            const targetCount = parseInt(reviewCount) || 5;
+            while (result.reviews.length < targetCount) {
+                const index = result.reviews.length;
+                result.reviews.push({
+                    title: outputLanguage === 'en' ? `Great ${productName}` : `优秀的${productName}`,
+                    content: outputLanguage === 'en' 
+                        ? `This ${productName} from ${brandName} is excellent. Highly recommended!`
+                        : `这款来自${brandName}的${productName}非常出色。强烈推荐！`,
+                    username: generateRandomUsername(outputLanguage === 'en')
+                });
             }
             
-            // 验证语言匹配 - 检查是否符合所选语言
-            const isChinese = /[\u4e00-\u9fa5]/.test(result.title + result.content);
-            const contentLanguageMatches = (language === 'zh' && isChinese) || (language === 'en' && !isChinese);
-            
-            // 如果语言不匹配，尝试进行翻译
-            if (!contentLanguageMatches) {
-                logger.warn(`检测到内容语言(${isChinese ? '中文' : '英文'})与选择的语言(${language})不匹配，尝试转换`);
-                
-                // 构建转换提示
-                const translateSystemPrompt = language === 'en' 
-                    ? "You are a translator. Your task is to translate the provided Chinese content into English. Keep the style and formatting consistent, but ensure the output is natural English."
-                    : "你是一名翻译。你的任务是将提供的英文内容翻译成中文。保持风格和格式一致，但确保输出是自然流畅的中文。";
-                
-                const translatePrompt = language === 'en'
-                    ? `Translate the following Amazon Post from Chinese to English. Maintain the same marketing style and format, but ensure it's in natural English:
-
-Title: ${result.title}
-Content: ${result.content}
-
-Return the translation in JSON format:
-{
-  "title": "Translated title in English",
-  "content": "Translated content in English"
-}`
-                    : `将以下亚马逊Post从英文翻译成中文。保持相同的营销风格和格式，但确保是自然流畅的中文：
-
-标题: ${result.title}
-内容: ${result.content}
-
-以JSON格式返回翻译：
-{
-  "title": "中文翻译的标题",
-  "content": "中文翻译的内容"
-}`;
-                
-                try {
-                    // 调用翻译API
-                    const translateResponse = await axios.post(GLM4_API_URL, {
-                        model: "GLM-4-Plus",
-                        messages: [
-                            {
-                                role: "system",
-                                content: translateSystemPrompt
-                            },
-                            {
-                                role: "user",
-                                content: translatePrompt
-                            }
-                        ],
-                        temperature: 0.3, // 翻译使用较低的temperature确保准确性
-                        top_p: 0.9,
-                        max_tokens: 2000
-                    }, {
-                        headers: getAuthHeaders()
-                    });
-                    
-                    const translateContent = translateResponse.data.choices[0].message.content;
-                    logger.info(`翻译响应: ${translateContent}`);
-                    
-                    // 提取JSON
-                    const translateJsonMatch = translateContent.match(/```(?:json)?\s*([\s\S]*?)```/) || translateContent.match(/(\{[\s\S]*\})/);
-                    if (translateJsonMatch && translateJsonMatch[1]) {
-                        try {
-                            const translatedResult = JSON.parse(translateJsonMatch[1].trim());
-                            
-                            // 检查翻译结果是否符合目标语言
-                            const translatedIsChinese = /[\u4e00-\u9fa5]/.test(translatedResult.title + translatedResult.content);
-                            const translationMatches = (language === 'zh' && translatedIsChinese) || (language === 'en' && !translatedIsChinese);
-                            
-                            if (translationMatches) {
-                                // 翻译成功，更新结果
-                                result = translatedResult;
-                                logger.info(`成功转换为${language === 'zh' ? '中文' : '英文'}内容`);
-                            }
-                        } catch (parseError) {
-                            logger.error(`解析翻译JSON失败: ${parseError.message}`);
-                        }
-                    }
-                } catch (translateError) {
-                    logger.error(`翻译内容失败: ${translateError.message}`);
-                }
-                
-                // 如果翻译失败但是用户要求中文，强制使用中文模板
-                if (language === 'zh' && !/[\u4e00-\u9fa5]/.test(result.title + result.content)) {
-                    logger.warn(`翻译失败，使用备用中文模板`);
-                    result = {
-                        title: `【${productName}】优质产品推荐`,
-                        content: `为您推荐这款优质产品，结合了${productName}的所有优点。这款产品设计精良，功能强大，将为您带来出色的使用体验。它不仅美观大方，而且实用耐用，是您的理想之选。欢迎选购！`
-                    };
-                }
-                
-                // 如果翻译失败但是用户要求英文，强制使用英文模板
-                if (language === 'en' && /[\u4e00-\u9fa5]/.test(result.title + result.content)) {
-                    logger.warn(`翻译失败，使用备用英文模板`);
-                    result = {
-                        title: `[${productName}] Premium Product Recommendation`,
-                        content: `We recommend this premium product that combines all the advantages of ${productName}. This product is well-designed, powerful, and will bring you an excellent user experience. It's not only beautiful but also practical and durable, making it your ideal choice. Welcome to purchase!`
-                    };
-                }
+            // 如果评论数量超过要求，截取到要求的数量
+            if (result.reviews.length > targetCount) {
+                result.reviews = result.reviews.slice(0, targetCount);
             }
             
         } catch (parseError) {
-            logger.error(`解析Post生成响应失败: ${parseError.message}`, { error: parseError });
+            logger.error(`解析评论生成响应失败: ${parseError.message}`);
             
-            // 记录更多调试信息
-            if (response.data && response.data.choices && response.data.choices[0]) {
-                logger.error(`API响应内容: ${JSON.stringify(response.data.choices[0].message)}`);
+            // 提供默认评论
+            const targetCount = parseInt(reviewCount) || 5;
+            const defaultReviews = [];
+            
+            for (let i = 0; i < targetCount; i++) {
+                if (outputLanguage === 'en') {
+                    defaultReviews.push({
+                        title: `Excellent ${productName}`,
+                        content: `I'm very satisfied with this ${productName} from ${brandName}. The quality is outstanding and it works perfectly. Highly recommend this product to anyone looking for a reliable solution.`,
+                        username: generateRandomUsername(true)
+                    });
+                } else {
+                    defaultReviews.push({
+                        title: `优秀的${productName}`,
+                        content: `我对这款来自${brandName}的${productName}非常满意。质量出色，使用效果完美。强烈推荐给任何寻找可靠解决方案的人。`,
+                        username: generateRandomUsername(false)
+                    });
+                }
             }
             
-            // 提供默认响应，确保语言正确
-            result = {
-                title: language === 'en' 
-                    ? `[${productName}] Product Post` 
-                    : `【${productName}】产品推荐`,
-                content: language === 'en'
-                    ? `Check out this amazing product featuring ${productName}. It offers great value and excellent performance.`
-                    : `推荐这款出色的产品，包含${productName}特性。它提供了很高的性价比和出色的性能表现。`
-            };
-            
-            return res.status(200).json({ 
-                success: true,
-                data: result,
-                message: "生成过程中遇到问题，返回默认内容"
-            });
+            result = { reviews: defaultReviews };
         }
 
         // 返回结果
@@ -1967,24 +1849,33 @@ Return the translation in JSON format:
         });
 
     } catch (error) {
-        logger.error(`生成亚马逊Post内容失败: ${error.message}`);
+        logger.error(`生成亚马逊评论失败: ${error.message}`);
         console.error("API错误详情:", error.response?.data || error.message);
         
-        // 提供默认响应，确保语言正确
-        const language = req.body.outputLanguage === 'en' ? 'en' : 'zh';
-        const defaultResult = {
-            title: language === 'en' 
-                ? `[${productName || 'Product'}] Amazon Post` 
-                : `【${productName || '产品'}】亚马逊推荐`,
-            content: language === 'en'
-                ? `This is a default post content due to generation error. Please try again later.`
-                : `由于生成错误，这是默认的帖子内容。请稍后再试。`
-        };
+        // 提供默认评论作为后备
+        const targetCount = parseInt(req.body.reviewCount) || 5;
+        const defaultReviews = [];
+        
+        for (let i = 0; i < targetCount; i++) {
+            if (req.body.outputLanguage === 'en') {
+                defaultReviews.push({
+                    title: `Great Product`,
+                    content: `This is a high-quality product that I would recommend to others. The performance is excellent and it meets all my expectations.`,
+                    username: generateRandomUsername(true)
+                });
+            } else {
+                defaultReviews.push({
+                    title: `优质产品`,
+                    content: `这是一款我会推荐给其他人的高质量产品。性能出色，完全符合我的期望。`,
+                    username: generateRandomUsername(false)
+                });
+            }
+        }
         
         res.status(200).json({
             success: true,
-            data: defaultResult,
-            error: "生成过程中出现错误，返回默认内容"
+            data: { reviews: defaultReviews },
+            error: "生成过程中出现错误，返回默认评论"
         });
     }
 });
@@ -2004,7 +1895,7 @@ function generateRandomUsername(isEnglish) {
 }
 
 // 亚马逊评论回复
-router.post('/review-response', protect, checkFeatureAccess('amazon_review_response'), async (req, res) => {
+router.post('/review-response', protect, createUnifiedFeatureMiddleware('amazon_review_response'), async (req, res) => {
     try {
         const {
             reviewContent,
@@ -2079,7 +1970,7 @@ ${brandName ? `品牌名称：${brandName}` : ''}
 });
 
 // 亚马逊关键词推荐
-router.post('/keyword-recommender', protect, checkFeatureAccess('amazon_keyword_recommender'), async (req, res) => {
+router.post('/keyword-recommender', protect, createUnifiedFeatureMiddleware('amazon_keyword_recommender'), async (req, res) => {
     try {
         const {
             productDescription,
@@ -2249,7 +2140,7 @@ Product Description: ${productDescription}`
 });
 
 // 亚马逊品牌起名
-router.post('/brand-naming', protect, checkFeatureAccess('amazon_brand_naming'), async (req, res) => {
+router.post('/brand-naming', protect, createUnifiedFeatureMiddleware('amazon_brand_naming'), async (req, res) => {
     try {
         const {
             productDescription,
@@ -2469,7 +2360,7 @@ ${productDescription}
 });
 
 // 亚马逊Post生成
-router.post('/post-creator', protect, checkFeatureAccess('amazon_post_creator'), async (req, res) => {
+router.post('/post-creator', protect, createUnifiedFeatureMiddleware('amazon_post_creator'), async (req, res) => {
     try {
         const {
             postTitle,
@@ -2795,7 +2686,7 @@ Return the translation in JSON format:
 });
 
 // 亚马逊客服case内容生成
-router.post('/case-creator', protect, checkFeatureAccess('amazon_case_creator'), async (req, res) => {
+router.post('/case-creator', protect, createUnifiedFeatureMiddleware('amazon_case_creator'), async (req, res) => {
     try {
         const {
             issueDescription,
@@ -3056,7 +2947,7 @@ ${accountInfo ? `账户信息: ${accountInfo}` : ''}
 });
 
 // 选品的改款分析和建议
-router.post('/product-improvement', protect, checkFeatureAccess('product_improvement_analysis'), async (req, res) => {
+router.post('/product-improvement', protect, createUnifiedFeatureMiddleware('product_improvement_analysis'), async (req, res) => {
     try {
         const {
             title,
@@ -3309,7 +3200,7 @@ Description: ${descriptionText}
 });
 
 // 品牌信息收集和总结
-router.post('/brand-info', protect, checkFeatureAccess('amazon_brand_info'), async (req, res) => {
+router.post('/brand-info', protect, createUnifiedFeatureMiddleware('amazon_brand_info'), async (req, res) => {
     try {
         const {
             brandName,

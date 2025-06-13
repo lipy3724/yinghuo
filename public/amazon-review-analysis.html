@@ -454,15 +454,7 @@
                 loadingOverlay.classList.remove('hidden');
                 processingText.textContent = '正在分析客户评论，请稍候...';
                 
-                try {
-                    // 记录功能使用并检查积分
-                    const canProceed = await trackFeatureUsage('amazon_review_analysis');
-                    if (!canProceed) {
-                        loadingOverlay.classList.add('hidden');
-                        return;
-                    }
-                    
-                    // 获取表单数据
+                try {// 获取表单数据
                     const formData = {
                         customerReview: document.getElementById('customerReview').value,
                         outputLanguage: document.querySelector('input[name="outputLanguage"]:checked').value
@@ -495,6 +487,11 @@
                     loadingOverlay.classList.add('hidden');
                     resultContainer.classList.remove('hidden');
                     emptyResultState.classList.add('hidden');
+                    
+                    // 特性追踪
+                    if (typeof trackFeatureUsage === 'function') {
+                        trackFeatureUsage('amazon_review_analysis');
+                    }
                     
                     // 在小屏幕设备上，自动滚动到结果区域
                     if (window.innerWidth < 768) {

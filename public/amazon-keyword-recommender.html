@@ -279,17 +279,8 @@
             document.getElementById('loadingSpinner').style.display = 'block';
             document.getElementById('generateBtn').disabled = true;
             
-            // 记录功能使用并检查积分
-            trackFeatureUsage('amazon_keyword_recommender').then(canProceed => {
-                if (!canProceed) {
-                    // 隐藏加载状态
-                    document.getElementById('loadingSpinner').style.display = 'none';
-                    document.getElementById('generateBtn').disabled = false;
-                    return;
-                }
-                
-                // 调用API
-                fetch('/api/amazon-listing/keyword-recommender', {
+            // 调用API
+            fetch('/api/amazon-listing/keyword-recommender', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -309,6 +300,11 @@
                 .then(data => {
                     if (data.success) {
                         displayKeywords(data.data.keywords);
+                        
+                        // 特性追踪
+                        if (typeof trackFeatureUsage === 'function') {
+                            trackFeatureUsage('amazon_keyword_recommender');
+                        }
                     } else {
                         alert('生成失败: ' + (data.error || '未知错误'));
                     }
@@ -322,13 +318,6 @@
                     document.getElementById('loadingSpinner').style.display = 'none';
                     document.getElementById('generateBtn').disabled = false;
                 });
-            }).catch(error => {
-                console.error('积分检查失败:', error);
-                alert('积分检查失败，请稍后再试');
-                // 隐藏加载状态
-                document.getElementById('loadingSpinner').style.display = 'none';
-                document.getElementById('generateBtn').disabled = false;
-            });
         }
 
         // 显示关键词

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { FeatureUsage } = require('../models/FeatureUsage');
 const { Op } = require('sequelize');
+const { DataTypes } = require('sequelize');
 
 // 功能配置
 const FEATURES = {
@@ -89,8 +90,8 @@ const FEATURES = {
  */
 const checkFeatureAccess = (featureName) => {
   return async (req, res, next) => {
-    // 获取功能配置
     const featureConfig = FEATURES[featureName];
+    
     if (!featureConfig) {
       return res.status(400).json({
         success: false,
@@ -119,150 +120,46 @@ const checkFeatureAccess = (featureName) => {
       
       // 检查是否在免费使用次数内
       if (usage.usageCount < featureConfig.freeUsage) {
-        // 在免费使用次数内，不扣除积分
+        // 在免费使用次数内，允许使用
         console.log(`用户ID ${userId} 使用 ${featureName} 功能的免费次数 ${usage.usageCount + 1}/${featureConfig.freeUsage}`);
         
         // 获取用户信息，以便正确设置remainingCredits
         const user = await User.findByPk(userId);
-        
-        // 更新使用记录
-        usage.usageCount += 1;
-        usage.lastUsedAt = new Date();
-        
-        // 对于异步任务类功能，不在这里添加任务记录，而是在任务创建时添加
-        // 这样可以避免生成多条记录
-        if (featureName !== 'VIDEO_STYLE_REPAINT' && 
-            featureName !== 'DIGITAL_HUMAN_VIDEO' && 
-            featureName !== 'TEXT_TO_IMAGE' && 
-            featureName !== 'IMAGE_COLORIZATION' &&
-            featureName !== 'LOCAL_REDRAW' &&
-            featureName !== 'IMAGE_EXPANSION' &&
-            featureName !== 'text-to-video' &&
-            featureName !== 'image-to-video' &&
-            featureName !== 'MULTI_IMAGE_TO_VIDEO' &&
-            featureName !== 'VIDEO_SUBTITLE_REMOVER' &&
-            featureName !== 'IMAGE_SHARPENING' &&
-            featureName !== 'image-upscaler' &&
-            featureName !== 'GLOBAL_STYLE' &&
-            featureName !== 'DIANTU') {
-          // 在details字段中明确标记这是免费使用
-          try {
-            const details = JSON.parse(usage.details || '{}');
-            // 准备任务列表
-            const tasks = details.tasks || [];
-            // 添加新的免费任务记录
-            const taskId = `${featureName.toLowerCase()}-free-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-            tasks.push({
-              taskId: taskId,
-              creditCost: 0,
-              isFree: true,
-              timestamp: new Date()
-            });
-            
-            usage.details = JSON.stringify({
-              ...details,
-              tasks: tasks,
-              lastUsage: {
-                timestamp: new Date(),
-                isFree: true,
-                creditCost: 0
-              }
-            });
-          } catch (e) {
-            console.error('处理免费使用记录失败:', e);
-            // 创建新的details对象
-            usage.details = JSON.stringify({
-              tasks: [{
-                taskId: `${featureName.toLowerCase()}-free-${Date.now()}`,
-                creditCost: 0,
-                isFree: true,
-                timestamp: new Date()
-              }],
-              lastUsage: {
-                timestamp: new Date(),
-                isFree: true,
-                creditCost: 0
-              }
-            });
-          }
-        } else {
-          // 对于视频风格重绘和数字人视频功能，只标记免费使用状态
-          try {
-            const details = JSON.parse(usage.details || '{}');
-            usage.details = JSON.stringify({
-              ...details,
-              lastUsage: {
-                timestamp: new Date(),
-                isFree: true,
-                creditCost: 0
-              }
-            });
-          } catch (e) {
-            console.error('处理免费使用记录失败:', e);
-            usage.details = JSON.stringify({
-              lastUsage: {
-                timestamp: new Date(),
-                isFree: true,
-                creditCost: 0
-              }
-            });
-          }
-        }
-        
-        await usage.save();
         
         // 将免费使用信息添加到请求对象
         req.featureUsage = {
           usageType: 'free',
           creditCost: 0,
           isFree: true,
-          remainingCredits: user.credits
+          remainingCredits: user.credits,
+          shouldUseTrackUsage: true // 标记应该使用track-usage API
         };
         
         next();
         return;
       }
       
-      // 处理积分计算
+      // 超过免费次数，需要检查积分是否足够
       let creditCost = 0;
       
-      // 根据功能类型计算积分消耗
+      // 处理积分计算
       if (typeof featureConfig.creditCost === 'function') {
-        // 针对不同功能获取duration参数
-        let duration = 0;
-        
-        if (featureName === 'MULTI_IMAGE_TO_VIDEO') {
-          // 多图转视频，从body中获取duration参数
-          duration = parseInt(req.body.duration) || 30; // 默认30秒
-          creditCost = featureConfig.creditCost(duration);
-          console.log(`计算多图转视频积分: 时长=${duration}秒, 消耗积分=${creditCost}`);
-        } 
-        else if (featureName === 'VIDEO_SUBTITLE_REMOVER') {
-          // 视频去除字幕，从查询参数或body中获取duration
-          duration = parseInt(req.query.duration || req.body.duration) || 30;
-          creditCost = featureConfig.creditCost(duration);
-          console.log(`计算视频去除字幕积分: 时长=${duration}秒, 消耗积分=${creditCost}`);
-        }
-        else if (featureName === 'DIGITAL_HUMAN_VIDEO') {
-          // 数字人视频功能，改为在结果返回后根据生成视频时长计费
+        // 动态计算积分的功能
+        if (featureName === 'DIGITAL_HUMAN_VIDEO') {
+          // 数字人视频功能，在结果返回后根据生成视频时长计费
           // 这里仅做权限检查，不预先扣除积分
           console.log(`数字人视频功能权限检查，积分将在任务完成后根据实际生成视频时长扣除`);
-          
-          // 将请求标记为数字人视频任务，在请求对象中添加标记
-          req.isDigitalHumanVideo = true;
-          
-          // 这里只需要检查用户是否有最低积分限制（例如20积分）
           creditCost = 20; // 仅检查用户是否有至少20积分，实际不会扣除
         }
         else if (featureName === 'VIDEO_STYLE_REPAINT') {
           // 视频风格重绘功能，不预先扣除积分，而是在任务完成后扣除
           console.log(`视频风格重绘功能权限检查 - 跳过积分扣除`);
-          
-          // 将请求标记为视频风格重绘任务，在请求对象中添加标记
-          req.isVideoStyleRepaint = true;
-          
-          // 这里只需要检查用户是否有最低积分限制（例如10积分）
           creditCost = 10; // 仅检查用户是否有至少10积分，实际不会扣除
+        }
+        else if (featureName === 'VIDEO_SUBTITLE_REMOVER') {
+          // 视频去除字幕功能，不预先扣除积分，而是在任务完成后扣除
+          console.log(`视频去除字幕功能权限检查 - 跳过积分扣除`);
+          creditCost = 30; // 仅检查用户是否有至少30积分，实际不会扣除
         }
         else {
           // 其他需要动态计算积分的功能
@@ -273,7 +170,7 @@ const checkFeatureAccess = (featureName) => {
         creditCost = featureConfig.creditCost;
       }
       
-      // 超过免费次数，检查用户积分
+      // 检查用户积分是否足够
       const user = await User.findByPk(userId);
       
       if (user.credits < creditCost) {
@@ -289,161 +186,24 @@ const checkFeatureAccess = (featureName) => {
         });
       }
       
-      // 对于所有异步任务类功能，不在此扣除积分，而是在任务创建/完成后根据结果扣除
-      if (featureName === 'DIGITAL_HUMAN_VIDEO' || 
-          featureName === 'VIDEO_STYLE_REPAINT' || 
-          featureName === 'TEXT_TO_IMAGE' ||
-          featureName === 'IMAGE_COLORIZATION' ||
-          featureName === 'LOCAL_REDRAW' ||
-          featureName === 'IMAGE_EXPANSION' ||
-          featureName === 'text-to-video' ||
-          featureName === 'image-to-video' ||
-          featureName === 'MULTI_IMAGE_TO_VIDEO' ||
-          featureName === 'VIDEO_SUBTITLE_REMOVER' ||
-          featureName === 'IMAGE_SHARPENING' ||
-          featureName === 'image-upscaler' ||
-          featureName === 'GLOBAL_STYLE' ||
-          featureName === 'DIANTU') {
-        // 更新使用记录，但不扣除积分
-        usage.usageCount += 1;
-        usage.lastUsedAt = new Date();
-        await usage.save();
-        
-        // 添加使用信息到请求对象 - 这里已经超过免费次数，应该标记为付费
-        req.featureUsage = {
-          usageType: 'paid', // 超过免费次数，标记为付费
-          creditCost: creditCost, // 传递积分消耗给任务处理函数
-          remainingCredits: user.credits,
-          shouldChargeCredits: true // 明确标记需要扣除积分
-        };
-        
-        next();
-        return;
-      }
-      
-      // 检查是否已经通过track-usage扣除过积分
-      // 方法1: 检查请求体中是否有creditAlreadyCharged标记
-      // 方法2: 检查session中是否有该功能的扣费记录
-      // 方法3: 实时检查最近一分钟内是否有该用户使用该功能的track-usage记录
-
-      // 使用简单有效的方法: 检查是否是在一分钟内重复使用同一功能
-      const now = new Date();
-      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-      
-      // 如果上次使用时间在一分钟内，并且已经扣除过积分(credits字段存在)，则可能是重复扣费
-      const potentialDuplicate = usage.lastUsedAt && 
-                                 new Date(usage.lastUsedAt) > oneMinuteAgo && 
-                                 usage.credits > 0;
-      
-      if (!potentialDuplicate) {
-        // 非重复请求，正常扣除积分
-        user.credits -= creditCost;
-        await user.save();
-        console.log(`用户ID ${userId} 使用 ${featureName} 功能，扣除 ${creditCost} 积分，剩余 ${user.credits} 积分`);
-        
-        // 在任务记录中设置支付状态
-        req.featureUsage = {
-          usageType: 'paid',
-          creditCost: creditCost,
-          isFree: false, // 非免费使用
-          remainingCredits: user.credits
-        };
-      } else {
-        console.log(`检测到用户ID ${userId} 一分钟内重复使用 ${featureName} 功能，避免重复扣费`);
-        
-        // 防止重复扣费时，也添加使用信息到请求对象
-        req.featureUsage = {
-          usageType: 'duplicate',
-          creditCost: 0, // 重复请求不扣费
-          isFree: true, // 标记为免费
-          remainingCredits: user.credits
-        };
-      }
-      
-      // 更新使用记录
-      usage.usageCount += 1;
-      usage.lastUsedAt = new Date();
-      
-      // 对于亚马逊助手功能，保存更详细的使用记录
-      if (featureName.startsWith('amazon_') || featureName === 'product_comparison' || featureName === 'product_improvement_analysis' || featureName === 'fba_claim_email') {
-        try {
-          // 解析现有详情
-          let details = {};
-          try {
-            details = usage.details ? JSON.parse(usage.details) : {};
-          } catch (e) {
-            details = {};
-          }
-          
-          // 准备任务列表
-          const tasks = details.tasks || [];
-          
-          // 获取请求正文的摘要信息
-          let requestSummary = '';
-          if (req.body) {
-            if (req.body.prompt) {
-              requestSummary = req.body.prompt.substring(0, 100) + '...';
-            } else if (req.body.productName) {
-              requestSummary = req.body.productName;
-            } else if (req.body.review) {
-              requestSummary = req.body.review.substring(0, 100) + '...';
-            } else if (req.body.productKeywords) {
-              requestSummary = req.body.productKeywords;
-            } else {
-              // 尝试从请求体中获取任何可能的标识符
-              const keys = Object.keys(req.body);
-              if (keys.length > 0) {
-                const key = keys[0];
-                if (typeof req.body[key] === 'string') {
-                  requestSummary = `${key}: ${req.body[key].substring(0, 50)}...`;
-                } else {
-                  requestSummary = `使用了 ${keys.join(', ')} 参数`;
-                }
-              } else {
-                requestSummary = '使用了亚马逊助手功能';
-              }
-            }
-          }
-          
-          // 添加新的任务记录
-          const taskId = Date.now().toString(); // 使用时间戳作为任务ID
-          tasks.push({
-            taskId: taskId,
-            creditCost: creditCost,
-            timestamp: new Date(),
-            summary: requestSummary
-          });
-          
-          // 不重复累加积分消耗，因为已经从用户账户中扣除了积分
-          // 这里移除累加积分的代码，避免双重计费
-          // usage.credits = (usage.credits || 0) + creditCost;
-          
-          // 更新使用记录详情
-          usage.details = JSON.stringify({
-            ...details,
-            tasks: tasks
-          });
-        } catch (detailsError) {
-          console.error('保存亚马逊助手功能使用详情失败:', detailsError);
-          // 继续处理，不影响用户使用
-        }
-      }
-      
-      await usage.save();
-      
-      // 添加使用信息到请求对象
+      // 积分足够，允许使用功能
+      // 不在这里扣除积分，而是标记需要使用track-usage API
       req.featureUsage = {
         usageType: 'paid',
         creditCost: creditCost,
-        remainingCredits: user.credits
+        isFree: false,
+        remainingCredits: user.credits,
+        shouldUseTrackUsage: true // 标记应该使用track-usage API
       };
+      
+      console.log(`用户ID ${userId} 使用 ${featureName} 功能权限检查通过，需要消耗 ${creditCost} 积分`);
       
       next();
     } catch (error) {
-      console.error('检查功能访问权限出错:', error);
+      console.error('功能访问权限检查出错:', error);
       res.status(500).json({
         success: false,
-        message: '服务器错误，无法验证访问权限',
+        message: '服务器错误，无法验证功能访问权限',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }

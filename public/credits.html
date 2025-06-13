@@ -570,16 +570,31 @@
                 'VIDEO_SUBTITLE_REMOVER': '视频去除字幕',
                 'MULTI_IMAGE_TO_VIDEO': '多图转视频',
                 'DIGITAL_HUMAN_VIDEO': '视频数字人',
-                'VIDEO_STYLE_REPAINT': '视频风格重绘'
+                'VIDEO_STYLE_REPAINT': '视频风格重绘',
+                // 亚马逊助手功能
+                'amazon_video_script': '亚马逊广告视频脚本生成',
+                'amazon_brand_info': '品牌信息收集和总结',
+                'amazon_brand_naming': '亚马逊品牌起名',
+                'amazon_listing': '亚马逊Listing写作与优化',
+                'amazon_search_term': '亚马逊后台搜索词',
+                'amazon_review_analysis': '亚马逊客户评论分析',
+                'amazon_consumer_insights': '亚马逊消费者洞察专家',
+                'amazon_customer_email': '亚马逊客户邮件回复',
+                'amazon_review_generator': '亚马逊评论生成',
+                'amazon_review_response': '亚马逊评论回复',
+                'amazon_post_creator': '创建亚马逊Post',
+                'amazon_keyword_recommender': '亚马逊关键词推荐',
+                'amazon_case_creator': '亚马逊客服case内容',
+                'product_improvement_analysis': '产品改进分析',
+                'product_comparison': '产品对比',
+                'fba_claim_email': 'FBA索赔邮件'
             };
             
-            // 过滤掉亚马逊相关功能
+            // 显示所有功能的使用记录（包括亚马逊助手功能）
             const filteredFeatures = Object.keys(featureUsages).filter(key => {
-                const featureName = featureUsages[key].name;
-                return !(featureName.startsWith('amazon_') || 
-                       featureName === 'product_improvement_analysis' || 
-                       featureName === 'product_comparison' || 
-                       featureName === 'fba_claim_email');
+                const usage = featureUsages[key];
+                // 只显示有使用记录的功能（lastUsed不为null）
+                return usage.lastUsed !== null;
             });
             
             if (filteredFeatures.length === 0) {
@@ -597,6 +612,17 @@
                 
                 const card = document.createElement('div');
                 card.className = 'feature-card';
+                
+                // 根据功能类型显示不同的信息
+                let rightContent = '';
+                if (usage.freeUsageLimit > 0) {
+                    // 有免费次数的功能
+                    rightContent = `<p class="text-indigo-600">剩余试用次数: <span class="font-bold">${usage.remainingFreeUsage}</span>/${usage.freeUsageLimit}</p>`;
+                } else {
+                    // 没有免费次数的功能（如亚马逊助手）
+                    rightContent = `<p class="text-orange-600">每次使用: <span class="font-bold">${usage.creditCost}</span> 积分</p>`;
+                }
+                
                 card.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
@@ -604,7 +630,7 @@
                             <p class="text-sm text-gray-500">${lastUsedText}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-indigo-600">剩余试用次数: <span class="font-bold">${usage.remainingFreeUsage}</span>/${usage.freeUsageLimit}</p>
+                            ${rightContent}
                         </div>
                     </div>
                 `;

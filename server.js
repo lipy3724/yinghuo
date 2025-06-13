@@ -88,9 +88,12 @@ const amazonListingRoutes = require('./routes/amazon-listing-api');
 // 导入认证中间件
 const { protect } = require('./middleware/auth');
 // 导入功能访问中间件和功能配置
-const { checkFeatureAccess, FEATURES } = require('./middleware/featureAccess');
+const { FEATURES } = require('./middleware/featureAccess');
+const { createUnifiedFeatureMiddleware } = require('./middleware/unifiedFeatureUsage');
 // 导入数据库同步函数
 const syncDatabase = require('./config/sync-db');
+// 导入清理任务
+const { startCleanupTasks } = require('./utils/cleanupTasks');
 // 导入阿里云API工具
 const axios = require('axios');
 
@@ -324,8 +327,8 @@ app.get('/admin', (req, res) => {
   res.redirect('/admin-login.html');
 });
 
-// 多图转视频API - 确保在主要API路由中注册
-app.post('/api/multi-image-to-video', protect, checkFeatureAccess('MULTI_IMAGE_TO_VIDEO'), async (req, res) => {
+// 多图转视频API - 使用统一中间件
+app.post('/api/multi-image-to-video', protect, createUnifiedFeatureMiddleware('MULTI_IMAGE_TO_VIDEO'), async (req, res) => {
     try {
         console.log('收到多图转视频请求:', JSON.stringify(req.body, null, 2));
         
@@ -365,6 +368,10 @@ app.post('/api/multi-image-to-video', protect, checkFeatureAccess('MULTI_IMAGE_T
         if (duration && (duration < 5 || duration > 60)) {
             return res.status(400).json({ success: false, message: '视频时长应在5-60秒范围内' });
         }
+        
+        // 从统一中间件获取积分使用信息
+        const userId = req.user.id;
+        const { usageType, creditCost, isFree } = req.featureUsage;
         
         // 继续处理请求
         
@@ -494,65 +501,35 @@ app.post('/api/multi-image-to-video', protect, checkFeatureAccess('MULTI_IMAGE_T
         
         // 记录用户的任务信息
         global.multiImageToVideoTasks[taskId] = {
-            userId: req.user.id,
-            creditCost: req.featureUsage?.creditCost || 30, // 默认消费30积分
+            userId: userId,
+            creditCost: creditCost,
             hasChargedCredits: true,
             timestamp: new Date(),
             imageCount: images.length,
             duration: duration || 10,
             description: '多图转视频',
-            taskId: taskId
+            taskId: taskId,
+            isFree: isFree
         };
         
-        console.log(`多图转视频任务信息已保存: 用户ID=${req.user.id}, 任务ID=${taskId}, 积分=${global.multiImageToVideoTasks[taskId].creditCost}`);
+        console.log(`多图转视频任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
         
-        // 同步将任务信息保存到数据库的FeatureUsage记录中
+        // 使用统一中间件的saveTaskDetails函数保存任务详情
         try {
-            // 修复导入方式 - 正确获取FeatureUsage模型
-            const { FeatureUsage } = require('./models/FeatureUsage');
-            const featureUsage = await FeatureUsage.findOne({
-                where: { 
-                    userId: req.user.id, 
-                    featureName: 'MULTI_IMAGE_TO_VIDEO' 
-                }
-            });
-            
-            if (featureUsage) {
-                // 解析现有details
-                let details = {};
-                if (featureUsage.details) {
-                    try {
-                        details = JSON.parse(featureUsage.details);
-                    } catch (e) {
-                        console.error('解析FeatureUsage.details失败:', e);
-                        details = {};
-                    }
-                }
-                
-                // 确保tasks数组存在
-                if (!details.tasks) {
-                    details.tasks = [];
-                }
-                
-                // 添加新任务
-                details.tasks.push({
-                    taskId: taskId,
-                    creditCost: global.multiImageToVideoTasks[taskId].creditCost,
-                    timestamp: new Date(),
+            const { saveTaskDetails } = require('./middleware/unifiedFeatureUsage');
+            await saveTaskDetails(req.featureUsage.usage, {
+                taskId: taskId,
+                creditCost: creditCost,
+                isFree: isFree,
+                extraData: {
                     description: '多图转视频',
                     imageCount: images.length,
                     duration: duration || 10
-                });
-                
-                // 更新数据库记录
-                await featureUsage.update({
-                    details: JSON.stringify(details)
-                });
-                
-                console.log(`多图转视频任务ID=${taskId}已同步到数据库FeatureUsage记录`);
-            }
+                }
+            });
+            console.log(`多图转视频任务ID=${taskId}已通过统一中间件保存到数据库`);
         } catch (dbError) {
-            console.error('同步任务信息到数据库失败:', dbError);
+            console.error('通过统一中间件保存任务信息失败:', dbError);
             // 继续处理，不影响主要功能
         }
         
@@ -820,50 +797,25 @@ app.use((req, res, next) => {
 });
 
 // 注册视频数字人API路由 - 确保这个路由在其他API路由之前注册
+// 导入数字人视频中间件
+const { createDigitalHumanMiddleware } = require('./middleware/unifiedFeatureUsage');
+
+// 创建数字人视频中间件实例
+const digitalHumanMiddleware = createDigitalHumanMiddleware((videoDuration) => {
+  // 根据视频时长计算积分：每秒9积分
+  return Math.ceil(videoDuration * 9);
+});
+
 // 使用已定义在文件底部的配置和处理函数
-app.post('/api/digital-human/upload', protect, async (req, res) => {
+app.post('/api/digital-human/upload', protect, digitalHumanMiddleware, async (req, res) => {
   console.log('进入数字人视频上传路由 - 预处理');
   
   try {
     // 获取用户ID
     const userId = req.user.id;
     
-    // 检查用户是否有权限使用数字人视频功能
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: '用户不存在'
-      });
-    }
-    
-    // 获取用户的功能使用记录
-    let usage = await FeatureUsage.findOne({
-      where: {
-        userId: userId,
-        featureName: 'DIGITAL_HUMAN_VIDEO'
-      }
-    });
-    
-    // 在这里只检查权限，但不更新usageCount，仅更新lastUsedAt
-    if (!usage) {
-      // 如果用户之前没有使用过该功能，创建新记录
-      usage = await FeatureUsage.create({
-        userId: userId,
-        featureName: 'DIGITAL_HUMAN_VIDEO',
-        usageCount: 0, // 初始化为0，在任务完成后才会增加
-        lastUsedAt: new Date(),
-        resetDate: new Date().toISOString().split('T')[0],
-        credits: 0,
-        details: JSON.stringify({ tasks: [] })
-      });
-    } else {
-      // 只更新最后使用时间，不增加usageCount
-      usage.lastUsedAt = new Date();
-      await usage.save();
-    }
-    
-    console.log('数字人视频功能权限检查，积分将在任务完成后根据实际生成视频时长扣除');
+    // 用户验证和权限检查已由中间件处理
+    console.log('数字人视频功能权限检查通过，积分将在任务完成后根据实际生成视频时长扣除');
     
     // 继续处理上传请求...
     if (!digitalHumanUpload) {
@@ -932,6 +884,71 @@ app.post('/api/digital-human/upload', protect, async (req, res) => {
         imageUrl: imageUrl
       });
 
+      // 分析视频时长并检查/扣除积分
+      let actualCreditCost = 0;
+      let isChargedCredits = false;
+      
+      try {
+        console.log('开始分析上传视频的时长...');
+        const videoDuration = await getVideoDuration(videoUrl);
+        console.log(`分析得到视频时长: ${videoDuration}秒`);
+        
+        // 检查是否为免费使用
+        if (!req.featureUsage?.isFreeUsage) {
+          // 计算需要的积分
+          const getDynamicCredits = req.featureUsage.getDynamicCredits;
+          actualCreditCost = getDynamicCredits ? getDynamicCredits(videoDuration) : Math.ceil(videoDuration * 9);
+          
+          console.log(`视频时长${videoDuration}秒，需要积分: ${actualCreditCost}`);
+          
+          // 检查用户积分是否足够
+          const user = await User.findByPk(req.user.id);
+          if (user.credits >= actualCreditCost) {
+            // 积分足够，扣除积分
+            user.credits -= actualCreditCost;
+            await user.save();
+            isChargedCredits = true;
+            
+            // 更新使用次数
+            const usage = req.featureUsage.usage;
+            usage.usageCount += 1;
+            usage.lastUsedAt = new Date();
+            await usage.save();
+            
+            console.log(`用户ID ${req.user.id} 扣除 ${actualCreditCost} 积分，剩余 ${user.credits} 积分`);
+          } else {
+            // 积分不足，拒绝请求
+            return res.status(402).json({
+              success: false,
+              message: `积分不足，需要 ${actualCreditCost} 积分，当前只有 ${user.credits} 积分`,
+              data: {
+                requiredCredits: actualCreditCost,
+                currentCredits: user.credits,
+                videoDuration: videoDuration
+              }
+            });
+          }
+        } else {
+          // 免费使用，更新使用次数
+          const usage = req.featureUsage.usage;
+          usage.usageCount += 1;
+          usage.lastUsedAt = new Date();
+          await usage.save();
+          
+          console.log(`用户ID ${req.user.id} 使用免费次数，视频时长: ${videoDuration}秒`);
+        }
+        
+        // 保存视频时长到请求对象
+        req.uploadVideoDuration = videoDuration;
+        
+      } catch (durationError) {
+        console.error('分析视频时长失败:', durationError);
+        return res.status(500).json({
+          success: false,
+          message: '无法分析视频时长，请重试'
+        });
+      }
+
       // 调用VideoRetalk API创建任务
       console.log('开始创建VideoRetalk任务...');
       // 从请求参数中获取是否需要扩展视频
@@ -949,8 +966,12 @@ app.post('/api/digital-human/upload', protect, async (req, res) => {
           
           global.digitalHumanTasks[taskId] = {
             userId: req.user.id,
-            hasChargedCredits: false, // 标记是否已扣除积分
-            createdAt: new Date()
+            hasChargedCredits: isChargedCredits, // 标记是否已扣除积分
+            createdAt: new Date(),
+            isFree: req.featureUsage?.isFreeUsage, // 标记是否为免费使用
+            getDynamicCredits: req.featureUsage?.getDynamicCredits, // 动态积分计算函数
+            actualCreditCost: actualCreditCost, // 实际扣除的积分
+            uploadVideoDuration: req.uploadVideoDuration || 0 // 上传时分析的视频时长
           };
           
           console.log(`已关联任务ID ${taskId} 到用户ID ${req.user.id}`);
@@ -1014,16 +1035,15 @@ app.get('/api/digital-human/task/:taskId', async (req, res) => {
               // 如果任务成功完成且有视频URL，计算并扣除积分
     if (status.status === 'SUCCEEDED' && status.videoUrl) {
       try {
-        // 检查是否需要扣除积分
+        // 保存任务详情，如果积分已在上传时扣除则不重复扣除
         if (global.digitalHumanTasks && 
-            global.digitalHumanTasks[taskId] && 
-            !global.digitalHumanTasks[taskId].hasChargedCredits) {
+            global.digitalHumanTasks[taskId]) {
           
           const taskInfo = global.digitalHumanTasks[taskId];
           const userId = taskInfo.userId;
           
           if (userId) {
-            console.log(`开始为任务 ${taskId} (用户ID: ${userId}) 计算积分消耗`);
+            console.log(`开始为任务 ${taskId} (用户ID: ${userId}) 保存任务详情`);
             
             // 获取视频时长 - 优先使用API返回的时长信息
             let videoDuration = 0;
@@ -1031,10 +1051,15 @@ app.get('/api/digital-human/task/:taskId', async (req, res) => {
             // 记录调试信息
             console.log('完整响应状态数据:', JSON.stringify(status, null, 2));
             
-            if (status.videoDuration && !isNaN(parseFloat(status.videoDuration))) {
-              // 使用API直接返回的视频时长
+            // 尝试从多个可能的位置获取视频时长
+            if (status.usage && status.usage.video_duration && !isNaN(parseFloat(status.usage.video_duration))) {
+              // 使用API返回的usage.video_duration
+              videoDuration = Math.ceil(parseFloat(status.usage.video_duration));
+              console.log(`从API响应的usage.video_duration获取视频时长: ${status.usage.video_duration}秒，取整后: ${videoDuration}秒`);
+            } else if (status.videoDuration && !isNaN(parseFloat(status.videoDuration))) {
+              // 使用API直接返回的videoDuration
               videoDuration = Math.ceil(parseFloat(status.videoDuration));
-              console.log(`使用API返回的视频时长: ${videoDuration}秒`);
+              console.log(`使用API返回的videoDuration: ${videoDuration}秒`);
             } else {
               // 如果API没有返回时长，再调用getVideoDuration
               try {
@@ -1048,157 +1073,61 @@ app.get('/api/digital-human/task/:taskId', async (req, res) => {
               }
             }
             
-            if (videoDuration > 0) {
-              // 查找用户并扣除积分
-              const user = await User.findByPk(userId);
-              if (user) {
-                // 获取功能配置
-                const { FEATURES } = require('./middleware/featureAccess');
-                const featureConfig = FEATURES['DIGITAL_HUMAN_VIDEO'];
-                
-                // 计算积分消耗
-                const creditCost = featureConfig.creditCost(videoDuration);
-                console.log(`根据生成视频时长 ${videoDuration}秒，计算积分消耗: ${creditCost}`);
-                
-                // 记录当前用户积分
-                console.log(`用户当前积分: ${user.credits}`);
-                
-                // 检查是否是免费使用
-                let isFree = false;
-                let usage = null;
-                
-                // 检查该用户的功能使用记录
-                usage = await FeatureUsage.findOne({
-                  where: {
-                    userId: userId,
-                    featureName: 'DIGITAL_HUMAN_VIDEO'
-                  }
+                        if (videoDuration > 0) {
+              const taskInfo = global.digitalHumanTasks[taskId];
+              const isFree = taskInfo.isFree;
+              const hasChargedCredits = taskInfo.hasChargedCredits;
+              const uploadCreditCost = taskInfo.actualCreditCost || 0;
+              
+              // 使用上传时已计算的积分
+              const finalCreditCost = uploadCreditCost;
+              
+              console.log(`任务 ${taskId} 积分处理: 扣除=${finalCreditCost} (${isFree ? '免费' : '付费'})，时长 ${videoDuration}秒，上传时已处理=${hasChargedCredits}`);
+              
+              // 使用统一的任务详情保存函数
+              const { saveTaskDetails } = require('./middleware/unifiedFeatureUsage');
+              
+              // 获取或创建功能使用记录
+              const { FeatureUsage } = require('./models/FeatureUsage');
+              let usage = await FeatureUsage.findOne({
+                where: { userId, featureName: 'DIGITAL_HUMAN_VIDEO' }
+              });
+              
+              if (!usage) {
+                usage = await FeatureUsage.create({
+                  userId,
+                  featureName: 'DIGITAL_HUMAN_VIDEO',
+                  usageCount: 0,
+                  credits: 0,
+                  lastUsedAt: new Date(),
+                  resetDate: new Date().toISOString().split('T')[0],
+                  details: JSON.stringify({ tasks: [] })
                 });
-                
-                // 如果是第一次使用或者在免费次数范围内
-                if (!usage || usage.usageCount <= featureConfig.freeUsage) {
-                  isFree = true;
-                  console.log(`用户ID ${userId} 使用数字人视频的免费次数 ${usage ? usage.usageCount : 1}/${featureConfig.freeUsage}`);
-                  console.log(`免费使用，不扣除积分`);
-                } else if (user.credits >= creditCost) {
-                  // 扣除积分
-                  user.credits -= creditCost;
-                  await user.save();
-                  console.log(`已从用户ID ${userId} 扣除 ${creditCost} 积分，剩余积分: ${user.credits}`);
-                } else {
-                  console.log(`用户积分不足，需要 ${creditCost}，当前有 ${user.credits}`);
-                }
-                
-                // 记录功能使用
-                try {
-                  // 查找现有记录
-                  let featureUsage = await FeatureUsage.findOne({
-                    where: {
-                      userId: userId,
-                      featureName: 'DIGITAL_HUMAN_VIDEO'
-                    }
-                  });
-                  
-                  if (featureUsage) {
-                    // 更新现有记录
-                    console.log(`找到用户ID ${userId} 的现有数字人视频功能使用记录`);
-                    
-                    // 更新积分记录和最后使用时间，但不累加usageCount
-                    // usageCount将基于实际任务数量统计，而不是简单累加
-                    featureUsage.lastUsedAt = new Date();
-                    
-                    // 更新详细信息 - 添加任务记录
-                    let details = {};
-                    try {
-                      details = JSON.parse(featureUsage.details || '{}');
-                    } catch (e) {
-                      console.error('解析details出错，重置为空对象:', e);
-                    }
-                    
-                    if (!details.tasks) {
-                      details.tasks = [];
-                    }
-                    
-                    // 检查是否已存在相同的任务ID，避免重复添加
-                    const isTaskExists = details.tasks.some(task => task.taskId === taskId);
-                    
-                    if (!isTaskExists) {
-                      // 添加新任务信息并标记是否为免费使用
-                      details.tasks.push({
-                        taskId: taskId,
-                        videoDuration: videoDuration,
-                        creditCost: isFree ? 0 : creditCost,
-                        isFree: isFree,
-                        timestamp: new Date()
-                      });
-                      
-                      // 更新记录
-                      featureUsage.details = JSON.stringify(details);
-                    } else {
-                      console.log(`任务ID ${taskId} 已存在于数据库中，跳过添加`);
-                    }
-                    
-                    // 只有在当前任务是新任务时才更新usageCount和credits
-                    if (!isTaskExists) {
-                      // 递增使用次数，而不是设置为tasks的长度
-                      featureUsage.usageCount += 1;
-                      // 只有新任务才累加积分消费，免费使用不累加积分
-                      if (!isFree) {
-                        featureUsage.credits = (featureUsage.credits || 0) + creditCost;
-                      }
-                    }
-                    
-                    await featureUsage.save();
-                    console.log(`成功更新用户ID ${userId} 的数字人视频功能使用记录，任务总数: ${details.tasks.length}`);
-                  } else {
-                    // 创建新记录
-                    console.log(`未找到用户ID ${userId} 的数字人视频功能使用记录，创建新记录`);
-                    
-                    // 创建详细信息对象
-                    const details = {
-                      tasks: [{
-                        taskId: taskId,
-                        videoDuration: videoDuration,
-                        creditCost: isFree ? 0 : creditCost,
-                        isFree: isFree,
-                        timestamp: new Date()
-                      }]
-                    };
-                    
-                    await FeatureUsage.create({
-                      userId: userId,
-                      featureName: 'DIGITAL_HUMAN_VIDEO',
-                      usageCount: 1,
-                      credits: isFree ? 0 : creditCost,
-                      lastUsedAt: new Date(),
-                      resetDate: new Date().toISOString().split('T')[0],
-                      details: JSON.stringify(details)
-                    });
-                    
-                    console.log(`成功创建用户ID ${userId} 的数字人视频功能使用记录`);
-                  }
-                  
-                  // 标记为已扣除积分，并添加更多信息用于统计
-                  global.digitalHumanTasks[taskId].hasChargedCredits = true;
-                  global.digitalHumanTasks[taskId].creditCost = isFree ? 0 : creditCost;
-                  global.digitalHumanTasks[taskId].videoDuration = videoDuration;
-                  global.digitalHumanTasks[taskId].timestamp = new Date();
-                  global.digitalHumanTasks[taskId].isFree = isFree;
-                  
-                  // 任务信息已经在上面的代码中保存到数据库了，不需要重复保存
-                  // 记录日志以便调试
-                  console.log(`视频数字人任务ID ${taskId} 处理完成，积分 ${isFree ? 0 : creditCost} (${isFree ? '免费' : '付费'})，时长 ${videoDuration}秒`);
-                } catch (dbError) {
-                  console.error('保存数字人视频功能使用记录到数据库失败:', dbError);
-                }
-              } else {
-                console.log(`找不到用户ID ${userId}`);
               }
+              
+              await saveTaskDetails(usage, {
+                taskId: taskId,
+                creditCost: finalCreditCost,
+                isFree: isFree,
+                extraData: {
+                  videoDuration: videoDuration,
+                  uploadCreditCost: uploadCreditCost,
+                  finalCreditCost: finalCreditCost
+                }
+              });
+              
+              // 标记为已处理
+              global.digitalHumanTasks[taskId].hasChargedCredits = true;
+              global.digitalHumanTasks[taskId].creditCost = finalCreditCost;
+              global.digitalHumanTasks[taskId].videoDuration = videoDuration;
+              global.digitalHumanTasks[taskId].timestamp = new Date();
+              
+              console.log(`数字人视频任务ID ${taskId} 详情保存完成，积分 ${finalCreditCost} (${isFree ? '免费' : '付费'})，时长 ${videoDuration}秒`);
             }
           }
         }
-      } catch (creditError) {
-        console.error('处理积分扣除失败，但不影响正常响应:', creditError);
+      } catch (detailsError) {
+        console.error('保存任务详情失败，但不影响正常响应:', detailsError);
       }
     }
     
@@ -2175,8 +2104,8 @@ app.post('/api/call-service', async (req, res) => {
   }
 });
 
-// API路由 - 图像高清放大
-app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUpload.single('image'), async (req, res) => {
+// API路由 - 图像高清放大 - 使用统一中间件
+app.post('/api/upscale', protect, createUnifiedFeatureMiddleware('image-upscaler'), memoryUpload.single('image'), async (req, res) => {
   try {
     console.log('接收到图像高清放大请求');
     
@@ -2189,6 +2118,10 @@ app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUp
     if (upscaleFactor < 2 || upscaleFactor > 4) {
       return res.status(400).json({ success: false, message: '放大倍数必须在2-4之间' });
     }
+    
+    // 从统一中间件获取积分使用信息
+    const userId = req.user.id;
+    const { usageType, creditCost, isFree } = req.featureUsage;
     
     // 读取上传的图片文件
     const imageBuffer = req.file.buffer;
@@ -2205,94 +2138,37 @@ app.post('/api/upscale', protect, checkFeatureAccess('image-upscaler'), memoryUp
       console.log('调用图像高清放大API...');
       const apiResult = await callUpscaleApi(imageUrl, upscaleFactor);
       
-      // 获取当前用户ID和积分消费信息
-      const userId = req.user.id;
-      const creditCost = req.featureUsage?.creditCost || FEATURES['image-upscaler'].creditCost;
-      
-      // 判断是否是免费使用
-      const isFree = req.featureUsage?.usageType === 'free';
-      
       // 生成唯一任务ID
       const taskId = `upscale-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
       
       // 保存任务信息到全局变量
       global.imageUpscalerTasks[taskId] = {
         userId: userId,
-        creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-        hasChargedCredits: !isFree, // 免费使用不需要扣除积分
+        creditCost: isFree ? 0 : creditCost,
+        hasChargedCredits: !isFree,
         timestamp: new Date(),
         imageUrl: imageUrl,
         upscaleFactor: upscaleFactor,
-        isFree: isFree // 添加免费使用标记
+        isFree: isFree
       };
       
       console.log(`图像高清放大任务信息已保存: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
       
-      // 将任务信息保存到数据库
+      // 使用统一中间件的saveTaskDetails函数保存任务详情
       try {
-        const usage = await FeatureUsage.findOne({
-          where: { 
-            userId: userId, 
-            featureName: 'image-upscaler' 
+        const { saveTaskDetails } = require('./middleware/unifiedFeatureUsage');
+        await saveTaskDetails(req.featureUsage.usage, {
+          taskId: taskId,
+          creditCost: creditCost,
+          isFree: isFree,
+          extraData: {
+            upscaleFactor: upscaleFactor,
+            imageUrl: imageUrl
           }
         });
-        
-        if (usage) {
-          // 解析现有详情
-          const details = JSON.parse(usage.details || '{}');
-          // 准备任务列表
-          const tasks = details.tasks || [];
-          // 添加新任务
-          tasks.push({
-            taskId: taskId,
-            creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-            timestamp: new Date(),
-            isFree: isFree // 添加免费使用标记
-          });
-          
-          // 更新usage记录 - 更新details字段但不重复累加积分
-          // 积分已经在track-usage API中扣除并记录，这里不需要再次累加
-          
-          // 创建details更新对象
-          const updatedDetails = JSON.stringify({
-            ...details,
-            tasks: tasks
-          });
-          
-          // 直接只更新details字段，不更新credits字段
-          await FeatureUsage.update(
-            { 
-              details: updatedDetails,
-              updatedAt: new Date()
-            },
-            { 
-              where: { id: usage.id },
-              fields: ['details', 'updatedAt'] // 明确指定只更新这两个字段
-            }
-          );
-          
-          console.log(`图像高清放大任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
-        } else {
-          // 创建新记录
-          await FeatureUsage.create({
-            userId: userId,
-            featureName: 'image-upscaler',
-            usageCount: 1,
-            credits: 0, // 设置为0，避免重复记录积分，积分已在中间件中扣除
-            lastUsedAt: new Date(),
-            details: JSON.stringify({
-              tasks: [{
-                taskId: taskId,
-                creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-                timestamp: new Date(),
-                isFree: isFree // 添加免费使用标记
-              }]
-            })
-          });
-          console.log(`图像高清放大功能首次使用记录创建成功: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}`);
-        }
+        console.log(`图像高清放大任务ID=${taskId}已通过统一中间件保存到数据库`);
       } catch (saveError) {
-        console.error('保存图像高清放大任务详情失败:', saveError);
+        console.error('通过统一中间件保存任务信息失败:', saveError);
         // 继续响应，不中断流程
       }
       
@@ -2397,7 +2273,7 @@ app.get('/clothing-simulation.html', (req, res) => {
 });
 
 // 功能访问检查示例 - 图像放大功能
-app.post('/api/image-upscaler', protect, checkFeatureAccess('image-upscaler'), async (req, res) => {
+app.post('/api/image-upscaler', protect, createUnifiedFeatureMiddleware('image-upscaler'), async (req, res) => {
   try {
     // 这里是实际的功能处理逻辑...
     
@@ -2617,7 +2493,7 @@ app.post('/api/upload-image-for-shoe-model', protect, memoryUpload.single('file'
 });
 
 // 创建鞋靴模特试穿任务
-app.post('/api/create-shoe-model-task', protect, checkFeatureAccess('VIRTUAL_SHOE_MODEL'), async (req, res) => {
+app.post('/api/create-shoe-model-task', protect, createUnifiedFeatureMiddleware('VIRTUAL_SHOE_MODEL'), async (req, res) => {
   try {
     console.log('接收到创建鞋靴模特试穿任务请求:', req.body);
     const { modelImageUrl, shoeImageUrl } = req.body;
@@ -3190,8 +3066,28 @@ app.post('/api/upload-video', protect, async (req, res) => {
   }
 });
 
-// 视频字幕擦除API - 使用阿里云SDK直接调用
-app.post('/api/remove-subtitles', protect, async (req, res) => {
+// 视频字幕擦除API - 使用统一中间件和动态积分计算
+const createVideoSubtitleMiddleware = (req, res, next) => {
+  // 获取视频时长并计算积分
+  const { videoDuration } = req.body;
+  let duration = parseInt(videoDuration) || 30; // 默认30秒
+  
+  if (!duration || duration <= 0) {
+    duration = 30;
+  }
+  
+  // 计算积分消耗：每30秒30积分
+  const creditCost = Math.ceil(duration / 30) * 30;
+  
+  // 使用统一中间件，传入动态计算的积分消耗函数
+  const middleware = createUnifiedFeatureMiddleware('VIDEO_SUBTITLE_REMOVER', {
+    calculateCreditCost: () => creditCost
+  });
+  
+  middleware(req, res, next);
+};
+
+app.post('/api/remove-subtitles', protect, createVideoSubtitleMiddleware, async (req, res) => {
   try {
     const { user } = req;
     const { videoUrl, videoDuration } = req.body;
@@ -3203,50 +3099,15 @@ app.post('/api/remove-subtitles', protect, async (req, res) => {
     }
     
     // 获取视频时长（秒）
-    let duration = parseInt(videoDuration) || 0;
-    
-    // 如果前端未提供视频时长，使用默认值30秒
+    let duration = parseInt(videoDuration) || 30;
     if (!duration || duration <= 0) {
-      console.log('未提供有效的视频时长，使用默认值30秒');
       duration = 30;
     }
     
     console.log(`视频时长: ${duration}秒`);
     
-    // 使用featureAccess中间件进行积分检查和扣除
-    const { checkFeatureAccess } = require('./middleware/featureAccess');
-    const featureAccessMiddleware = checkFeatureAccess('VIDEO_SUBTITLE_REMOVER');
-    
-    // 添加视频时长到请求体，以便中间件计算积分
-    req.body.duration = duration;
-    
-    try {
-      // 使用自定义中间件执行功能访问检查
-      await new Promise((resolve, reject) => {
-        featureAccessMiddleware(req, res, (err) => {
-          if (err) {
-            console.error('功能访问检查失败:', err);
-            reject(err);
-            return;
-          }
-          resolve();
-        });
-      });
-    } catch (featureAccessError) {
-      // 如果在这里捕获到错误，说明中间件内部有异常，但没有调用res.json()结束响应
-      console.error('功能访问权限检查异常:', featureAccessError);
-      return res.status(500).json({
-        success: false,
-        message: '功能访问检查失败：' + (featureAccessError.message || '未知错误')
-      });
-    }
-    
-    // 如果res.headersSent为true，说明featureAccess中间件已经发送了响应
-    // 比如因为积分不足，响应已经结束，我们直接返回
-    if (res.headersSent) {
-      console.log('featureAccess中间件已经处理了响应，不再继续处理');
-      return;
-    }
+    // 从统一中间件获取积分使用信息
+    const { usageType, creditCost, isFree } = req.featureUsage;
     
     // 检查视频URL格式
     if (!videoUrl.startsWith('http')) {
@@ -3298,99 +3159,46 @@ app.post('/api/remove-subtitles', protect, async (req, res) => {
         throw new Error('API返回结果格式不正确，缺少requestId');
       }
       
-      // 记录功能使用 - 使用findOrCreate避免唯一约束冲突
+      // 保存任务详细信息
       try {
-        // 查找是否已存在记录
-        const [usage, created] = await FeatureUsage.findOrCreate({
-          where: {
-            userId: user.id,
-            featureName: 'VIDEO_SUBTITLE_REMOVER'
-          },
-          defaults: {
-            usageCount: 1,
-            lastUsedAt: new Date()
-          }
-        });
-        
-        // 注意：featureAccess中间件已经增加了usageCount，这里不应再次增加
-        // 避免重复增加计数，只需处理任务记录的保存
-        // 如果记录已存在，但之前的中间件没有正确更新时间，确保更新最后使用时间
-        if (!created && !req.featureUsage) {
-          console.log(`警告：featureAccess中间件似乎没有正确处理，手动更新最后使用时间`);
-          await usage.update({
-            lastUsedAt: new Date()
-          });
-        }
+        // 获取任务ID
+        const taskId = result.body.requestId;
         
         // 保存任务信息到全局变量，用于积分统计
         if (!global.videoSubtitleTasks) {
           global.videoSubtitleTasks = {};
         }
         
-        // 记录用户的任务信息，使用任务ID作为唯一标识
-        const taskId = result.body.requestId;
         global.videoSubtitleTasks[taskId] = {
           userId: user.id,
-          creditCost: Math.ceil(duration/30) * 30, // 按每30秒30积分计算
+          creditCost: creditCost,
           hasChargedCredits: true,
           timestamp: new Date(),
-          videoDuration: duration
+          videoDuration: duration,
+          isFree: isFree
         };
         
-        console.log(`视频去除字幕任务信息已保存: 用户ID=${user.id}, 任务ID=${taskId}, 时长=${duration}秒, 积分=${global.videoSubtitleTasks[taskId].creditCost}`);
+        console.log(`视频去除字幕任务信息已保存: 用户ID=${user.id}, 任务ID=${taskId}, 时长=${duration}秒, 积分=${creditCost}, 是否免费=${isFree}`);
         
-        // 尝试更新用户功能使用记录中的详细信息
+        // 使用统一中间件的saveTaskDetails函数保存任务详情
         try {
-          // 先检查是否存在相同的任务ID，避免重复添加
-          let isTaskExists = false;
-          
-          if (usage.details) {
-            const details = JSON.parse(usage.details || '{}');
-            if (!details.tasks) {
-              details.tasks = [];
+          const { saveTaskDetails } = require('./middleware/unifiedFeatureUsage');
+          await saveTaskDetails(req.featureUsage.usage, {
+            taskId: taskId,
+            creditCost: creditCost,
+            isFree: isFree,
+            extraData: {
+              videoDuration: duration
             }
-            
-            // 检查任务ID是否已存在
-            isTaskExists = details.tasks.some(task => task.taskId === taskId);
-            
-            if (!isTaskExists) {
-              // 添加新任务信息
-              details.tasks.push({
-                taskId: taskId,
-                videoDuration: duration,
-                creditCost: Math.ceil(duration/30) * 30,
-                timestamp: new Date()
-              });
-              
-              // 更新记录
-              usage.details = JSON.stringify(details);
-              await usage.save();
-              console.log(`已将任务ID ${taskId} 保存到数据库`);
-            } else {
-              console.log(`任务ID ${taskId} 已存在于数据库中，跳过添加`);
-            }
-          } else {
-            // 创建新的详细信息
-            const details = {
-              tasks: [{
-                taskId: taskId,
-                videoDuration: duration,
-                creditCost: Math.ceil(duration/30) * 30,
-                timestamp: new Date()
-              }]
-            };
-            
-            // 更新记录
-            usage.details = JSON.stringify(details);
-            await usage.save();
-            console.log(`已创建并保存任务详情到数据库，任务ID: ${taskId}`);
-          }
-        } catch (detailsError) {
-          console.error('更新任务详细信息失败:', detailsError);
+          });
+          console.log(`视频去除字幕任务ID=${taskId}已通过统一中间件保存到数据库`);
+        } catch (saveError) {
+          console.error('通过统一中间件保存任务信息失败:', saveError);
+          // 继续处理，不影响主要功能
         }
       } catch (dbError) {
-        // 记录错误但不阻止API返回结果
-        console.error('记录功能使用数据失败，但不影响API结果:', dbError);
+        console.error('保存任务详细信息失败:', dbError);
+        // 不阻止API返回结果
       }
       
       res.json({
@@ -3398,7 +3206,9 @@ app.post('/api/remove-subtitles', protect, async (req, res) => {
         message: '视频字幕擦除任务已提交',
         jobId: result.body.requestId,
         requestId: result.body.requestId,
-        duration: duration // 返回视频时长供前端参考
+        duration: duration, // 返回视频时长供前端参考
+        creditCost: creditCost, // 返回积分消耗
+        isFree: isFree // 返回是否免费使用
       });
     } catch (error) {
       console.error('阿里云SDK调用失败:', error);
@@ -3561,8 +3371,7 @@ app.post('/api/video-style-repaint/create-task', protect, async (req, res) => {
     }
     
     // 使用featureAccess中间件进行积分检查和扣除
-    const { checkFeatureAccess } = require('./middleware/featureAccess');
-    const featureAccessMiddleware = checkFeatureAccess('VIDEO_STYLE_REPAINT');
+    const featureAccessMiddleware = createUnifiedFeatureMiddleware('VIDEO_STYLE_REPAINT');
     
     // 定义变量存储免费使用信息
     let isFree = false;
@@ -4439,6 +4248,9 @@ const startServer = async () => {
     
     // 从数据库加载任务信息到全局变量
     await loadTasksFromDatabase();
+    
+    // 启动定时清理任务
+    startCleanupTasks();
     
     // 启动服务器
     app.listen(port, () => {
@@ -5598,7 +5410,7 @@ async function syncAllFeatureUsagesWithDatabase() {
           case 'amazon_keyword_recommender':
           case 'amazon_case_creator':
           case 'product_improvement_analysis':
-            // 亚马逊助手功能类型的积分记录已经在checkFeatureAccess中间件中实时记录
+            // 亚马逊助手功能类型的积分记录已经在统一中间件中实时记录
             // 这里无需使用全局变量记录任务，直接使用数据库中的记录
             console.log(`亚马逊助手功能 ${featureType} 积分使用记录直接从数据库读取`);
             break;
@@ -5675,52 +5487,41 @@ if (!global.multiImageToVideoTasks) {
   global.multiImageToVideoTasks = {};
 }
 
-// 添加虚拟模特使用记录API - 在实际使用功能时才扣除积分
-app.post('/api/virtual-model/usage', protect, async (req, res) => {
+// 添加虚拟模特使用记录API - 使用统一中间件
+app.post('/api/virtual-model/usage', protect, createUnifiedFeatureMiddleware('VIRTUAL_MODEL_VTON'), async (req, res) => {
   try {
     console.log('接收虚拟模特使用记录请求:', req.body);
     
-    // 使用featureAccess中间件进行积分检查和扣除
-    const { checkFeatureAccess } = require('./middleware/featureAccess');
-    const featureAccessMiddleware = checkFeatureAccess('VIRTUAL_MODEL_VTON');
+    const userId = req.user.id;
     
-    // 定义变量存储免费使用信息
-    let isFree = false;
+    // 从统一中间件获取积分使用信息
+    const { usageType, creditCost, isFree, remainingFreeUsage } = req.featureUsage;
     
+    // 生成任务ID并保存任务详情
     try {
-      // 使用自定义中间件执行功能访问检查
-      await new Promise((resolve, reject) => {
-        featureAccessMiddleware(req, res, (err) => {
-          if (err) {
-            console.error('功能访问检查失败:', err);
-            reject(err);
-            return;
-          }
-          // 保存免费使用信息
-          isFree = req.featureUsage?.usageType === 'free';
-          console.log(`虚拟模特试穿功能免费使用检查结果: ${isFree ? '免费使用' : '付费使用'}`);
-          resolve();
-        });
+      const taskId = Date.now().toString();
+      const { saveTaskDetails } = require('./middleware/unifiedFeatureUsage');
+      await saveTaskDetails(req.featureUsage.usage, {
+        taskId: taskId,
+        creditCost: creditCost,
+        isFree: isFree,
+        extraData: {}
       });
-    } catch (featureAccessError) {
-      console.error('功能访问权限检查异常:', featureAccessError);
-      return res.status(500).json({
-        success: false,
-        message: '功能访问检查失败：' + (featureAccessError.message || '未知错误')
-      });
-    }
-    
-    // 如果res.headersSent为true，说明featureAccess中间件已经发送了响应
-    if (res.headersSent) {
-      console.log('featureAccess中间件已经处理了响应，不再继续处理');
-      return;
+      console.log(`虚拟模特试穿功能使用记录已保存: 用户ID=${userId}, 积分=${creditCost}, 是否免费=${isFree}`);
+    } catch (e) {
+      console.error('处理虚拟模特试穿功能使用记录失败:', e);
     }
     
     // 记录使用情况成功
     return res.json({
       success: true,
       message: '使用记录已保存',
-      isFree: isFree
+      data: {
+        featureName: 'VIRTUAL_MODEL_VTON',
+        usageType,
+        creditCost,
+        remainingFreeUsage
+      }
     });
   } catch (error) {
     console.error('记录虚拟模特使用情况失败:', error);

@@ -316,10 +316,7 @@
             // 页面加载时检查认证
             if (!checkAuth()) return;
             
-            // 特性追踪
-            if (typeof trackFeatureUsage === 'function') {
-                trackFeatureUsage('page_view', 'amazon_brand_info');
-            }
+            // 页面加载时不需要记录使用
             
             brandInfoForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -336,16 +333,7 @@
                         brandName: document.getElementById('brandName').value,
                         industryCategory: document.getElementById('industryCategory').value,
                         outputLanguage: document.querySelector('input[name="outputLanguage"]:checked').value
-                    };
-                    
-                    // 记录功能使用并检查积分
-                    const canProceed = await trackFeatureUsage('amazon_brand_info');
-                    if (!canProceed) {
-                        loadingOverlay.classList.add('hidden');
-                        return;
-                    }
-                    
-                    // 调用API
+                    };// 调用API
                     const response = await fetch('/api/amazon-listing/brand-info', {
                         method: 'POST',
                         headers: {
@@ -522,7 +510,7 @@
                     
                     // 特性追踪
                     if (typeof trackFeatureUsage === 'function') {
-                        trackFeatureUsage('generate_content', 'amazon_brand_info');
+                        trackFeatureUsage('amazon_brand_info');
                     }
                     
                 } catch (error) {

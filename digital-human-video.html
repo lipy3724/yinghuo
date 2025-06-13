@@ -674,6 +674,9 @@
                         
                         console.log('任务状态:', data);
                         
+                        // 获取加载消息元素
+                        const loadingMessage = document.getElementById('loading-message');
+                        
                         // 根据任务状态更新UI
                         if (data.status === 'SUCCEEDED') {
                             // 任务完成
@@ -743,7 +746,7 @@
                         } else if (data.status === 'FAILED') {
                             // 任务失败
                             updateProgress('处理失败: ' + data.message, 0);
-                            loadingMessage.textContent = '处理失败: ' + data.message;
+                            if (loadingMessage) loadingMessage.textContent = '处理失败: ' + data.message;
                             clearInterval(statusCheckInterval);
                             
                             // 隐藏加载遮罩
@@ -759,13 +762,13 @@
                             // 任务正在处理中
                             let progress = data.status === 'PENDING' ? 50 : 70;
                             updateProgress('处理中...', progress);
-                            loadingMessage.textContent = '视频处理中，请稍候...';
+                            if (loadingMessage) loadingMessage.textContent = '视频处理中，请稍候...';
                         }
                         
                     } catch (error) {
                         console.error('查询任务状态失败:', error);
                         updateProgress('查询状态失败', 0);
-                        loadingMessage.textContent = '查询状态失败';
+                        if (loadingMessage) loadingMessage.textContent = '查询状态失败';
                         
                         // 隐藏加载遮罩
                         document.getElementById('loading-overlay').classList.add('hidden');

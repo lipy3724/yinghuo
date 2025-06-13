@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { checkFeatureAccess } = require('../middleware/featureAccess');
 const ImageHistory = require('../models/ImageHistory');
 const { Op } = require('sequelize');
+const { manualCleanup } = require('../utils/cleanupTasks');
 
 /**
  * @route   POST /api/downloads/save
@@ -22,11 +22,21 @@ router.post('/save', protect, async (req, res) => {
       });
     }
 
+    // 检查类型是否为视频相关，如果是则拒绝保存
+    const requestType = type || 'IMAGE_EDIT';
+    if (requestType.toLowerCase().includes('video') || 
+        requestType.toUpperCase().includes('VIDEO')) {
+      return res.status(400).json({
+        success: false,
+        message: '下载中心只保存图片，不保存视频'
+      });
+    }
+
     console.log('保存图片到下载中心:', {
       userId,
       title: title || '未命名图片',
       imageUrl: imageUrl.substring(0, 50) + '...',
-      type: type || 'IMAGE_EDIT'
+      type: requestType
     });
 
     // 保存到图片历史记录
@@ -37,7 +47,7 @@ router.post('/save', protect, async (req, res) => {
         description: description || '',
         imageUrl,
         processedImageUrl: imageUrl, // 为了兼容旧模型，也设置processedImageUrl
-        type: type || 'IMAGE_EDIT',
+        type: requestType,
         processType: '图像指令编辑', // 添加processType字段
         createdAt: new Date(),
         updatedAt: new Date()
@@ -77,29 +87,88 @@ router.get('/', protect, async (req, res) => {
     
     const offset = (page - 1) * limit;
     
-    // 构建查询条件
-    const whereCondition = { userId };
+    // 首先清除过期的记录（12小时前的记录）
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    
+    try {
+      const deletedCount = await ImageHistory.destroy({
+        where: {
+          userId,
+          createdAt: {
+            [Op.lt]: twelveHoursAgo
+          },
+          type: {
+            [Op.and]: [
+              { [Op.notLike]: '%VIDEO%' },
+              { [Op.notLike]: '%video%' },
+              { [Op.notIn]: [
+                'TEXT_TO_VIDEO_NO_DOWNLOAD',
+                'IMAGE_TO_VIDEO_NO_DOWNLOAD',
+                'MULTI_IMAGE_TO_VIDEO_NO_DOWNLOAD',
+                'DIGITAL_HUMAN_VIDEO_NO_DOWNLOAD',
+                'VIDEO_STYLE_REPAINT_NO_DOWNLOAD',
+                'VIDEO_SUBTITLE_REMOVER_NO_DOWNLOAD',
+                'text-to-video',
+                'image-to-video',
+                'multi-image-to-video',
+                'video-style-repaint',
+                'digital-human-video',
+                'video-subtitle-remover'
+              ]}
+            ]
+          }
+        }
+      });
+      
+      if (deletedCount > 0) {
+        console.log(`用户 ${userId} 的 ${deletedCount} 条过期下载记录已自动清除`);
+      }
+    } catch (cleanupError) {
+      console.error('清除过期下载记录失败:', cleanupError);
+      // 清除失败不影响正常查询，继续执行
+    }
+    
+    // 构建查询条件 - 现在只查询有效的记录
+    const whereCondition = { 
+      userId,
+      createdAt: {
+        [Op.gte]: twelveHoursAgo
+      }
+    };
+    
     if (type) {
+      // 即使指定了类型，也要确保不是视频类型
       whereCondition.type = type;
-    } else {
-      // 排除特定类型，不在下载中心显示
       whereCondition.type = {
-        [Op.notIn]: [
-          'TEXT_TO_VIDEO_NO_DOWNLOAD',
-          'IMAGE_TO_VIDEO_NO_DOWNLOAD',
-          'MULTI_IMAGE_TO_VIDEO_NO_DOWNLOAD',
-          'DIGITAL_HUMAN_VIDEO_NO_DOWNLOAD',
-          'VIDEO_STYLE_REPAINT_NO_DOWNLOAD',
-          'VIDEO_SUBTITLE_REMOVER_NO_DOWNLOAD'
+        [Op.and]: [
+          { [Op.eq]: type },
+          { [Op.notLike]: '%VIDEO%' },
+          { [Op.notLike]: '%video%' }
+        ]
+      };
+    } else {
+      // 只显示图片相关类型，完全排除所有视频相关类型
+      whereCondition.type = {
+        [Op.and]: [
+          { [Op.notLike]: '%VIDEO%' },
+          { [Op.notLike]: '%video%' },
+          { [Op.notIn]: [
+            'TEXT_TO_VIDEO_NO_DOWNLOAD',
+            'IMAGE_TO_VIDEO_NO_DOWNLOAD', 
+            'MULTI_IMAGE_TO_VIDEO_NO_DOWNLOAD',
+            'DIGITAL_HUMAN_VIDEO_NO_DOWNLOAD',
+            'VIDEO_STYLE_REPAINT_NO_DOWNLOAD',
+            'VIDEO_SUBTITLE_REMOVER_NO_DOWNLOAD',
+            'text-to-video',
+            'image-to-video',
+            'multi-image-to-video',
+            'video-style-repaint',
+            'digital-human-video',
+            'video-subtitle-remover'
+          ]}
         ]
       };
     }
-    
-    // 添加12小时过期条件 - 只返回12小时内的图片
-    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
-    whereCondition.createdAt = {
-      [Op.gte]: twelveHoursAgo
-    };
     
     // 获取图片列表
     const images = await ImageHistory.findAndCountAll({
@@ -163,6 +232,34 @@ router.delete('/:id', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '服务器错误，无法删除图片',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/downloads/cleanup
+ * @desc    手动清理过期的下载记录
+ * @access  私有
+ */
+router.post('/cleanup', protect, async (req, res) => {
+  try {
+    console.log(`用户 ${req.user.id} 触发手动清理过期下载记录`);
+    
+    const deletedCount = await manualCleanup();
+    
+    res.json({
+      success: true,
+      message: `清理完成，已删除 ${deletedCount} 条过期记录`,
+      data: {
+        deletedCount
+      }
+    });
+  } catch (error) {
+    console.error('手动清理过期下载记录失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '清理失败，请稍后重试',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

@@ -4,13 +4,13 @@ const { protect } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid'); // 需要安装uuid包: npm install uuid
 const { callClothSegmentationApi } = require('../utils/aliyunApiProxy');
 const axios = require('axios');
-const { checkFeatureAccess } = require('../middleware/featureAccess');
+const { createUnifiedFeatureMiddleware } = require('../middleware/unifiedFeatureUsage');
 
 /**
  * 服饰分割API - 创建任务
  * 使用阿里云视觉智能开放平台的服饰分割能力
  */
-router.post('/create-task', protect, checkFeatureAccess('CLOTH_SEGMENTATION'), async (req, res) => {
+router.post('/create-task', protect, createUnifiedFeatureMiddleware('CLOTH_SEGMENTATION'), async (req, res) => {
     try {
         const { imageUrl, clothClasses, returnForm, outMode } = req.body;
         
@@ -49,10 +49,9 @@ router.post('/create-task', protect, checkFeatureAccess('CLOTH_SEGMENTATION'), a
             const apiResult = await callClothSegmentationApi(apiParams);
             console.log('阿里云API返回结果:', JSON.stringify(apiResult, null, 2));
             
-            // 获取功能的积分消费配置
-            const { FEATURES } = require('../middleware/featureAccess');
-            const featureConfig = FEATURES['CLOTH_SEGMENTATION'];
-            const creditCost = featureConfig ? featureConfig.creditCost : 2; // 默认消费2积分
+            // 积分已在统一中间件中扣除，这里只记录任务信息
+            const creditCost = req.featureUsage?.creditCost || 0;
+            const isFree = req.featureUsage?.isFree || false;
             
             // 生成唯一任务ID
             const taskId = uuidv4();
@@ -73,10 +72,9 @@ router.post('/create-task', protect, checkFeatureAccess('CLOTH_SEGMENTATION'), a
                 result: apiResult
             };
             
-            // 保存使用记录到数据库
+            // 保存任务记录到数据库（积分已在中间件中扣除）
             try {
                 const { FeatureUsage } = require('../models/FeatureUsage');
-                const user = await require('../models/User').findByPk(req.user.id);
                 
                 // 更新数据库中的使用记录
                 let usage = await FeatureUsage.findOne({
@@ -84,7 +82,7 @@ router.post('/create-task', protect, checkFeatureAccess('CLOTH_SEGMENTATION'), a
                 });
                 
                 if (usage) {
-                    // 已有记录，更新使用次数和积分消费
+                    // 已有记录，只更新任务详情
                     let details = {};
                     try {
                         details = usage.details ? JSON.parse(usage.details) : {};
@@ -100,39 +98,17 @@ router.post('/create-task', protect, checkFeatureAccess('CLOTH_SEGMENTATION'), a
                     details.tasks.push({
                         taskId: taskId,
                         creditCost: creditCost,
+                        isFree: isFree,
                         timestamp: new Date()
                     });
                     
-                    // 更新使用记录
-                    usage.usageCount += 1;
-                    usage.credits += creditCost;
+                    // 更新使用记录（不重复扣除积分）
                     usage.details = JSON.stringify(details);
                     usage.lastUsedAt = new Date();
                     await usage.save();
-                } else {
-                    // 没有记录，创建新记录
-                    await FeatureUsage.create({
-                        userId: req.user.id,
-                        featureName: 'CLOTH_SEGMENTATION',
-                        usageCount: 1,
-                        credits: creditCost,
-                        details: JSON.stringify({
-                            tasks: [{
-                                taskId: taskId,
-                                creditCost: creditCost,
-                                timestamp: new Date()
-                            }]
-                        }),
-                        lastUsedAt: new Date()
-                    });
                 }
                 
-                // 从用户积分中扣除
-                if (user) {
-                    user.credits -= creditCost;
-                    await user.save();
-                    console.log(`已从用户 ${req.user.id} 扣除 ${creditCost} 积分，剩余积分: ${user.credits}`);
-                }
+                console.log(`服饰分割任务记录已保存: 用户ID=${req.user.id}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${isFree}`);
             } catch (dbError) {
                 console.error('保存服饰分割使用记录失败:', dbError);
                 // 继续处理，不影响用户使用

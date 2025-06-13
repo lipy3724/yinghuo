@@ -299,15 +299,7 @@
                 loadingOverlay.classList.remove('hidden');
                 processingText.textContent = '正在生成后台搜索词，请稍候...';
                 
-                try {
-                    // 记录功能使用并检查积分
-                    const canProceed = await trackFeatureUsage('amazon_search_term');
-                    if (!canProceed) {
-                        loadingOverlay.classList.add('hidden');
-                        return;
-                    }
-                    
-                    // 获取表单数据
+                try {// 获取表单数据
                     const formData = {
                         productKeywords: document.getElementById('productKeywords').value,
                         outputLanguage: document.querySelector('input[name="outputLanguage"]:checked').value
@@ -337,6 +329,11 @@
                     loadingOverlay.classList.add('hidden');
                     resultContainer.classList.remove('hidden');
                     emptyResultState.classList.add('hidden');
+                    
+                    // 特性追踪
+                    if (typeof trackFeatureUsage === 'function') {
+                        trackFeatureUsage('amazon_search_term');
+                    }
                     
                     // 在小屏幕设备上，自动滚动到结果区域
                     if (window.innerWidth < 768) {

@@ -444,7 +444,7 @@ router.post('/track-usage', protect, async (req, res) => {
       message: '无效的功能名称'
     });
   }
-  
+
   try {
     // 获取功能配置
     const featureConfig = FEATURES[featureName];
@@ -464,326 +464,143 @@ router.post('/track-usage', protect, async (req, res) => {
         resetDate: today
       }
     });
-    
+
     // 如果是仅查看页面(page_view)不计入使用次数
     const isPageView = action === 'page_view';
     
+    if (isPageView) {
+      // 页面访问不扣费，只返回当前状态
+      return res.json({
+        success: true,
+        data: {
+          featureName,
+          usageType: 'page_view',
+          creditCost: 0,
+          remainingFreeUsage: Math.max(0, featureConfig.freeUsage - usage.usageCount),
+          freeUsageLimit: featureConfig.freeUsage,
+          freeUsageUsed: usage.usageCount
+        }
+      });
+    }
+
+    // 计算积分消耗（使用与统一中间件相同的逻辑）
+    let creditCost = 0;
+    if (typeof featureConfig.creditCost === 'function') {
+      creditCost = featureConfig.creditCost(req.body);
+    } else {
+      creditCost = featureConfig.creditCost;
+    }
+
     // 检查是否在免费使用次数内
     let usageType = 'free';
-    let creditCost = 0;
+    let finalCreditCost = 0;
     
-    // 仅对实际使用功能(非page_view)收费
-    if (!isPageView) {
-      // 判断是否在免费使用次数内
-      if (usage.usageCount >= featureConfig.freeUsage) {
-        // 超过免费次数，检查用户积分
-        const user = await User.findByPk(userId);
-        
-        if (user.credits < featureConfig.creditCost) {
-          return res.status(402).json({
-            success: false,
-            message: '您的免费试用次数已用完，积分不足',
-            data: {
-              requiredCredits: featureConfig.creditCost,
-              currentCredits: user.credits,
-              freeUsageLimit: featureConfig.freeUsage,
-              freeUsageUsed: usage.usageCount
-            }
-          });
-        }
-        
-        // 扣除积分
-        user.credits -= featureConfig.creditCost;
-        await user.save();
-        
-        usageType = 'paid';
-        creditCost = featureConfig.creditCost;
-      } else {
-        // 在免费使用次数内，标记为免费
-        usageType = 'free';
-        creditCost = 0; // 免费使用不消耗积分
+    if (usage.usageCount >= featureConfig.freeUsage) {
+      // 超过免费次数，检查用户积分
+      const user = await User.findByPk(userId);
+      
+      if (user.credits < creditCost) {
+        return res.status(402).json({
+          success: false,
+          message: '您的免费试用次数已用完，积分不足',
+          data: {
+            requiredCredits: creditCost,
+            currentCredits: user.credits,
+            freeUsageLimit: featureConfig.freeUsage,
+            freeUsageUsed: usage.usageCount
+          }
+        });
       }
       
-      // 无论是免费还是付费使用，都记录任务信息
-      // 对于场景图生成功能，将任务信息保存到全局变量中
-      if (featureName === 'scene-generator') {
-        const taskId = `scene-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-        global.sceneGeneratorTasks[taskId] = {
-          userId: userId,
-          creditCost: creditCost,
-          hasChargedCredits: usageType === 'paid',
-          isFree: usageType === 'free',
-          timestamp: new Date()
-        };
-        
-        // 同时将任务信息保存到数据库中
-        try {
-          // 解析现有详情
-          const details = JSON.parse(usage.details || '{}');
-          // 准备任务列表
-          const tasks = details.tasks || [];
-          // 添加新任务
-          tasks.push({
-            taskId: taskId,
-            creditCost: creditCost,
-            isFree: usageType === 'free',
-            timestamp: new Date()
-          });
-          
-          // 更新usage记录 - 同时记录credits字段
-          const currentCredits = usage.credits || 0;
-          // 只有付费使用才累加积分
-          if (usageType === 'paid') {
-            // 将这一行注释掉，避免重复计入积分
-            // usage.credits = currentCredits + creditCost;
-          }
-          usage.details = JSON.stringify({
-            ...details,
-            tasks: tasks
-          });
-          
-          // 使用await等待保存完成，确保数据被写入数据库
-          try {
-            await usage.save();
-            console.log(`场景图生成任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-          } catch (saveError) {
-            console.error('保存场景图生成任务详情失败:', saveError);
-          }
-        } catch (e) {
-          console.error('处理场景图生成任务详情时解析JSON失败:', e);
-        }
-        
-        console.log(`保存场景图生成任务信息: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-      }
-      // 其他功能的任务信息保存逻辑类似，添加isFree标记
-      // 对于图像智能消除功能，将任务信息保存到全局变量中
-      else if (featureName === 'image-removal') {
-        const taskId = `removal-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-        global.imageRemovalTasks[taskId] = {
-          userId: userId,
-          creditCost: creditCost,
-          hasChargedCredits: usageType === 'paid',
-          isFree: usageType === 'free',
-          timestamp: new Date()
-        };
-        
-        // 同时将任务信息保存到数据库中
-        try {
-          // 解析现有详情
-          const details = JSON.parse(usage.details || '{}');
-          // 准备任务列表
-          const tasks = details.tasks || [];
-          // 添加新任务
-          tasks.push({
-            taskId: taskId,
-            creditCost: creditCost,
-            isFree: usageType === 'free',
-            timestamp: new Date()
-          });
-          
-          // 更新usage记录 - 同时记录credits字段
-          const currentCredits = usage.credits || 0;
-          // 只有付费使用才累加积分
-          if (usageType === 'paid') {
-            // 将这一行注释掉，避免重复计入积分
-            // usage.credits = currentCredits + creditCost;
-          }
-          usage.details = JSON.stringify({
-            ...details,
-            tasks: tasks
-          });
-          
-          // 使用await等待保存完成，确保数据被写入数据库
-          try {
-            await usage.save();
-            console.log(`图像智能消除任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-          } catch (saveError) {
-            console.error('保存图像智能消除任务详情失败:', saveError);
-          }
-        } catch (e) {
-          console.error('处理图像智能消除任务详情时解析JSON失败:', e);
-        }
-        
-        console.log(`保存图像智能消除任务信息: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-      }
-      // 对于AI营销图功能，将任务信息保存到全局变量中
-      else if (featureName === 'marketing-images') {
-        const taskId = `marketing-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-        global.marketingImagesTasks[taskId] = {
-          userId: userId,
-          creditCost: creditCost,
-          hasChargedCredits: usageType === 'paid',
-          isFree: usageType === 'free',
-          timestamp: new Date()
-        };
-        
-        // 同时将任务信息保存到数据库中
-        try {
-          // 解析现有详情
-          const details = JSON.parse(usage.details || '{}');
-          // 准备任务列表
-          const tasks = details.tasks || [];
-          // 添加新任务
-          tasks.push({
-            taskId: taskId,
-            creditCost: creditCost,
-            isFree: usageType === 'free',
-            timestamp: new Date()
-          });
-          
-          // 更新usage记录 - 同时记录credits字段
-          const currentCredits = usage.credits || 0;
-          // 只有付费使用才累加积分
-          if (usageType === 'paid') {
-            // 将这一行注释掉，避免重复计入积分
-            // usage.credits = currentCredits + creditCost;
-          }
-          usage.details = JSON.stringify({
-            ...details,
-            tasks: tasks
-          });
-          
-          // 使用await等待保存完成，确保数据被写入数据库
-          try {
-            await usage.save();
-            console.log(`AI营销图任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-          } catch (saveError) {
-            console.error('保存AI营销图任务详情失败:', saveError);
-          }
-        } catch (e) {
-          console.error('处理AI营销图任务详情时解析JSON失败:', e);
-        }
-        
-        console.log(`保存AI营销图任务信息: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-      }
-      // 对于图片翻译功能，将任务信息保存到全局变量中
-      else if (featureName === 'translate') {
-        const taskId = `translate-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-        global.translateTasks[taskId] = {
-          userId: userId,
-          creditCost: creditCost,
-          hasChargedCredits: usageType === 'paid',
-          isFree: usageType === 'free',
-          timestamp: new Date()
-        };
-        
-        // 同时将任务信息保存到数据库中
-        try {
-          // 解析现有详情
-          const details = JSON.parse(usage.details || '{}');
-          // 准备任务列表
-          const tasks = details.tasks || [];
-          // 添加新任务
-          tasks.push({
-            taskId: taskId,
-            creditCost: creditCost,
-            isFree: usageType === 'free',
-            timestamp: new Date()
-          });
-          
-          // 更新usage记录 - 同时记录credits字段
-          const currentCredits = usage.credits || 0;
-          // 只有付费使用才累加积分
-          if (usageType === 'paid') {
-            // 将这一行注释掉，避免重复计入积分
-            // usage.credits = currentCredits + creditCost;
-          }
-          usage.details = JSON.stringify({
-            ...details,
-            tasks: tasks
-          });
-          
-          // 使用await等待保存完成，确保数据被写入数据库
-          try {
-            await usage.save();
-            console.log(`图片翻译任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-          } catch (saveError) {
-            console.error('保存图片翻译任务详情失败:', saveError);
-          }
-        } catch (e) {
-          console.error('处理图片翻译任务详情时解析JSON失败:', e);
-        }
-        
-        console.log(`保存图片翻译任务信息: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-      }
-      // 对于图片换背景功能，将任务信息保存到全局变量中
-      else if (featureName === 'cutout') {
-        const taskId = `cutout-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-        global.cutoutTasks[taskId] = {
-          userId: userId,
-          creditCost: creditCost,
-          hasChargedCredits: usageType === 'paid',
-          isFree: usageType === 'free',
-          timestamp: new Date()
-        };
-        
-        // 同时将任务信息保存到数据库中
-        try {
-          // 解析现有详情
-          const details = JSON.parse(usage.details || '{}');
-          // 准备任务列表
-          const tasks = details.tasks || [];
-          // 添加新任务
-          tasks.push({
-            taskId: taskId,
-            creditCost: creditCost,
-            isFree: usageType === 'free',
-            timestamp: new Date()
-          });
-          
-          // 更新usage记录 - 同时记录credits字段
-          const currentCredits = usage.credits || 0;
-          // 只有付费使用才累加积分
-          if (usageType === 'paid') {
-            // 将这一行注释掉，避免重复计入积分
-            // usage.credits = currentCredits + creditCost;
-          }
-          usage.details = JSON.stringify({
-            ...details,
-            tasks: tasks
-          });
-          
-          // 使用await等待保存完成，确保数据被写入数据库
-          try {
-            await usage.save();
-            console.log(`图片换背景任务信息已保存到数据库: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-          } catch (saveError) {
-            console.error('保存图片换背景任务详情失败:', saveError);
-          }
-        } catch (e) {
-          console.error('处理图片换背景任务详情时解析JSON失败:', e);
-        }
-        
-        console.log(`保存图片换背景任务信息: 用户ID=${userId}, 任务ID=${taskId}, 积分=${creditCost}, 是否免费=${usageType === 'free'}`);
-      }
+      // 扣除积分
+      user.credits -= creditCost;
+      await user.save();
+      
+      usageType = 'paid';
+      finalCreditCost = creditCost;
+      
+      console.log(`用户ID ${userId} 使用 ${featureName} 功能，扣除 ${creditCost} 积分，剩余 ${user.credits} 积分`);
+    } else {
+      console.log(`用户ID ${userId} 使用 ${featureName} 功能的免费次数 ${usage.usageCount + 1}/${featureConfig.freeUsage}`);
     }
     
-    // 仅对实际使用功能(非page_view)增加使用次数
-    if (!isPageView) {
-      usage.usageCount += 1;
-    }
-    
+    // 更新使用次数
+    usage.usageCount += 1;
     usage.lastUsedAt = new Date();
     await usage.save();
+
+    // 生成任务ID并保存任务详情
+    const taskId = `${featureName}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
     
-    // 返回使用信息
+    // 保存任务详情到全局变量（为了兼容现有逻辑）
+    const taskInfo = {
+      userId: userId,
+      creditCost: finalCreditCost,
+      hasChargedCredits: usageType === 'paid',
+      isFree: usageType === 'free',
+      timestamp: new Date()
+    };
+
+    // 根据功能类型保存到对应的全局变量
+    switch (featureName) {
+      case 'scene-generator':
+        global.sceneGeneratorTasks[taskId] = taskInfo;
+        break;
+      case 'image-removal':
+        global.imageRemovalTasks[taskId] = taskInfo;
+        break;
+      case 'marketing-images':
+        global.marketingImagesTasks[taskId] = taskInfo;
+        break;
+      case 'translate':
+        global.translateTasks[taskId] = taskInfo;
+        break;
+      // 可以根据需要添加更多功能
+    }
+
+    // 保存任务详情到数据库
+    try {
+      const details = JSON.parse(usage.details || '{}');
+      const tasks = details.tasks || [];
+      
+      tasks.push({
+        taskId: taskId,
+        creditCost: finalCreditCost,
+        isFree: usageType === 'free',
+        timestamp: new Date()
+      });
+      
+      usage.details = JSON.stringify({
+        ...details,
+        tasks: tasks
+      });
+      
+      await usage.save();
+      console.log(`任务详情已保存: 功能=${featureName}, 任务ID=${taskId}, 积分=${finalCreditCost}, 是否免费=${usageType === 'free'}`);
+    } catch (e) {
+      console.error('保存任务详情失败:', e);
+    }
+
+    // 返回结果
     res.json({
       success: true,
-      message: '功能使用记录已更新',
       data: {
         featureName,
-        action,
         usageType,
-        creditCost,
-        remainingFreeUsage: Math.max(0, featureConfig.freeUsage - usage.usageCount)
+        creditCost: finalCreditCost,
+        isFree: usageType === 'free',
+        remainingFreeUsage: Math.max(0, featureConfig.freeUsage - usage.usageCount),
+        freeUsageLimit: featureConfig.freeUsage,
+        freeUsageUsed: usage.usageCount,
+        taskId: taskId
       }
     });
+
   } catch (error) {
-    console.error('记录功能使用出错:', error);
+    console.error(`功能 ${featureName} 使用记录处理错误:`, error);
     res.status(500).json({
       success: false,
-      message: '服务器错误，无法记录功能使用',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: '服务器错误，无法验证功能访问权限'
     });
   }
 });
@@ -1063,7 +880,7 @@ router.get('/usage', protect, async (req, res) => {
       else if (featureName === 'IMAGE_SHARPENING' || featureName === 'image-upscaler' || featureName === 'IMAGE_COLORIZATION' || 
                featureName === 'GLOBAL_STYLE' || featureName === 'LOCAL_REDRAW' || featureName === 'DIANTU' ||
                featureName === 'text-to-video' || featureName === 'image-to-video' || 
-               featureName === 'MULTI_IMAGE_TO_VIDEO' || featureName === 'VIDEO_STYLE_REPAINT') {
+               featureName === 'MULTI_IMAGE_TO_VIDEO' || featureName === 'VIDEO_STYLE_REPAINT' || featureName === 'DIGITAL_HUMAN_VIDEO') {
         // 图片和视频相关功能的特殊处理（图片高清放大、图片上色、全局风格化、局部重绘、垫图、文生视频、图生视频、多图转视频、视频风格重绘）
         // 修复积分计算重复问题，仅使用实际任务数量
         let actualUsageCount = 0;
@@ -1091,6 +908,9 @@ router.get('/usage', protect, async (req, res) => {
               break;
             case 'DIANTU':
               featureNameDisplay = '垫图';
+              break;
+            case 'DIGITAL_HUMAN_VIDEO':
+              featureNameDisplay = '视频数字人';
               break;
             default:
               featureNameDisplay = getLocalFeatureName(featureName);
@@ -1140,6 +960,9 @@ router.get('/usage', protect, async (req, res) => {
               break;
             case 'DIANTU':
               featureNameDisplay = '垫图';
+              break;
+            case 'DIGITAL_HUMAN_VIDEO':
+              featureNameDisplay = '视频数字人';
               break;
             default:
               featureNameDisplay = getLocalFeatureName(featureName);

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { protect } = require('../middleware/auth');
-const { checkFeatureAccess } = require('../middleware/featureAccess');
+const { createUnifiedFeatureMiddleware } = require('../middleware/unifiedFeatureUsage');
 const User = require('../models/User');
 const { FeatureUsage } = require('../models/FeatureUsage');
 const ImageHistory = require('../models/ImageHistory');
@@ -53,7 +53,7 @@ const STATUS_QUERY_MIN_INTERVAL = {
  * @desc    创建文生视频任务
  * @access  私有
  */
-router.post('/create', protect, checkFeatureAccess('text-to-video'), async (req, res) => {
+router.post('/create', protect, createUnifiedFeatureMiddleware('text-to-video'), async (req, res) => {
   try {
     const { prompt, model, size } = req.body;
     const userId = req.user.id;
@@ -85,21 +85,16 @@ router.post('/create', protect, checkFeatureAccess('text-to-video'), async (req,
     // 费用计算 - 积分制
     const costPerSecond = model === 'wanx2.1-t2v-turbo' ? 13.2 : 70; // 改为13.2积分/秒，使5秒视频总计为66积分
     const estimatedCost = costPerSecond * 5; // 假设生成5秒视频
+
+    // 积分检查和扣除已由中间件处理，这里不需要重复检查
+    console.log(`文生视频任务创建，预计消耗积分: ${estimatedCost}${req.featureUsage?.usageType === 'free' ? ' (免费次数)' : ''}`);
     
-    // 查询用户积分
+    // 用户验证（中间件已验证积分，这里只需验证用户存在）
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
         message: '用户不存在'
-      });
-    }
-    
-    // 检查用户积分是否足够，但暂不扣除
-    if (user.credits < estimatedCost) {
-      return res.status(400).json({
-        success: false,
-        message: `积分不足，需要约${estimatedCost}积分，当前积分${user.credits}`
       });
     }
     
@@ -199,71 +194,7 @@ router.post('/create', protect, checkFeatureAccess('text-to-video'), async (req,
       
       console.log(`任务信息已存储到全局变量: taskId=${taskId}, userId=${userId}, creditCost=${estimatedCost}${req.featureUsage?.usageType === 'free' ? ' (免费次数)' : ''}`);
       
-      // 记录功能使用
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      
-      let featureUsage = await FeatureUsage.findOne({
-        where: {
-          userId,
-          featureName: 'text-to-video'
-        }
-      });
-      
-      if (!featureUsage) {
-        featureUsage = await FeatureUsage.create({
-          userId,
-          featureName: 'text-to-video',
-          usageCount: 1,
-          lastUsedAt: today,
-          resetDate: todayStr,
-          details: JSON.stringify({
-            tasks: [{
-              taskId: taskId,
-              creditCost: req.featureUsage?.usageType === 'free' ? 0 : estimatedCost,
-              isFree: req.featureUsage?.usageType === 'free',
-              timestamp: new Date(),
-              prompt: prompt
-            }]
-          })
-        });
-      } else {
-        // 如果是新的一天，重置使用次数
-        if (featureUsage.resetDate !== todayStr) {
-          featureUsage.usageCount = 1;
-          featureUsage.resetDate = todayStr;
-        } else {
-          featureUsage.usageCount += 1;
-        }
-        
-        // 解析现有详情
-        let details = {};
-        try {
-          details = featureUsage.details ? JSON.parse(featureUsage.details) : {};
-        } catch (e) {
-          details = {};
-        }
-        
-        // 准备任务列表
-        const tasks = details.tasks || [];
-        
-        // 添加新的任务记录
-        tasks.push({
-          taskId: taskId,
-          creditCost: req.featureUsage?.usageType === 'free' ? 0 : estimatedCost,
-          isFree: req.featureUsage?.usageType === 'free',
-          timestamp: new Date(),
-          prompt: prompt
-        });
-        
-        featureUsage.details = JSON.stringify({
-          ...details,
-          tasks: tasks
-        });
-        
-        featureUsage.lastUsedAt = today;
-        await featureUsage.save();
-      }
+      // 功能使用记录已由中间件处理，这里不需要重复记录
       
       // 返回任务ID - 使用与阿里云一致的响应格式，完全匹配SDK返回格式
       const createResponse = {
@@ -545,127 +476,11 @@ router.get('/status/:taskId', protect, async (req, res) => {
                 global.textToVideoTasks[taskId].hasChargedCredits = true;
                 global.textToVideoTasks[taskId].creditCost = 0; // 免费使用不消耗积分
               }
-              
-              // 更新数据库中的使用记录，标记为免费使用
-              try {
-                let usage = await FeatureUsage.findOne({
-                  where: { userId, featureName: 'text-to-video' }
-                });
-                
-                if (usage) {
-                  // 解析现有详情
-                  let details = {};
-                  try {
-                    details = usage.details ? JSON.parse(usage.details) : {};
-                  } catch (e) {
-                    details = {};
-                  }
-                  
-                  // 准备任务列表
-                  const tasks = details.tasks || [];
-                  
-                  // 检查任务是否已记录
-                  const taskExists = tasks.some(task => task.taskId === taskId);
-                  
-                  if (!taskExists) {
-                    // 添加新的任务记录，标记为免费使用
-                    tasks.push({
-                      taskId: taskId,
-                      creditCost: 0, // 免费使用不消耗积分
-                      isFree: true,
-                      timestamp: new Date(),
-                      prompt: userTasks[userId][userTaskIndex].prompt || ''
-                    });
-                    
-                    // 更新使用记录但不增加积分消耗
-                    usage.usageCount += 1;
-                    usage.details = JSON.stringify({
-                      ...details,
-                      tasks: tasks
-                    });
-                    usage.lastUsedAt = new Date();
-                    await usage.save();
-                    
-                    console.log(`已更新用户 ${userId} 的文生视频使用记录，添加免费任务 ${taskId}`);
-                  }
-                }
-              } catch (dbError) {
-                console.error('保存文生视频免费使用记录失败:', dbError);
-                // 继续处理，不影响用户使用
-              }
-            } else if (taskCost > 0) {
-              try {
-                // 查询用户最新积分
-                const user = await User.findByPk(userId);
-                if (user) {
-                  const oldCredits = user.credits;
-                  // 扣除积分
-                  user.credits -= taskCost;
-                  await user.save();
-                  console.log(`任务完成，扣除用户积分: ${oldCredits} -> ${user.credits}, 扣除了${taskCost}积分`);
-                  
-                  // 更新全局变量中的扣费状态
-                  if (global.textToVideoTasks && global.textToVideoTasks[taskId]) {
-                    global.textToVideoTasks[taskId].hasChargedCredits = true;
-                  }
-                  
-                  // 更新数据库中的使用记录
-                  try {
-                    let usage = await FeatureUsage.findOne({
-                      where: { userId, featureName: 'text-to-video' }
-                    });
-                    
-                    if (usage) {
-                      // 解析现有详情
-                      let details = {};
-                      try {
-                        details = usage.details ? JSON.parse(usage.details) : {};
-                      } catch (e) {
-                        details = {};
-                      }
-                      
-                      // 准备任务列表
-                      const tasks = details.tasks || [];
-                      
-                      // 检查任务是否已记录
-                      const taskExists = tasks.some(task => task.taskId === taskId);
-                      
-                      if (!taskExists) {
-                        // 添加新的任务记录
-                        tasks.push({
-                          taskId: taskId,
-                          creditCost: taskCost,
-                          isFree: false,
-                          timestamp: new Date(),
-                          prompt: userTasks[userId][userTaskIndex].prompt || ''
-                        });
-                        
-                        // 更新使用记录
-                        usage.usageCount += 1;
-                        usage.credits += taskCost;
-                        usage.details = JSON.stringify({
-                          ...details,
-                          tasks: tasks
-                        });
-                        usage.lastUsedAt = new Date();
-                        await usage.save();
-                        
-                        console.log(`已更新用户 ${userId} 的文生视频使用记录，添加任务 ${taskId}`);
-                      }
-                    }
-                  } catch (dbError) {
-                    console.error('保存文生视频使用记录失败:', dbError);
-                    // 继续处理，不影响用户使用
-                  }
-                  
-                  // 将更新后的积分添加到响应中
-                  responseData.output.credits = user.credits;
-                } else {
-                  console.error(`未找到用户(ID=${userId})，无法扣除积分`);
-                }
-              } catch (creditError) {
-                console.error('扣除积分失败:', creditError);
-                // 继续处理，不影响视频展示功能
+            } else {
+              // 积分已在中间件中扣除，这里只需要标记状态
+              console.log(`任务完成，积分已在创建时通过中间件扣除: 任务ID=${taskId}`);
+              if (global.textToVideoTasks && global.textToVideoTasks[taskId]) {
+                global.textToVideoTasks[taskId].hasChargedCredits = true;
               }
             }
           }
@@ -944,7 +759,7 @@ router.get('/tasks', protect, (req, res) => {
  * @desc    创建图生视频任务
  * @access  Private
  */
-router.post('/image-to-video', protect, checkFeatureAccess('image-to-video'), async (req, res) => {
+router.post('/image-to-video', protect, createUnifiedFeatureMiddleware('image-to-video'), async (req, res) => {
     try {
         const { model, input, parameters } = req.body;
         const userId = req.user.id;
@@ -1580,7 +1395,7 @@ router.post('/save-video-result', protect, async (req, res) => {
  * @desc    创建图生视频任务（同步API，与SDK行为一致）
  * @access  Private
  */
-router.post('/image-to-video-sync', protect, checkFeatureAccess('image-to-video'), async (req, res) => {
+router.post('/image-to-video-sync', protect, createUnifiedFeatureMiddleware('image-to-video'), async (req, res) => {
     try {
         const { model, prompt, img_url, parameters } = req.body;
         const userId = req.user.id;

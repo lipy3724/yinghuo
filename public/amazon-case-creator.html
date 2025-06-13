@@ -363,21 +363,12 @@
                 loadingSpinner.style.display = 'block';
                 generateBtn.disabled = true;
                 
-                try {
-                    // 记录功能使用并检查积分
-                    const canProceed = await trackFeatureUsage('amazon_case_creator');
-                    if (!canProceed) {
-                        loadingSpinner.style.display = 'none';
-                        generateBtn.disabled = false;
-                        return;
-                    }
-                
-                    // 调用API
+                try {// 调用API
                     const response = await fetch('/api/amazon-listing/case-creator', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                            'Authorization': 'Bearer ' + localStorage.getItem('authToken')
                         },
                         body: JSON.stringify({
                             issueDescription,
@@ -394,6 +385,11 @@
                 
                     if (data.success) {
                         displayResult(data.data);
+                        
+                        // 特性追踪
+                        if (typeof trackFeatureUsage === 'function') {
+                            trackFeatureUsage('amazon_case_creator');
+                        }
                     } else {
                         alert('生成失败: ' + (data.error || '未知错误'));
                     }

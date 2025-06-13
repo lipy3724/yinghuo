@@ -2,7 +2,8 @@ const express = require('express');
 const axios = require('axios');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { checkFeatureAccess, FEATURES } = require('../middleware/featureAccess');
+const { FEATURES } = require('../middleware/featureAccess');
+const { createUnifiedFeatureMiddleware } = require('../middleware/unifiedFeatureUsage');
 const User = require('../models/User');
 const { FeatureUsage } = require('../models/FeatureUsage');
 
@@ -16,7 +17,7 @@ const API_BASE_URL = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/image2
  * @desc    创建全局风格化任务
  * @access  私有
  */
-router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (req, res) => {
+router.post('/create-task', protect, createUnifiedFeatureMiddleware('GLOBAL_STYLE'), async (req, res) => {
   try {
     const { imageUrl, prompt, strength } = req.body;
     
@@ -67,10 +68,8 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
     
     // 获取当前用户ID和积分消费信息
     const userId = req.user.id;
-    const creditCost = req.featureUsage?.creditCost || FEATURES['GLOBAL_STYLE'].creditCost;
-    
-    // 判断是否是免费使用
-    const isFree = req.featureUsage?.usageType === 'free';
+    const creditCost = req.featureUsage?.creditCost || 0;
+    const isFree = req.featureUsage?.isFree || false;
     
     // 获取任务ID
     const taskId = response.data.output?.task_id || `style-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -82,8 +81,8 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
     
     global.globalStyleTasks[taskId] = {
       userId: userId,
-      creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
-      hasChargedCredits: !isFree, // 免费使用不需要扣除积分
+      creditCost: creditCost, // 积分已在中间件中扣除
+      hasChargedCredits: true, // 积分已在中间件中扣除
       timestamp: new Date(),
       prompt: sanitizedPrompt,
       strength: strengthValue,
@@ -115,7 +114,7 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
       // 添加新任务
       tasks.push({
         taskId: taskId,
-        creditCost: isFree ? 0 : creditCost, // 免费使用积分为0
+        creditCost: creditCost, // 积分已在中间件中扣除
         timestamp: new Date(),
           prompt: sanitizedPrompt,
         strength: strengthValue,
@@ -123,7 +122,7 @@ router.post('/create-task', protect, checkFeatureAccess('GLOBAL_STYLE'), async (
       });
       
       // 更新usage记录 - 不再重复累加积分
-      // 积分已经在checkFeatureAccess中间件中扣除，这里不需要再次累加
+      // 积分已在统一中间件中扣除，这里不需要再次累加
       usage.usageCount += 1;
       usage.lastUsedAt = new Date();
       usage.details = JSON.stringify({
