@@ -194,10 +194,15 @@
                             </span>
                             <input id="search-input" type="text" placeholder="搜索用户ID" class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
-                        <select id="feature-filter" class="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                            <option value="">全部功能</option>
-                            <!-- 功能选项将由JavaScript动态生成 -->
-                        </select>
+                        <div class="relative w-full md:w-auto">
+                            <select id="feature-filter" class="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none pr-10">
+                                <option value="">全部功能</option>
+                                <!-- 功能选项将由JavaScript动态生成 -->
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <i class="ri-arrow-down-s-line text-gray-400"></i>
+                            </div>
+                        </div>
                     </div>
                     <div class="flex space-x-2">
                         <button id="search-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
@@ -299,7 +304,12 @@
             // 退出登录
             document.getElementById('logout-btn').addEventListener('click', function(e) {
                 e.preventDefault();
-                logout();
+                // 使用adminLogout函数（如果存在），否则使用本地的logout函数
+                if (typeof window.adminLogout === 'function') {
+                    window.adminLogout();
+                } else {
+                    logout();
+                }
             });
             
             // 加载功能使用数据
@@ -351,6 +361,7 @@
         
         // 退出登录
         function logout() {
+            console.log('执行管理员本地登出函数');
             localStorage.removeItem('adminAuthToken');
             localStorage.removeItem('token');
             window.location.href = '/admin-login.html';
@@ -578,6 +589,9 @@
             
             const featureFilter = document.getElementById('feature-filter');
             
+            // 保存当前选中的值
+            const currentValue = featureFilter.value;
+            
             // 清空现有选项，保留第一个"全部功能"选项
             while (featureFilter.options.length > 1) {
                 featureFilter.remove(1);
@@ -590,6 +604,16 @@
                 option.textContent = feature.name;   // 显示中文名称
                 featureFilter.appendChild(option);
             });
+            
+            // 如果有之前选中的值，尝试恢复选中状态
+            if (currentValue) {
+                for (let i = 0; i < featureFilter.options.length; i++) {
+                    if (featureFilter.options[i].value === currentValue) {
+                        featureFilter.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
         }
     </script>
 </body>

@@ -7,6 +7,8 @@
     <link rel="icon" href="/images/favicon.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="/js/logout-handler.js"></script>
+    <script src="/js/auth-check.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -1098,10 +1100,6 @@
                 <i class="ri-download-2-line mr-1"></i>
                 <span>下载中心</span>
             </a>
-            <a href="#" class="text-gray-600 hover:text-gray-900 flex items-center">
-                <i class="ri-team-line mr-1"></i>
-                <span>商家AI交流群</span>
-            </a>
             <!-- 用户未登录时显示登录注册按钮 -->
             <a href="/login.html" id="login-btn" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                 登录/注册
@@ -2038,10 +2036,17 @@
             // 退出登录
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
-                logoutBtn.addEventListener('click', function() {
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('user');
-                    window.location.href = '/';
+                logoutBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    // 使用userLogout函数进行登出
+                    if (typeof window.userLogout === 'function') {
+                        await window.userLogout();
+                    } else {
+                        // 兼容处理
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('user');
+                        window.location.href = '/';
+                    }
                 });
             }
             
@@ -2407,10 +2412,47 @@
         });
         
         // 检查用户权限并重定向
-        function checkAuthAndRedirect(url) {
+        async function checkAuthAndRedirect(url) {
+            // 如果有统一的auth-check.js提供的checkAuth函数，优先使用它
+            if (typeof window.checkAuth === 'function') {
+                const isAuthenticated = await window.checkAuth(false);
+                if (isAuthenticated) {
+                    window.location.href = url;
+                } else {
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(url);
+                }
+                return;
+            }
+            
+            // 否则使用基本检查
             const token = localStorage.getItem('authToken');
             if (token) {
-                window.location.href = url;
+                // 进行额外的会话验证
+                try {
+                    const response = await fetch('/api/auth/verify', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (response.status === 401 || response.status === 403) {
+                        // 会话已失效，清除登录信息并重定向到登录页
+                        if (typeof window.logout === 'function') {
+                            window.logout();
+                        } else {
+                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('user');
+                            window.location.href = '/login.html?redirect=' + encodeURIComponent(url);
+                        }
+                        return;
+                    }
+                    
+                    // 会话有效，重定向到请求的页面
+                    window.location.href = url;
+                } catch (error) {
+                    console.error('验证会话时出错:', error);
+                    window.location.href = url;
+                }
             } else {
                 window.location.href = '/login.html?redirect=' + encodeURIComponent(url);
             }
