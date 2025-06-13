@@ -657,7 +657,7 @@
             try {
                 const userData = {
                     username,
-                    phone,
+                    phone: phone.trim() === '' ? null : phone, // 如果手机号为空，则设置为null
                     credits: parseInt(credits),
                     isAdmin: userType === 'admin',
                     isInternal: userType === 'internal',
@@ -784,7 +784,16 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    const sessions = result.data.sessions || [];
+                    let sessions = result.data.sessions || [];
+                    
+                    // 过滤掉最后活跃时间超过12小时的设备
+                    const twelveHoursAgo = new Date();
+                    twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+                    
+                    sessions = sessions.filter(session => {
+                        const lastActiveTime = new Date(session.lastActiveAt);
+                        return lastActiveTime >= twelveHoursAgo;
+                    });
                     
                     // 更新活跃设备数
                     document.getElementById('active-session-count').textContent = sessions.length;
@@ -803,7 +812,7 @@
                                 </span>
                             `;
                         } else {
-                            document.getElementById('no-sessions').textContent = '该用户当前没有活跃的登录设备';
+                            document.getElementById('no-sessions').textContent = '该用户当前没有活跃的登录设备或所有设备已超过12小时未活跃';
                         }
                         
                         document.getElementById('no-sessions').classList.remove('hidden');

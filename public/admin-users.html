@@ -69,6 +69,51 @@
                 margin-left: 0;
             }
         }
+        
+        /* 模态框样式 */
+        #ban-user-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: none;
+        }
+        
+        #ban-user-modal .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 0;
+            border-radius: 0.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            width: 100%;
+            max-width: 28rem;
+        }
+        
+        /* 模态框动画 */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translate(-50%, -60%); opacity: 0; }
+            to { transform: translate(-50%, -50%); opacity: 1; }
+        }
+        
+        #ban-user-modal.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        #ban-user-modal.show .modal-content {
+            animation: slideIn 0.3s ease;
+        }
     </style>
 
     <link rel="icon" href="/images/favicon.png" type="image/png"></head>
@@ -131,22 +176,13 @@
         <main class="p-4 md:p-6">
             <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-800">用户管理</h2>
-                    <p class="text-gray-600">管理用户信息和积分</p>
+                    <h1 class="text-2xl font-semibold text-gray-800">用户管理</h1>
+                    <p class="text-gray-600">管理用户信息和权限分</p>
                 </div>
                 <div class="mt-4 md:mt-0">
-                    <!-- 创建内部用户按钮 -->
-                    <div class="flex items-center space-x-4">
-                        <button id="create-admin-btn" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center">
-                            <i class="ri-admin-line mr-2"></i>
-                            <span>创建管理员</span>
-                        </button>
-                        
-                        <button id="create-internal-btn" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center">
-                            <i class="ri-user-add-line mr-2"></i>
-                            <span>创建内部用户</span>
-                        </button>
-                    </div>
+                    <button id="create-user-btn" onclick="tryShowModal(); return false;" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center">
+                        <i class="ri-user-add-line mr-1"></i> 创建用户
+                    </button>
                 </div>
             </div>
             
@@ -465,31 +501,7 @@
         </div>
     </div>
     
-    <!-- 确认删除模态框 -->
-    <div id="confirm-delete-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div class="px-6 py-4 border-b">
-                <h3 class="text-lg font-medium text-gray-900">确认删除</h3>
-            </div>
-            <div class="px-6 py-4">
-                <p class="text-gray-700">您确定要删除该用户吗？此操作不可撤销。</p>
-                <div id="delete-loading" class="hidden mt-4 text-center">
-                    <i class="ri-loader-4-line animate-spin text-xl text-indigo-600"></i>
-                    <span class="ml-2 text-gray-700">正在处理...</span>
-                </div>
-                <div id="delete-error" class="hidden mt-4 p-3 bg-red-50 text-red-700 rounded-md">
-                </div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
-                <button id="cancel-delete" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2">
-                    取消
-                </button>
-                <button id="confirm-delete" class="px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700">
-                    删除
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- 确认删除模态框 - 已移除，使用原生confirm -->
     
     <!-- 创建内部用户模态框 -->
     <div id="create-internal-modal" class="fixed inset-0 z-50 hidden">
@@ -541,59 +553,86 @@
         </div>
     </div>
     
-    <!-- 添加封禁用户模态框 -->
-    <div id="ban-user-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div class="px-6 py-4 border-b flex items-center justify-between">
-                <h3 class="text-lg font-medium text-gray-900">封禁用户</h3>
-                <button id="close-ban-modal" class="text-gray-400 hover:text-gray-500">
-                    <i class="ri-close-line text-xl"></i>
-                </button>
-            </div>
-            <form id="ban-user-form">
+    <!-- 创建用户模态框 -->
+    <div id="create-user-modal" class="fixed inset-0" style="display: none; z-index: 10000; background-color: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; right: 0; bottom: 0;">
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden" style="max-width: 500px; margin: auto;">
+                <!-- 模态框头部 -->
+                <div class="px-6 py-4 bg-green-50 flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-green-700">创建新用户</h3>
+                    <button id="close-create-user-modal" onclick="closeCreateUserModal(); return false;" class="text-gray-500 hover:text-gray-700">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+                
+                <!-- 模态框内容 -->
                 <div class="px-6 py-4">
-                    <input type="hidden" id="ban-user-id">
-                    <input type="hidden" id="ban-username">
-                    
-                    <div class="mb-4">
-                        <p class="text-gray-700">您正在封禁用户: <span id="ban-user-display" class="font-medium"></span></p>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="ban-reason" class="block text-sm font-medium text-gray-700 mb-1">封禁原因</label>
-                        <textarea id="ban-reason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" rows="2" placeholder="请输入封禁原因..."></textarea>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="ban-duration" class="block text-sm font-medium text-gray-700 mb-1">封禁时长</label>
-                        <div class="flex items-center space-x-2">
-                            <select id="ban-duration" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="1">1天</option>
-                                <option value="3">3天</option>
-                                <option value="7">7天</option>
-                                <option value="30">30天</option>
-                                <option value="90">90天</option>
-                                <option value="180">180天</option>
-                                <option value="365">365天</option>
-                                <option value="0">永久</option>
-                            </select>
+                    <form id="create-user-form">
+                        <div class="mb-4">
+                            <label for="new-username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                            <input type="text" id="new-username" name="username" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
                         </div>
-                    </div>
+                        
+                        <div class="mb-4">
+                            <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                            <input type="password" id="new-password" name="password" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="new-phone" class="block text-sm font-medium text-gray-700 mb-1">手机号 (选填)</label>
+                            <input type="text" id="new-phone" name="phone" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="new-credits" class="block text-sm font-medium text-gray-700 mb-1">初始积分</label>
+                            <input type="number" id="new-credits" name="credits" min="0" value="0" required class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">用户类型</label>
+                            <div class="mt-2 space-y-2">
+                                <div class="flex items-center">
+                                    <input type="radio" id="new-user-type-normal" name="user-type" value="normal" checked class="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300">
+                                    <label for="new-user-type-normal" class="ml-2 block text-sm text-gray-700">普通用户</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" id="new-user-type-internal" name="user-type" value="internal" class="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300">
+                                    <label for="new-user-type-internal" class="ml-2 block text-sm text-gray-700">内部用户</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="radio" id="new-user-type-admin" name="user-type" value="admin" class="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300">
+                                    <label for="new-user-type-admin" class="ml-2 block text-sm text-gray-700">管理员</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="new-remark" class="block text-sm font-medium text-gray-700 mb-1">备注 (选填)</label>
+                            <textarea id="new-remark" name="remark" class="w-full px-3 py-2 border border-gray-300 rounded-md" rows="2" placeholder="添加用户备注..."></textarea>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-end space-x-3">
+                            <button type="button" id="cancel-create-user" onclick="closeCreateUserModal(); return false;" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                                取消
+                            </button>
+                            <button type="submit" onclick="createUser(); return false;" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                创建用户
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
-                    <button type="button" id="cancel-ban" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2">
-                        取消
-                    </button>
-                    <button type="submit" class="px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700">
-                        确认封禁
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
     
+    <!-- 添加封禁用户模态框 - 已移除，改用原生prompt实现 -->
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // 检查封禁模态框是否存在
+            const banModal = document.getElementById('ban-user-modal');
+            console.log('页面加载完成，封禁模态框元素:', banModal);
+            
             // 检查管理员登录状态
             checkAdminAuth();
             
@@ -656,8 +695,7 @@
                 }
             });
             
-            // 创建管理员按钮事件
-            document.getElementById('create-admin-btn').addEventListener('click', showCreateAdminModal);
+            // 创建管理员按钮事件 - 已删除
             
             // 编辑用户表单提交事件
             document.getElementById('edit-user-form').addEventListener('submit', function(e) {
@@ -679,14 +717,11 @@
             document.getElementById('close-create-modal').addEventListener('click', closeCreateModal);
             document.getElementById('cancel-create').addEventListener('click', closeCreateModal);
             
-            // 关闭删除确认模态框
-            document.getElementById('cancel-delete').addEventListener('click', closeDeleteModal);
+            // 关闭删除确认模态框 - 已移除，使用原生confirm
             
-            // 确认删除按钮事件
-            document.getElementById('confirm-delete').addEventListener('click', deleteUser);
+            // 确认删除按钮事件 - 已移除，使用原生confirm
             
-            // 创建内部用户按钮事件
-            document.getElementById('create-internal-btn').addEventListener('click', showCreateInternalModal);
+            // 创建内部用户按钮事件 - 已删除
             
             // 创建内部用户表单提交事件
             document.getElementById('create-internal-form').addEventListener('submit', function(e) {
@@ -701,15 +736,9 @@
             // 添加权限排序点击事件
             document.getElementById('role-header').addEventListener('click', toggleRoleSort);
             
-            // 封禁用户表单提交
-            document.getElementById('ban-user-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                banUser();
-            });
+            // 封禁用户表单提交 - 已移除
             
-            // 关闭封禁模态框
-            document.getElementById('close-ban-modal').addEventListener('click', closeBanModal);
-            document.getElementById('cancel-ban').addEventListener('click', closeBanModal);
+            // 关闭封禁模态框 - 已移除
             
             // 重置密码按钮事件
             document.getElementById('reset-password-btn').addEventListener('click', showResetPasswordModal);
@@ -733,14 +762,29 @@
             
             // 登出所有设备按钮事件
             document.getElementById('logout-all-sessions-btn').addEventListener('click', logoutAllUserSessions);
+            
+            // 创建用户按钮事件 - 已通过内联onclick处理
+            // document.getElementById('create-user-btn').addEventListener('click', function(e) {
+            //     console.log('创建用户按钮被点击');
+            //     e.preventDefault();
+            //     showCreateUserModal();
+            // });
+            
+            // 创建用户表单提交事件 - 已通过内联onclick处理
+            // document.getElementById('create-user-form').addEventListener('submit', function(e) {
+            //     e.preventDefault();
+            //     createUser();
+            // });
+            
+            // 关闭创建用户模态框 - 已通过内联onclick处理
+            // document.getElementById('close-create-user-modal').addEventListener('click', closeCreateUserModal);
+            // document.getElementById('cancel-create-user').addEventListener('click', closeCreateUserModal);
         });
         
         // 全局变量
         let currentPage = 1;
         let pageSize = 10;
         let totalPages = 1;
-        let deleteUserId = null;
-        let banUserId = null;
         let roleSort = 'none'; // 'admin-first', 'internal-first', 'normal-first', 'none'
         let currentViewingUserId = null; // 当前正在查看会话的用户ID
         
@@ -984,7 +1028,7 @@
                         `;
                     } else {
                         actionButtons += `
-                            <button onclick="showBanModal(${user.id}, '${user.username}')" class="text-orange-600 hover:text-orange-900" title="封禁用户">
+                            <button onclick="showBanModal(${user.id}, '${user.username.replace(/'/g, "\\'")}')" class="text-orange-600 hover:text-orange-900" title="封禁用户">
                                 <i class="ri-user-forbid-line"></i>
                             </button>
                         `;
@@ -1201,100 +1245,102 @@
         
         // 显示删除确认模态框
         function showDeleteModal(userId) {
-            deleteUserId = userId;
-            document.getElementById('confirm-delete-modal').classList.remove('hidden');
+            console.log("显示删除确认对话框", userId);
+            if (confirm("您确定要删除该用户吗？此操作不可撤销。")) {
+                deleteUserDirectly(userId);
+            }
         }
         
-        // 关闭删除确认模态框
-        function closeDeleteModal() {
-            document.getElementById('confirm-delete-modal').classList.add('hidden');
-            document.getElementById('delete-loading').classList.add('hidden');
-            document.getElementById('delete-error').classList.add('hidden');
-            document.getElementById('confirm-delete').disabled = false;
-            document.getElementById('cancel-delete').disabled = false;
-            deleteUserId = null;
-        }
-        
-        // 删除用户
-        async function deleteUser() {
-            if (!deleteUserId) return;
+        // 直接删除用户
+        async function deleteUserDirectly(userId) {
+            if (!userId) {
+                console.error('删除用户失败: 未提供用户ID');
+                alert('删除用户失败: 未提供用户ID');
+                return;
+            }
             
             const token = localStorage.getItem('adminAuthToken');
-            const deleteLoadingEl = document.getElementById('delete-loading');
-            const deleteErrorEl = document.getElementById('delete-error');
-            const confirmBtn = document.getElementById('confirm-delete');
-            const cancelBtn = document.getElementById('cancel-delete');
+            if (!token) {
+                console.error('删除用户失败: 未找到认证令牌');
+                alert('您的登录状态已过期，请重新登录');
+                window.location.href = '/admin-login.html';
+                return;
+            }
             
             try {
-                // 显示加载状态
-                deleteLoadingEl.classList.remove('hidden');
-                deleteErrorEl.classList.add('hidden');
-                confirmBtn.disabled = true;
-                cancelBtn.disabled = true;
+                console.log("开始删除用户", userId);
                 
                 // 发送删除请求
-                const response = await fetch(`/api/admin/users/${deleteUserId}`, {
+                const response = await fetch(`/api/admin/users/${userId}`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     }
                 });
                 
-                // 解析响应
+                console.log('删除用户响应状态:', response.status, response.statusText);
+                
+                // 检查HTTP状态码
+                if (response.status === 500) {
+                    console.error('服务器内部错误(500):', response.statusText);
+                    alert('服务器内部错误，请联系管理员检查服务器日志');
+                    return;
+                }
+                
+                // 尝试解析JSON响应
                 let result;
+                let responseText;
                 try {
-                    result = await response.json();
+                    responseText = await response.text();
+                    console.log('删除用户响应文本:', responseText);
+                    
+                    if (responseText) {
+                        result = JSON.parse(responseText);
+                        console.log('删除用户响应解析结果:', result);
+                    } else {
+                        console.error('删除用户响应为空');
+                        alert('服务器返回空响应，请稍后再试');
+                        return;
+                    }
                 } catch (e) {
-                    throw new Error('服务器返回的数据格式不正确');
+                    console.error('解析响应JSON失败:', e, '原始响应:', responseText);
+                    alert('无法解析服务器响应，请稍后再试');
+                    return;
                 }
                 
                 if (!response.ok) {
-                    throw new Error(result?.message || `服务器返回错误状态码: ${response.status}`);
+                    // 处理非200响应
+                    const errorMsg = result?.message || `服务器返回错误状态码: ${response.status}`;
+                    console.error('删除用户响应错误:', errorMsg, result);
+                    alert('删除用户失败: ' + errorMsg);
+                    return;
                 }
                 
                 if (result.success) {
                     // 删除成功
-                    closeDeleteModal();
+                    console.log('删除用户成功:', result);
+                    alert("用户删除成功");
                     
-                    // 延迟一点显示成功提示，让用户看到模态框关闭的动画
-                    setTimeout(() => {
-                        // 检查当前页是否只有一条记录，如果是则返回上一页
-                        const userListRows = document.querySelectorAll('#user-list tr').length;
-                        if (userListRows === 1 && currentPage > 1) {
-                            currentPage--;
-                        }
-                        
-                        loadUsers(); // 重新加载用户列表
-                        
-                        // 显示成功提示
-                        const successToast = document.createElement('div');
-                        successToast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-md shadow-lg z-50';
-                        successToast.textContent = '用户删除成功';
-                        document.body.appendChild(successToast);
-                        
-                        // 3秒后移除提示
-                        setTimeout(() => {
-                            successToast.remove();
-                        }, 3000);
-                    }, 300);
+                    // 检查当前页是否只有一条记录，如果是则返回上一页
+                    const userListRows = document.querySelectorAll('#user-list tr').length;
+                    if (userListRows === 1 && currentPage > 1) {
+                        currentPage--;
+                    }
+                    
+                    loadUsers(); // 重新加载用户列表
                 } else {
-                    throw new Error(result.message || '删除用户失败');
+                    const errorMsg = result.message || '删除用户失败，但服务器未返回具体原因';
+                    console.error('删除用户业务逻辑错误:', errorMsg, result);
+                    alert('删除用户失败: ' + errorMsg);
                 }
             } catch (error) {
                 console.error('删除用户出错:', error);
-                
-                // 显示错误信息
-                deleteErrorEl.textContent = `删除失败: ${error.message}`;
-                deleteErrorEl.classList.remove('hidden');
-                
-                // 恢复按钮状态
-                confirmBtn.disabled = false;
-                cancelBtn.disabled = false;
-            } finally {
-                // 隐藏加载状态
-                deleteLoadingEl.classList.add('hidden');
+                alert('删除用户失败: ' + error.message);
             }
         }
+        
+        // 关闭删除确认模态框 - 已移除，使用原生confirm
         
         // 格式化日期
         function formatDate(dateString) {
@@ -1385,33 +1431,39 @@
             }
         }
         
-        // 显示封禁用户模态框
+        // 显示封禁用户模态框 - 使用原生prompt
         function showBanModal(userId, username) {
-            banUserId = userId;
-            document.getElementById('ban-user-id').value = userId;
-            document.getElementById('ban-username').value = username;
-            document.getElementById('ban-user-display').textContent = username;
-            document.getElementById('ban-user-modal').classList.remove('hidden');
+            console.log('showBanModal被调用:', userId, username);
+            try {
+                // 使用原生prompt和confirm来实现封禁功能
+                const reason = prompt(`请输入封禁用户 ${username} 的原因:`);
+                if (reason === null) return; // 用户取消
+                
+                // 选择封禁时长
+                const durationOptions = "1天=1\n3天=3\n7天=7\n30天=30\n90天=90\n180天=180\n365天=365\n永久封禁=0";
+                const durationPrompt = `请选择封禁时长 (输入数字):\n${durationOptions}`;
+                const duration = prompt(durationPrompt, "7");
+                if (duration === null) return; // 用户取消
+                
+                // 确认封禁
+                const confirmMessage = `确认封禁用户 ${username} ${duration === '0' ? '永久' : duration + '天'}？\n原因: ${reason}`;
+                if (confirm(confirmMessage)) {
+                    // 调用封禁API
+                    banUserDirectly(userId, reason, duration);
+                }
+            } catch (error) {
+                console.error('封禁用户出错:', error);
+                alert('封禁用户时出错: ' + error.message);
+            }
         }
         
-        // 关闭封禁用户模态框
-        function closeBanModal() {
-            document.getElementById('ban-user-modal').classList.add('hidden');
-            document.getElementById('ban-user-form').reset();
-            banUserId = null;
-        }
-        
-        // 封禁用户
-        async function banUser() {
-            if (!banUserId) return;
-            
+        // 直接调用API封禁用户
+        async function banUserDirectly(userId, reason, expireDays) {
             const token = localStorage.getItem('adminAuthToken');
-            const reason = document.getElementById('ban-reason').value.trim();
-            const expireDays = document.getElementById('ban-duration').value;
             
             try {
                 // 发送封禁请求
-                const response = await fetch(`/api/admin/users/${banUserId}/ban`, {
+                const response = await fetch(`/api/admin/users/${userId}/ban`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1427,7 +1479,6 @@
                 
                 if (result.success) {
                     alert('用户已被封禁');
-                    closeBanModal();
                     loadUsers(); // 重新加载用户列表
                 } else {
                     throw new Error(result.message || '封禁用户失败');
@@ -1437,6 +1488,8 @@
                 alert('封禁用户失败: ' + error.message);
             }
         }
+        
+        // 关闭封禁用户模态框 - 已移除
         
         // 解封用户
         async function unbanUser(userId) {
@@ -1595,9 +1648,19 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    const { sessions, activeSessionCount } = result.data;
+                    let { sessions, activeSessionCount } = result.data;
                     
-                    // 更新活跃会话数
+                    // 过滤掉最后活跃时间超过12小时的设备
+                    const twelveHoursAgo = new Date();
+                    twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+                    
+                    sessions = sessions.filter(session => {
+                        const lastActiveTime = new Date(session.lastActiveAt);
+                        return lastActiveTime >= twelveHoursAgo;
+                    });
+                    
+                    // 更新活跃会话数为过滤后的数量
+                    activeSessionCount = sessions.length;
                     document.getElementById('active-session-count').textContent = activeSessionCount;
                     
                     // 渲染会话列表
@@ -1637,6 +1700,7 @@
                         }).join('');
                     } else {
                         // 显示无会话提示
+                        noSessionsEl.textContent = '该用户当前没有活跃的登录设备或所有设备已超过12小时未活跃';
                         noSessionsEl.classList.remove('hidden');
                     }
                 } else {
@@ -1703,6 +1767,504 @@
                 // 隐藏加载状态
                 sessionsLoadingEl.classList.add('hidden');
             }
+        }
+        
+        // 封禁用户 - 已移除，改用banUserDirectly
+        
+        // 关闭封禁用户模态框 - 已移除
+        
+        // 显示创建用户模态框
+        function showCreateUserModal() {
+            console.log('显示创建用户模态框');
+            
+            try {
+                // 尝试显示模态框
+                const modal = document.getElementById('create-user-modal');
+                if (!modal) {
+                    console.error('找不到模态框元素');
+                    alert('系统错误：找不到模态框元素');
+                    return;
+                }
+                
+                // 重置表单
+                document.getElementById('create-user-form').reset();
+                
+                // 默认选择普通用户
+                document.getElementById('new-user-type-normal').checked = true;
+                
+                // 强制显示模态框
+                modal.classList.remove('hidden');
+                modal.style.display = 'block';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                modal.style.zIndex = '9999';
+                
+                console.log('模态框状态:', {
+                    display: modal.style.display,
+                    zIndex: window.getComputedStyle(modal).zIndex,
+                    visibility: window.getComputedStyle(modal).visibility,
+                    opacity: window.getComputedStyle(modal).opacity,
+                    classList: Array.from(modal.classList)
+                });
+            } catch (error) {
+                console.error('显示模态框出错:', error);
+                
+                // 如果模态框无法显示，使用原生prompt作为备用方案
+                if (confirm('是否要创建新用户？')) {
+                    const username = prompt('请输入用户名:');
+                    if (!username) return;
+                    
+                    const password = prompt('请输入密码:');
+                    if (!password) return;
+                    
+                    const phone = prompt('请输入手机号 (可选):');
+                    const credits = parseInt(prompt('请输入初始积分:', '0')) || 0;
+                    
+                    const userTypePrompt = '请选择用户类型:\n1 - 普通用户\n2 - 内部用户\n3 - 管理员';
+                    const userType = prompt(userTypePrompt, '1');
+                    
+                    const isAdmin = userType === '3';
+                    const isInternal = userType === '2';
+                    
+                    const remark = prompt('请输入备注 (可选):');
+                    
+                    // 构建用户数据
+                    const userData = {
+                        username,
+                        password,
+                        phone: phone || null,
+                        credits,
+                        remark: remark || null,
+                        isAdmin,
+                        isInternal
+                    };
+                    
+                    // 调用创建用户API
+                    createUserWithData(userData);
+                }
+            }
+        }
+        
+        // 使用提供的数据创建用户
+        async function createUserWithData(userData) {
+            const token = localStorage.getItem('adminAuthToken');
+            
+            try {
+                // 请求创建用户
+                const response = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 显示成功提示
+                    alert('用户创建成功');
+                    
+                    // 重新加载用户列表
+                    loadUsers();
+                } else {
+                    throw new Error(result.message || '创建用户失败');
+                }
+            } catch (error) {
+                console.error('创建用户错误:', error);
+                alert('创建用户失败: ' + error.message);
+            }
+        }
+        
+        // 关闭创建用户模态框
+        function closeCreateUserModal() {
+            console.log('关闭创建用户模态框');
+            const modal = document.getElementById('create-user-modal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+        
+        // 创建用户
+        async function createUser() {
+            const token = localStorage.getItem('adminAuthToken');
+            
+            try {
+                // 获取表单数据
+                const username = document.getElementById('new-username').value.trim();
+                const password = document.getElementById('new-password').value.trim();
+                const phone = document.getElementById('new-phone').value.trim() || null;
+                const credits = parseInt(document.getElementById('new-credits').value);
+                const remark = document.getElementById('new-remark').value.trim() || null;
+                
+                // 获取用户类型
+                const isAdmin = document.getElementById('new-user-type-admin').checked;
+                const isInternal = document.getElementById('new-user-type-internal').checked;
+                
+                // 构建用户数据
+                const userData = {
+                    username,
+                    password,
+                    phone,
+                    credits,
+                    remark,
+                    isAdmin,
+                    isInternal
+                };
+                
+                // 请求创建用户
+                const response = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 显示成功提示
+                    alert('用户创建成功');
+                    
+                    // 关闭模态框
+                    closeCreateUserModal();
+                    
+                    // 重新加载用户列表
+                    loadUsers();
+                } else {
+                    throw new Error(result.message || '创建用户失败');
+                }
+            } catch (error) {
+                console.error('创建用户错误:', error);
+                alert('创建用户失败: ' + error.message);
+            }
+        }
+        
+        // 解封用户
+        
+        // 备用创建用户方法
+        function showCreateUserFallback() {
+            console.log('使用备用方法创建用户');
+            
+            if (confirm('是否要创建新用户？')) {
+                const username = prompt('请输入用户名:');
+                if (!username) return;
+                
+                const password = prompt('请输入密码:');
+                if (!password) return;
+                
+                const phone = prompt('请输入手机号 (可选):');
+                const credits = parseInt(prompt('请输入初始积分:', '0')) || 0;
+                
+                const userTypePrompt = '请选择用户类型:\n1 - 普通用户\n2 - 内部用户\n3 - 管理员';
+                const userType = prompt(userTypePrompt, '1');
+                
+                const isAdmin = userType === '3';
+                const isInternal = userType === '2';
+                
+                const remark = prompt('请输入备注 (可选):');
+                
+                // 构建用户数据
+                const userData = {
+                    username,
+                    password,
+                    phone: phone || null,
+                    credits,
+                    remark: remark || null,
+                    isAdmin,
+                    isInternal
+                };
+                
+                // 调用创建用户API
+                createUserWithData(userData);
+            }
+        }
+        
+        // 在页面加载完成后检查模态框是否可用
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const modal = document.getElementById('create-user-modal');
+                try {
+                    // 测试模态框是否可以显示
+                    modal.style.display = 'block';
+                    modal.style.display = 'none';
+                    console.log('模态框测试成功');
+                } catch (error) {
+                    console.error('模态框测试失败:', error);
+                    // 显示备用按钮
+                    document.getElementById('create-user-fallback-btn').classList.remove('hidden');
+                }
+            }, 1000);
+        });
+        
+        // 尝试显示模态框
+        function tryShowModal() {
+            console.log('尝试显示模态框');
+            
+            try {
+                // 创建模态框
+                createModalDynamically();
+            } catch (error) {
+                console.error('显示模态框出错:', error);
+                // 如果模态框显示失败，使用备用方案
+                showCreateUserFallback();
+            }
+        }
+        
+        // 动态创建模态框
+        function createModalDynamically() {
+            // 创建模态框容器
+            const modalContainer = document.createElement('div');
+            modalContainer.id = 'dynamic-modal-container';
+            modalContainer.style.position = 'fixed';
+            modalContainer.style.top = '0';
+            modalContainer.style.left = '0';
+            modalContainer.style.width = '100%';
+            modalContainer.style.height = '100%';
+            modalContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modalContainer.style.zIndex = '99999';
+            modalContainer.style.display = 'flex';
+            modalContainer.style.alignItems = 'center';
+            modalContainer.style.justifyContent = 'center';
+            
+            // 创建模态框内容
+            const modalContent = document.createElement('div');
+            modalContent.style.backgroundColor = 'white';
+            modalContent.style.borderRadius = '8px';
+            modalContent.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+            modalContent.style.width = '90%';
+            modalContent.style.maxWidth = '500px';
+            modalContent.style.padding = '20px';
+            modalContent.style.position = 'relative';
+            
+            // 创建模态框标题
+            const modalTitle = document.createElement('h3');
+            modalTitle.textContent = '创建新用户';
+            modalTitle.style.fontSize = '1.25rem';
+            modalTitle.style.fontWeight = '600';
+            modalTitle.style.marginBottom = '20px';
+            modalTitle.style.borderBottom = '1px solid #e5e7eb';
+            modalTitle.style.paddingBottom = '10px';
+            
+            // 创建关闭按钮
+            const closeButton = document.createElement('button');
+            closeButton.textContent = '×';
+            closeButton.style.position = 'absolute';
+            closeButton.style.top = '10px';
+            closeButton.style.right = '15px';
+            closeButton.style.fontSize = '1.5rem';
+            closeButton.style.fontWeight = 'bold';
+            closeButton.style.border = 'none';
+            closeButton.style.background = 'none';
+            closeButton.style.cursor = 'pointer';
+            closeButton.onclick = function() {
+                document.body.removeChild(modalContainer);
+            };
+            
+            // 创建表单
+            const form = document.createElement('form');
+            form.id = 'dynamic-create-user-form';
+            
+            // 用户名
+            const usernameGroup = createFormGroup('用户名', 'text', 'username', true);
+            form.appendChild(usernameGroup);
+            
+            // 密码
+            const passwordGroup = createFormGroup('密码', 'password', 'password', true);
+            form.appendChild(passwordGroup);
+            
+            // 手机号
+            const phoneGroup = createFormGroup('手机号 (选填)', 'text', 'phone', false);
+            form.appendChild(phoneGroup);
+            
+            // 初始积分
+            const creditsGroup = createFormGroup('初始积分', 'number', 'credits', true, '0');
+            form.appendChild(creditsGroup);
+            
+            // 用户类型
+            const userTypeGroup = document.createElement('div');
+            userTypeGroup.style.marginBottom = '15px';
+            
+            const userTypeLabel = document.createElement('label');
+            userTypeLabel.textContent = '用户类型';
+            userTypeLabel.style.display = 'block';
+            userTypeLabel.style.marginBottom = '5px';
+            userTypeLabel.style.fontWeight = '500';
+            userTypeGroup.appendChild(userTypeLabel);
+            
+            // 普通用户
+            const normalUserType = createRadioOption('user-type', 'normal', '普通用户', true);
+            userTypeGroup.appendChild(normalUserType);
+            
+            // 内部用户
+            const internalUserType = createRadioOption('user-type', 'internal', '内部用户', false);
+            userTypeGroup.appendChild(internalUserType);
+            
+            // 管理员
+            const adminUserType = createRadioOption('user-type', 'admin', '管理员', false);
+            userTypeGroup.appendChild(adminUserType);
+            
+            form.appendChild(userTypeGroup);
+            
+            // 备注
+            const remarkGroup = document.createElement('div');
+            remarkGroup.style.marginBottom = '15px';
+            
+            const remarkLabel = document.createElement('label');
+            remarkLabel.textContent = '备注 (选填)';
+            remarkLabel.style.display = 'block';
+            remarkLabel.style.marginBottom = '5px';
+            remarkLabel.style.fontWeight = '500';
+            remarkGroup.appendChild(remarkLabel);
+            
+            const remarkTextarea = document.createElement('textarea');
+            remarkTextarea.id = 'remark';
+            remarkTextarea.style.width = '100%';
+            remarkTextarea.style.padding = '8px';
+            remarkTextarea.style.border = '1px solid #d1d5db';
+            remarkTextarea.style.borderRadius = '4px';
+            remarkTextarea.rows = 3;
+            remarkGroup.appendChild(remarkTextarea);
+            
+            form.appendChild(remarkGroup);
+            
+            // 按钮组
+            const buttonGroup = document.createElement('div');
+            buttonGroup.style.display = 'flex';
+            buttonGroup.style.justifyContent = 'flex-end';
+            buttonGroup.style.marginTop = '20px';
+            
+            // 取消按钮
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = '取消';
+            cancelButton.type = 'button';
+            cancelButton.style.padding = '8px 16px';
+            cancelButton.style.marginRight = '10px';
+            cancelButton.style.border = '1px solid #d1d5db';
+            cancelButton.style.borderRadius = '4px';
+            cancelButton.style.backgroundColor = 'white';
+            cancelButton.style.cursor = 'pointer';
+            cancelButton.onclick = function() {
+                document.body.removeChild(modalContainer);
+            };
+            buttonGroup.appendChild(cancelButton);
+            
+            // 提交按钮
+            const submitButton = document.createElement('button');
+            submitButton.textContent = '创建用户';
+            submitButton.type = 'button';
+            submitButton.style.padding = '8px 16px';
+            submitButton.style.border = 'none';
+            submitButton.style.borderRadius = '4px';
+            submitButton.style.backgroundColor = '#16a34a';
+            submitButton.style.color = 'white';
+            submitButton.style.cursor = 'pointer';
+            submitButton.onclick = function() {
+                // 收集表单数据
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value.trim();
+                const phone = document.getElementById('phone').value.trim() || null;
+                const credits = parseInt(document.getElementById('credits').value) || 0;
+                const remark = document.getElementById('remark').value.trim() || null;
+                
+                // 获取用户类型
+                const isAdmin = document.querySelector('input[name="user-type"][value="admin"]').checked;
+                const isInternal = document.querySelector('input[name="user-type"][value="internal"]').checked;
+                
+                // 验证必填字段
+                if (!username) {
+                    alert('请输入用户名');
+                    return;
+                }
+                if (!password) {
+                    alert('请输入密码');
+                    return;
+                }
+                
+                // 构建用户数据
+                const userData = {
+                    username,
+                    password,
+                    phone,
+                    credits,
+                    remark,
+                    isAdmin,
+                    isInternal
+                };
+                
+                // 调用创建用户API
+                createUserWithData(userData);
+                
+                // 关闭模态框
+                document.body.removeChild(modalContainer);
+            };
+            buttonGroup.appendChild(submitButton);
+            
+            form.appendChild(buttonGroup);
+            
+            // 组装模态框
+            modalContent.appendChild(modalTitle);
+            modalContent.appendChild(closeButton);
+            modalContent.appendChild(form);
+            modalContainer.appendChild(modalContent);
+            
+            // 添加到body
+            document.body.appendChild(modalContainer);
+            
+            // 添加点击事件，点击模态框外部关闭模态框
+            modalContainer.onclick = function(event) {
+                if (event.target === modalContainer) {
+                    document.body.removeChild(modalContainer);
+                }
+            };
+        }
+        
+        // 创建表单组
+        function createFormGroup(label, type, id, required, defaultValue = '') {
+            const group = document.createElement('div');
+            group.style.marginBottom = '15px';
+            
+            const labelElement = document.createElement('label');
+            labelElement.textContent = label;
+            labelElement.style.display = 'block';
+            labelElement.style.marginBottom = '5px';
+            labelElement.style.fontWeight = '500';
+            group.appendChild(labelElement);
+            
+            const input = document.createElement('input');
+            input.type = type;
+            input.id = id;
+            input.required = required;
+            input.value = defaultValue;
+            input.style.width = '100%';
+            input.style.padding = '8px';
+            input.style.border = '1px solid #d1d5db';
+            input.style.borderRadius = '4px';
+            group.appendChild(input);
+            
+            return group;
+        }
+        
+        // 创建单选按钮
+        function createRadioOption(name, value, label, checked) {
+            const container = document.createElement('div');
+            container.style.marginBottom = '5px';
+            
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.name = name;
+            input.value = value;
+            input.checked = checked;
+            input.style.marginRight = '5px';
+            container.appendChild(input);
+            
+            const labelElement = document.createElement('label');
+            labelElement.textContent = label;
+            container.appendChild(labelElement);
+            
+            return container;
         }
     </script>
 </body>

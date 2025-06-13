@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/db');
 const User = require('../models/User');
+const UserSession = require('../models/UserSession');
 const { FeatureUsage } = require('../models/FeatureUsage');
 const PaymentOrder = require('../models/PaymentOrder');
+const ImageHistory = require('../models/ImageHistory');
+const VideoResult = require('../models/VideoResult');
 const { protect, checkAdmin, invalidateAllSessions } = require('../middleware/auth');
 const { FEATURES } = require('../middleware/featureAccess');
 const { Op } = require('sequelize');
-const sequelize = require('../config/db');
-const UserSession = require('../models/UserSession');
 const { generateToken, JWT_EXPIRE } = require('../utils/jwt');
 
 /**
@@ -185,7 +188,7 @@ router.put('/users/:id', protect, checkAdmin, async (req, res) => {
     
     // 更新用户信息
     if (username !== undefined) user.username = username;
-    if (phone !== undefined) user.phone = phone;
+    if (phone !== undefined) user.phone = phone === '' ? null : phone; // 如果手机号为空字符串，则设置为null
     if (credits !== undefined) user.credits = parseInt(credits);
     if (isAdmin !== undefined) user.isAdmin = Boolean(isAdmin);
     if (isInternal !== undefined) user.isInternal = Boolean(isInternal);
@@ -231,6 +234,7 @@ router.put('/users/:id', protect, checkAdmin, async (req, res) => {
 router.delete('/users/:id', protect, checkAdmin, async (req, res) => {
   try {
     const userId = req.params.id;
+    console.log(`尝试删除用户ID: ${userId}`);
     
     // 查询用户
     const user = await User.findByPk(userId);
@@ -250,13 +254,82 @@ router.delete('/users/:id', protect, checkAdmin, async (req, res) => {
       });
     }
     
-    // 删除用户
-    await user.destroy();
+    // 开启事务
+    const transaction = await sequelize.transaction();
     
-    res.json({
-      success: true,
-      message: '用户删除成功'
-    });
+    try {
+      console.log(`开始删除用户 ${userId} 的关联记录`);
+      
+      // 1. 删除用户会话
+      await UserSession.destroy({
+        where: { userId: userId },
+        transaction
+      });
+      console.log(`已删除用户 ${userId} 的会话记录`);
+      
+      // 2. 删除功能使用记录
+      await FeatureUsage.destroy({
+        where: { userId: userId },
+        transaction
+      });
+      console.log(`已删除用户 ${userId} 的功能使用记录`);
+      
+      // 3. 删除支付订单
+      await PaymentOrder.destroy({
+        where: { user_id: userId },
+        transaction
+      });
+      console.log(`已删除用户 ${userId} 的支付订单`);
+      
+      // 4. 删除图片历史
+      await ImageHistory.destroy({
+        where: { userId: userId },
+        transaction
+      });
+      console.log(`已删除用户 ${userId} 的图片历史`);
+      
+      // 5. 删除视频结果
+      try {
+        // 先检查表是否存在
+        const [results] = await sequelize.query(
+          "SHOW TABLES LIKE 'video_results'",
+          { type: sequelize.QueryTypes.SELECT }
+        );
+        
+        if (results) {
+          // 如果表存在，使用原始SQL查询删除
+          await sequelize.query(
+            "DELETE FROM video_results WHERE user = :userId",
+            { 
+              replacements: { userId },
+              type: sequelize.QueryTypes.DELETE,
+              transaction
+            }
+          );
+          console.log(`已删除用户 ${userId} 的视频结果`);
+        } else {
+          console.log(`视频结果表不存在，跳过删除`);
+        }
+      } catch (err) {
+        console.log(`删除视频结果时出错，但将继续执行：`, err.message);
+      }
+      
+      // 最后删除用户本身
+      await user.destroy({ transaction });
+      console.log(`已删除用户 ${userId}`);
+      
+      // 提交事务
+      await transaction.commit();
+      
+      res.json({
+        success: true,
+        message: '用户删除成功'
+      });
+    } catch (error) {
+      // 回滚事务
+      await transaction.rollback();
+      throw error;
+    }
   } catch (error) {
     console.error('删除用户错误:', error);
     res.status(500).json({
