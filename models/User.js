@@ -35,7 +35,17 @@ const User = sequelize.define('User', {
     allowNull: true,
     // 不在这里使用unique:true，我们会通过直接SQL定义索引
     validate: {
-      is: /^1[3-9]\d{9}$/ // 验证是否为有效的手机号格式（中国大陆）
+      // 只在手机号有值时才验证格式
+      is: function(value) {
+        // 如果手机号为空，则跳过验证
+        if (!value || value.trim() === '') return true;
+        
+        // 否则验证是否为有效的中国大陆手机号
+        const regex = /^1[3-9]\d{9}$/;
+        if (!regex.test(value)) {
+          throw new Error('手机号格式不正确，请输入有效的中国大陆手机号');
+        }
+      }
     }
   },
   // 短信验证码
@@ -81,6 +91,24 @@ const User = sequelize.define('User', {
     allowNull: true,
     defaultValue: null
   },
+  // 是否被封禁
+  isBanned: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false // 默认未被封禁
+  },
+  // 封禁原因
+  banReason: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    defaultValue: null
+  },
+  // 封禁到期时间
+  banExpireAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null
+  },
   // 用户创建时间
   createdAt: {
     type: DataTypes.DATE,
@@ -90,6 +118,12 @@ const User = sequelize.define('User', {
   updatedAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  // 用户最后活跃时间
+  lastActiveAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null
   }
 }, {
   // 其他模型配置
@@ -156,6 +190,26 @@ User.prototype.saveSmsCode = async function(code, expiresInMinutes = 5) {
   await this.save();
   
   return true;
+};
+
+// 实例方法 - 检查用户是否被封禁
+User.prototype.checkBanStatus = function() {
+  // 如果未被封禁，直接返回null
+  if (!this.isBanned) {
+    return null;
+  }
+  
+  // 如果封禁已过期，返回null
+  if (this.banExpireAt && new Date() > new Date(this.banExpireAt)) {
+    return null;
+  }
+  
+  // 返回封禁信息
+  return {
+    isBanned: true,
+    reason: this.banReason || '违反用户协议',
+    expireAt: this.banExpireAt
+  };
 };
 
 module.exports = User; 

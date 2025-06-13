@@ -6,6 +6,8 @@
     <title>图像高清放大 - 萤火AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="/js/logout-handler.js"></script>
+    <script src="/js/auth-check.js"></script>
     <script src="/feature-tracker.js"></script>
     <style>
         body {
@@ -168,6 +170,18 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // 验证用户会话
+            if (typeof window.checkAuth === 'function') {
+                window.checkAuth();
+            } else {
+                // 兼容处理，检查本地存储中的令牌
+                const authToken = localStorage.getItem('authToken');
+                if (!authToken) {
+                    window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.href);
+                    return;
+                }
+            }
+            
             const dropZone = document.getElementById('dropZone');
             const imageInput = document.getElementById('imageInput');
             const uploadPlaceholder = document.getElementById('uploadPlaceholder');

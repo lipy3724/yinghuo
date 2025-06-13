@@ -6,6 +6,7 @@
     <title>用户详情 - 萤火AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="/js/logout-handler.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -30,17 +31,6 @@
             position: relative;
             top: -2px;
         }
-        .sidebar {
-            transition: transform 0.3s ease;
-        }
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            .sidebar.open {
-                transform: translateX(0);
-            }
-        }
         .tab-active {
             color: #4f46e5;
             border-bottom: 2px solid #4f46e5;
@@ -49,231 +39,275 @@
 
     <link rel="icon" href="/images/favicon.png" type="image/png"></head>
 <body class="min-h-screen bg-gray-100">
-    <!-- 移动端导航栏 -->
-    <div class="md:hidden bg-white shadow-sm py-3 px-4 flex items-center justify-between">
-        <button id="mobile-menu-button" class="text-gray-600 focus:outline-none">
-            <i class="ri-menu-line text-2xl"></i>
-        </button>
-        <h1 class="text-xl font-bold text-indigo-600">萤火AI 管理系统</h1>
-        <div class="w-8"></div> <!-- 占位元素，保持两端对齐 -->
+    <!-- 主内容区 -->
+    <main class="container mx-auto p-4 md:p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">用户详情</h2>
+                <p class="text-gray-600">查看和编辑用户信息</p>
+            </div>
+            <div>
+                <a href="/admin-users.html" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors">
+                    <i class="ri-arrow-left-line mr-1"></i> 返回
+                </a>
+            </div>
+        </div>
+        
+        <!-- 用户基本信息 -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h3 class="text-lg font-medium text-gray-800 mb-4">基本信息</h3>
+            <form id="user-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">用户ID</label>
+                    <input type="text" id="user-id" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                    <input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                    <input type="text" id="phone" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">积分</label>
+                    <input type="number" id="credits" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">用户类型</label>
+                    <select id="user-type" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <option value="normal">普通用户</option>
+                        <option value="internal">内部用户</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">注册时间</label>
+                    <input type="text" id="created-at" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">最后充值时间</label>
+                    <input type="text" id="last-recharge-time" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">最后活动时间</label>
+                    <input type="text" id="last-active-time" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                </div>
+                <div class="md:col-span-2">
+                    <label for="remark" class="block text-sm font-medium text-gray-700 mb-1">备注</label>
+                    <textarea id="remark" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" rows="2" placeholder="添加用户备注..."></textarea>
+                </div>
+            </form>
+            <div class="mt-6 flex flex-wrap gap-3 justify-between">
+                <div class="flex flex-wrap gap-2">
+                    <button id="view-sessions-btn" class="inline-flex items-center px-3 py-2 border border-blue-300 text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="ri-device-line mr-2"></i> 查看登录设备
+                    </button>
+                    <button id="reset-password-btn" class="inline-flex items-center px-3 py-2 border border-orange-300 text-sm leading-4 font-medium rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                        <i class="ri-lock-password-line mr-2"></i> 重置用户密码
+                    </button>
+                </div>
+                <button id="save-user-btn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors">
+                    保存修改
+                </button>
+            </div>
+        </div>
+        
+        <!-- 标签页导航 -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="flex -mb-px">
+                <button id="tab-features" class="tab-active px-4 py-2 text-sm font-medium">功能使用记录</button>
+                <button id="tab-payments" class="text-gray-500 hover:text-gray-700 px-4 py-2 text-sm font-medium">充值记录</button>
+            </nav>
+        </div>
+        
+        <!-- 功能使用记录 -->
+        <div id="features-content" class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-900">功能使用记录</h2>
+                <button id="delete-user-usage" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium">
+                    删除所有使用记录
+                </button>
+            </div>
+            <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-700 mb-3">最近一周功能使用统计</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <div class="text-indigo-800 text-sm font-medium mb-1">总使用次数</div>
+                        <div class="text-2xl font-bold text-indigo-700" id="total-feature-usage">0</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <div class="text-green-800 text-sm font-medium mb-1">使用功能数</div>
+                        <div class="text-2xl font-bold text-green-700" id="unique-features-used">0</div>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <div class="text-purple-800 text-sm font-medium mb-1">最常用功能</div>
+                        <div class="text-xl font-bold text-purple-700 truncate" id="most-used-feature">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">功能名称</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用次数</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最后使用时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="features-table" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td class="px-4 py-3 text-sm text-gray-500" colspan="3">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-features-message" class="hidden text-center py-4 text-gray-500">
+                该用户最近一周暂无功能使用记录
+            </div>
+        </div>
+        
+        <!-- 充值记录 -->
+        <div id="payments-content" class="bg-white rounded-lg shadow-sm p-6 mb-6 hidden">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">充值记录</h3>
+            <div class="mb-6">
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <div class="text-yellow-800 text-sm font-medium mb-1">总充值金额</div>
+                    <div class="text-2xl font-bold text-yellow-700" id="total-payment">¥0.00</div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">积分</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payments-table" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td class="px-4 py-3 text-sm text-gray-500" colspan="5">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-payments-message" class="hidden text-center py-4 text-gray-500">
+                该用户暂无充值记录
+            </div>
+        </div>
+    </main>
+    
+    <!-- 用户会话模态框 -->
+    <div id="user-sessions-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black opacity-50"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4">
+                <div class="px-6 py-4 border-b flex items-center justify-between">
+                    <h3 class="text-lg font-medium text-gray-900">用户登录设备 (<span id="sessions-username"></span>)</h3>
+                    <button id="close-sessions-modal" class="text-gray-400 hover:text-gray-500">
+                        <i class="ri-close-line text-xl"></i>
+                    </button>
+                </div>
+                <div class="px-6 py-4">
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600">当前活跃设备数: <span id="active-session-count" class="font-medium text-indigo-600">0</span></p>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">设备信息</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP地址</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最后活动时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">登录时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sessions-list" class="bg-white divide-y divide-gray-200">
+                                <!-- 会话列表将通过JavaScript动态填充 -->
+                                <tr>
+                                    <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                        加载中...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="no-sessions" class="hidden text-center py-4 text-gray-500">
+                        该用户当前没有活跃的登录设备
+                    </div>
+                    
+                    <div id="sessions-loading" class="hidden text-center py-4">
+                        <i class="ri-loader-4-line animate-spin text-xl text-indigo-600"></i>
+                        <span class="ml-2 text-gray-700">正在加载设备信息...</span>
+                    </div>
+                    
+                    <div id="sessions-error" class="hidden mt-4 p-3 bg-red-50 text-red-700 rounded-md">
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-gray-50 border-t flex justify-between">
+                    <button type="button" id="logout-all-sessions-btn" class="px-4 py-2 bg-red-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-red-700">
+                        <i class="ri-shield-keyhole-line mr-1"></i> 强制登出所有设备
+                    </button>
+                    
+                    <button type="button" id="close-sessions-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     
-    <div class="flex min-h-screen">
-        <!-- 侧边栏 -->
-        <aside id="sidebar" class="sidebar bg-white shadow-lg w-64 fixed h-full z-10 md:relative md:translate-x-0">
-            <div class="p-4 border-b">
-                <div class="flex items-center justify-center">
-                    <h1 class="text-xl font-bold text-indigo-600">
-                        <span class="logo-text">萤火<span class="logo-dot"></span>AI</span>
-                    </h1>
-                    <span class="ml-2 text-gray-700">管理系统</span>
-                </div>
+    <!-- 重置密码模态框 -->
+    <div id="reset-password-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="px-6 py-4 border-b flex items-center justify-between">
+                <h3 class="text-lg font-medium text-gray-900">重置用户密码</h3>
+                <button id="close-reset-password-modal" class="text-gray-400 hover:text-gray-500">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
             </div>
-            
-            <nav class="mt-4">
-                <div class="px-4 py-2 text-xs text-gray-500 uppercase tracking-wider">主菜单</div>
-                
-                <a href="/admin-dashboard.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                    <i class="ri-dashboard-line mr-3"></i>
-                    <span>仪表盘</span>
-                </a>
-                
-                <a href="/admin-users.html" class="flex items-center px-4 py-3 text-gray-700 bg-indigo-50 border-r-4 border-indigo-600">
-                    <i class="ri-user-line mr-3 text-indigo-600"></i>
-                    <span>用户管理</span>
-                </a>
-                
-                <a href="/admin-payments.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                    <i class="ri-money-cny-circle-line mr-3"></i>
-                    <span>充值记录</span>
-                </a>
-                
-                <a href="/admin-features.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                    <i class="ri-function-line mr-3"></i>
-                    <span>功能使用统计</span>
-                </a>
-                
-                <a href="/admin-credits.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                    <i class="ri-coins-line mr-3"></i>
-                    <span>积分管理</span>
-                </a>
-                
-                <a href="/admin-login.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                    <i class="ri-home-line mr-3"></i>
-                    <span>返回首页</span>
-                </a>
-                
-                <div class="px-4 py-2 mt-4 text-xs text-gray-500 uppercase tracking-wider">系统</div>
-                
-                <a href="#" id="logout-btn" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                    <i class="ri-logout-box-line mr-3"></i>
-                    <span>退出登录</span>
-                </a>
-            </nav>
-        </aside>
-        
-        <!-- 主内容区 -->
-        <main class="flex-1 p-4 md:p-6">
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">用户详情</h2>
-                    <p class="text-gray-600">查看和编辑用户信息</p>
+            <form id="reset-password-form">
+                <div class="px-6 py-4">
+                    <input type="hidden" id="reset-password-user-id">
+                    
+                    <div class="mb-2">
+                        <p class="text-gray-700">您正在重置用户: <span id="reset-password-username" class="font-medium"></span> 的密码</p>
+                    </div>
+                    
+                    <div class="mb-4 mt-4">
+                        <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">新密码</label>
+                        <input type="password" id="new-password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="请输入新密码" required>
+                        <p class="mt-1 text-sm text-gray-500">密码长度至少6位</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
+                        <input type="password" id="confirm-password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="请再次输入新密码" required>
+                    </div>
+                    
+                    <div id="password-error" class="hidden mt-2 text-sm text-red-600"></div>
                 </div>
-                <div>
-                    <a href="/admin-users.html" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors">
-                        <i class="ri-arrow-left-line mr-1"></i> 返回
-                    </a>
-                </div>
-            </div>
-            
-            <!-- 用户基本信息 -->
-            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h3 class="text-lg font-medium text-gray-800 mb-4">基本信息</h3>
-                <form id="user-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">用户ID</label>
-                        <input type="text" id="user-id" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
-                        <input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">手机号</label>
-                        <input type="text" id="phone" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
-                        <div class="relative">
-                            <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="输入新密码以修改">
-                            <button type="button" id="toggle-password" class="absolute right-2 top-2 text-gray-500 hover:text-gray-700">
-                                <i class="ri-eye-line"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">积分</label>
-                        <input type="number" id="credits" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">管理员权限</label>
-                        <select id="is-admin" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                            <option value="false">普通用户</option>
-                            <option value="true">管理员</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">注册时间</label>
-                        <input type="text" id="created-at" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">最后充值时间</label>
-                        <input type="text" id="last-recharge-time" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100" readonly>
-                    </div>
-                </form>
-                <div class="mt-6 flex justify-end">
-                    <button id="save-user-btn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors">
-                        保存修改
+                <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
+                    <button type="button" id="cancel-reset-password" class="px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-orange-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-orange-700">
+                        确认重置
                     </button>
                 </div>
-            </div>
-            
-            <!-- 标签页导航 -->
-            <div class="border-b border-gray-200 mb-6">
-                <nav class="flex -mb-px">
-                    <button id="tab-payments" class="tab-active px-4 py-2 text-sm font-medium">充值记录</button>
-                    <button id="tab-features" class="text-gray-500 hover:text-gray-700 px-4 py-2 text-sm font-medium">功能使用记录</button>
-                </nav>
-            </div>
-            
-            <!-- 充值记录 -->
-            <div id="payments-content" class="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h3 class="text-lg font-medium text-gray-800 mb-4">充值记录</h3>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单ID</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">积分</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">支付时间</th>
-                            </tr>
-                        </thead>
-                        <tbody id="payments-table" class="bg-white divide-y divide-gray-200">
-                            <tr>
-                                <td class="px-4 py-3 text-sm text-gray-500" colspan="5">加载中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div id="no-payments-message" class="hidden text-center py-4 text-gray-500">
-                    该用户暂无充值记录
-                </div>
-            </div>
-            
-            <!-- 功能使用记录 -->
-            <div id="features-content" class="bg-white rounded-lg shadow-sm p-6 mb-6 hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-gray-900">功能使用记录</h2>
-                    <button id="delete-user-usage" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium">
-                        删除所有使用记录
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">功能名称</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用次数</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最后使用时间</th>
-                            </tr>
-                        </thead>
-                        <tbody id="features-table" class="bg-white divide-y divide-gray-200">
-                            <tr>
-                                <td class="px-4 py-3 text-sm text-gray-500" colspan="3">加载中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div id="no-features-message" class="hidden text-center py-4 text-gray-500">
-                    该用户最近一周暂无功能使用记录
-                </div>
-            </div>
-        </main>
+            </form>
+        </div>
     </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // 检查管理员登录状态
             checkAdminAuth();
-            
-            // 移动端菜单切换
-            document.getElementById('mobile-menu-button').addEventListener('click', function() {
-                document.getElementById('sidebar').classList.toggle('open');
-            });
-            
-            // 退出登录
-            document.getElementById('logout-btn').addEventListener('click', function(e) {
-                e.preventDefault();
-                logout();
-            });
-            
-            // 密码显示切换
-            document.getElementById('toggle-password').addEventListener('click', function() {
-                const passwordInput = document.getElementById('password');
-                const icon = this.querySelector('i');
-                
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    icon.classList.remove('ri-eye-line');
-                    icon.classList.add('ri-eye-off-line');
-                } else {
-                    passwordInput.type = 'password';
-                    icon.classList.remove('ri-eye-off-line');
-                    icon.classList.add('ri-eye-line');
-                }
-            });
             
             // 标签页切换
             document.getElementById('tab-payments').addEventListener('click', function() {
@@ -293,6 +327,45 @@
             // 保存用户信息
             document.getElementById('save-user-btn').addEventListener('click', function() {
                 saveUserInfo();
+            });
+            
+            // 查看登录设备
+            document.getElementById('view-sessions-btn').addEventListener('click', function() {
+                showUserSessions();
+            });
+            
+            // 关闭会话模态框按钮
+            document.getElementById('close-sessions-modal').addEventListener('click', function() {
+                document.getElementById('user-sessions-modal').classList.add('hidden');
+            });
+            
+            document.getElementById('close-sessions-btn').addEventListener('click', function() {
+                document.getElementById('user-sessions-modal').classList.add('hidden');
+            });
+            
+            // 登出所有设备按钮
+            document.getElementById('logout-all-sessions-btn').addEventListener('click', function() {
+                logoutAllSessions();
+            });
+            
+            // 重置密码按钮
+            document.getElementById('reset-password-btn').addEventListener('click', function() {
+                showResetPasswordModal();
+            });
+            
+            // 关闭重置密码模态框
+            document.getElementById('close-reset-password-modal').addEventListener('click', function() {
+                closeResetPasswordModal();
+            });
+            
+            document.getElementById('cancel-reset-password').addEventListener('click', function() {
+                closeResetPasswordModal();
+            });
+            
+            // 提交重置密码表单
+            document.getElementById('reset-password-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                resetUserPassword();
             });
             
             // 获取URL参数中的用户ID
@@ -344,13 +417,6 @@
             }
         }
         
-        // 退出登录
-        function logout() {
-            localStorage.removeItem('adminAuthToken');
-            localStorage.removeItem('adminUser');
-            window.location.href = '/admin-login.html';
-        }
-        
         // 加载用户信息
         async function loadUserInfo(userId) {
             const token = localStorage.getItem('adminAuthToken');
@@ -381,9 +447,20 @@
                     document.getElementById('username').value = user.username;
                     document.getElementById('phone').value = user.phone || '';
                     document.getElementById('credits').value = user.credits;
-                    document.getElementById('is-admin').value = user.isAdmin.toString();
+                    
+                    // 设置用户类型
+                    let userType = 'normal';
+                    if (user.isAdmin) {
+                        userType = 'admin';
+                    } else if (user.isInternal) {
+                        userType = 'internal';
+                    }
+                    document.getElementById('user-type').value = userType;
+                    
                     document.getElementById('created-at').value = formatDate(user.createdAt);
                     document.getElementById('last-recharge-time').value = user.lastRechargeTime ? formatDate(user.lastRechargeTime) : '无';
+                    document.getElementById('last-active-time').value = user.lastActiveAt ? formatDate(user.lastActiveAt) : '无活动记录';
+                    document.getElementById('remark').value = user.remark || '';
                 }
             } catch (error) {
                 console.error('加载用户信息出错:', error);
@@ -417,6 +494,20 @@
                     const payments = data.data.orders;
                     const tableBody = document.getElementById('payments-table');
                     const noPaymentsMessage = document.getElementById('no-payments-message');
+                    
+                    // 计算总充值金额
+                    let totalAmount = 0;
+                    if (payments && payments.length > 0) {
+                        totalAmount = payments.reduce((sum, payment) => {
+                            // 只计算已完成的订单
+                            if (payment.status === 'completed') {
+                                return sum + parseFloat(payment.price || 0);
+                            }
+                            return sum;
+                        }, 0);
+                    }
+                    // 更新总充值金额显示
+                    document.getElementById('total-payment').textContent = `¥${totalAmount.toFixed(2)}`;
                     
                     if (!payments || payments.length === 0) {
                         tableBody.innerHTML = '';
@@ -457,7 +548,8 @@
             try {
                 console.log(`开始获取用户 ${userId} 的功能使用记录`);
                 
-                const response = await fetch(`/api/admin/feature-usage?userId=${userId}`, {
+                // 添加最近一周参数
+                const response = await fetch(`/api/admin/feature-usage?userId=${userId}&period=week`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -482,6 +574,9 @@
                     const features = data.data.usages;
                     const tableBody = document.getElementById('features-table');
                     const noFeaturesMessage = document.getElementById('no-features-message');
+                    
+                    // 更新功能使用统计
+                    updateFeatureStats(features);
                     
                     if (!features || features.length === 0) {
                         tableBody.innerHTML = '';
@@ -515,6 +610,29 @@
             }
         }
         
+        // 添加更新功能使用统计信息的函数
+        function updateFeatureStats(features) {
+            if (!features || features.length === 0) {
+                document.getElementById('total-feature-usage').textContent = '0';
+                document.getElementById('unique-features-used').textContent = '0';
+                document.getElementById('most-used-feature').textContent = '-';
+                return;
+            }
+            
+            // 计算总使用次数
+            const totalUsage = features.reduce((sum, feature) => sum + feature.usageCount, 0);
+            document.getElementById('total-feature-usage').textContent = totalUsage;
+            
+            // 统计使用的功能数量
+            document.getElementById('unique-features-used').textContent = features.length;
+            
+            // 找出最常用功能
+            const mostUsedFeature = features.reduce((prev, current) => 
+                (prev.usageCount > current.usageCount) ? prev : current
+            );
+            document.getElementById('most-used-feature').textContent = mostUsedFeature.featureNameCN || mostUsedFeature.featureName;
+        }
+        
         // 保存用户信息
         async function saveUserInfo() {
             const token = localStorage.getItem('adminAuthToken');
@@ -527,9 +645,9 @@
             const userId = document.getElementById('user-id').value;
             const username = document.getElementById('username').value;
             const phone = document.getElementById('phone').value;
-            const password = document.getElementById('password').value;
             const credits = document.getElementById('credits').value;
-            const isAdmin = document.getElementById('is-admin').value === 'true';
+            const userType = document.getElementById('user-type').value;
+            const remark = document.getElementById('remark').value;
             
             if (!username) {
                 alert('用户名不能为空');
@@ -541,13 +659,10 @@
                     username,
                     phone,
                     credits: parseInt(credits),
-                    isAdmin
+                    isAdmin: userType === 'admin',
+                    isInternal: userType === 'internal',
+                    remark
                 };
-                
-                // 如果输入了新密码，则添加到请求中
-                if (password) {
-                    userData.password = password;
-                }
                 
                 const response = await fetch(`/api/admin/users/${userId}`, {
                     method: 'PUT',
@@ -594,7 +709,7 @@
             }
             
             try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('adminAuthToken');
                 if (!token) {
                     throw new Error('未登录，请先登录');
                 }
@@ -624,6 +739,315 @@
                 showAlert('error', error.message || '删除用户功能使用记录失败');
             } finally {
                 hideLoading();
+            }
+        }
+        
+        // 显示用户会话模态框
+        async function showUserSessions() {
+            const userId = document.getElementById('user-id').value;
+            const username = document.getElementById('username').value;
+            const token = localStorage.getItem('adminAuthToken');
+            
+            // 清理过期的会话
+            await cleanupExpiredSessions();
+            
+            if (!token) {
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            try {
+                // 显示加载状态
+                document.getElementById('sessions-username').textContent = username;
+                document.getElementById('sessions-list').innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                            <i class="ri-loader-4-line animate-spin inline mr-2"></i> 正在刷新...
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('no-sessions').classList.add('hidden');
+                document.getElementById('sessions-error').classList.add('hidden');
+                document.getElementById('user-sessions-modal').classList.remove('hidden');
+                
+                // 获取用户会话
+                const response = await fetch(`/api/admin/users/${userId}/sessions`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取用户会话失败');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const sessions = result.data.sessions || [];
+                    
+                    // 更新活跃设备数
+                    document.getElementById('active-session-count').textContent = sessions.length;
+                    
+                    // 渲染会话列表
+                    if (sessions.length === 0) {
+                        document.getElementById('sessions-list').innerHTML = '';
+                        
+                        // 如果没有活跃会话，但用户有最后活跃时间，显示该信息
+                        const lastActiveTime = document.getElementById('last-active-time').value;
+                        if (lastActiveTime && lastActiveTime !== '无活动记录') {
+                            document.getElementById('no-sessions').innerHTML = `
+                                该用户当前没有活跃的登录设备<br>
+                                <span class="text-sm text-gray-600 mt-2 inline-block">
+                                    <i class="ri-time-line mr-1"></i>最后活跃时间: ${lastActiveTime}
+                                </span>
+                            `;
+                        } else {
+                            document.getElementById('no-sessions').textContent = '该用户当前没有活跃的登录设备';
+                        }
+                        
+                        document.getElementById('no-sessions').classList.remove('hidden');
+                    } else {
+                        document.getElementById('no-sessions').classList.add('hidden');
+                        
+                        document.getElementById('sessions-list').innerHTML = sessions.map(session => {
+                            // 提取设备信息
+                            let deviceIcon = 'ri-device-line';
+                            let deviceName = session.deviceInfo || '未知设备';
+                            
+                            // 根据userAgent更具体地识别设备
+                            const ua = session.userAgent || '';
+                            if (ua.includes('iPhone')) {
+                                deviceIcon = 'ri-smartphone-line';
+                                deviceName = 'iPhone';
+                            } else if (ua.includes('iPad')) {
+                                deviceIcon = 'ri-tablet-line';
+                                deviceName = 'iPad';
+                            } else if (ua.includes('Android') && ua.includes('Mobile')) {
+                                deviceIcon = 'ri-smartphone-line';
+                                deviceName = 'Android手机';
+                            } else if (ua.includes('Android')) {
+                                deviceIcon = 'ri-tablet-line';
+                                deviceName = 'Android平板';
+                            } else if (ua.includes('Windows')) {
+                                deviceIcon = 'ri-computer-line';
+                                deviceName = 'Windows电脑';
+                            } else if (ua.includes('Macintosh')) {
+                                deviceIcon = 'ri-macbook-line';
+                                deviceName = 'Mac电脑';
+                            } else if (ua.includes('Linux')) {
+                                deviceIcon = 'ri-ubuntu-line';
+                                deviceName = 'Linux电脑';
+                            }
+                            
+                            return `
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-gray-100 rounded-full">
+                                            <i class="${deviceIcon} text-xl text-gray-500"></i>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">${deviceName}</div>
+                                            <div class="text-xs text-gray-500 max-w-xs truncate">${ua || '未知'}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-500">${session.ipAddress || '-'}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-500">${formatDate(session.lastActiveAt)}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-500">${formatDate(session.createdAt)}</div>
+                                </td>
+                            </tr>
+                        `;
+                        }).join('');
+                    }
+                } else {
+                    throw new Error(result.message || '获取用户会话失败');
+                }
+            } catch (error) {
+                console.error('获取用户会话出错:', error);
+                document.getElementById('sessions-list').innerHTML = '';
+                document.getElementById('no-sessions').classList.add('hidden');
+                document.getElementById('sessions-error').classList.remove('hidden');
+                document.getElementById('sessions-error').textContent = `获取会话失败: ${error.message}`;
+            }
+        }
+        
+        // 登出所有设备
+        async function logoutAllSessions() {
+            const userId = document.getElementById('user-id').value;
+            const username = document.getElementById('username').value;
+            const token = localStorage.getItem('adminAuthToken');
+            
+            if (!token) {
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            if (!confirm(`确定要登出用户 ${username}(ID: ${userId}) 的所有设备吗？此操作将强制终止该用户的所有活动会话。`)) {
+                return;
+            }
+            
+            try {
+                // 显示加载状态
+                const logoutBtn = document.getElementById('logout-all-sessions-btn');
+                const originalText = logoutBtn.innerHTML;
+                logoutBtn.disabled = true;
+                logoutBtn.innerHTML = '<i class="ri-loader-4-line animate-spin mr-1"></i> 处理中...';
+                
+                const response = await fetch(`/api/admin/users/${userId}/logout-all`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('登出所有设备失败');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 修改此处，不显示可能被用户看到的提示
+                    alert(`操作成功：已强制登出用户 ${username} 的所有设备。用户下次访问系统时将需要重新登录。`);
+                    
+                    // 关闭模态框
+                    document.getElementById('user-sessions-modal').classList.add('hidden');
+                    
+                    // 刷新当前页面以显示更新后的会话状态，但不执行完整页面刷新避免管理员被登出
+                    setTimeout(() => {
+                        // 仅重新加载用户会话，不刷新整个页面
+                        loadUserSessions();
+                    }, 500);
+                } else {
+                    throw new Error(result.message || '登出所有设备失败');
+                }
+                
+                // 恢复按钮状态
+                if (logoutBtn) {
+                    logoutBtn.disabled = false;
+                    logoutBtn.innerHTML = originalText;
+                }
+            } catch (error) {
+                console.error('登出所有设备出错:', error);
+                alert(`登出所有设备失败: ${error.message}`);
+            }
+        }
+        
+        // 显示重置密码模态框
+        function showResetPasswordModal() {
+            const userId = document.getElementById('user-id').value;
+            const username = document.getElementById('username').value;
+            
+            // 设置重置密码模态框的用户信息
+            document.getElementById('reset-password-user-id').value = userId;
+            document.getElementById('reset-password-username').textContent = username;
+            
+            // 清空密码输入框和错误信息
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-password').value = '';
+            document.getElementById('password-error').classList.add('hidden');
+            document.getElementById('password-error').textContent = '';
+            
+            // 显示重置密码模态框
+            document.getElementById('reset-password-modal').classList.remove('hidden');
+        }
+        
+        // 关闭重置密码模态框
+        function closeResetPasswordModal() {
+            document.getElementById('reset-password-modal').classList.add('hidden');
+            document.getElementById('reset-password-form').reset();
+        }
+        
+        // 清理过期会话
+        async function cleanupExpiredSessions() {
+            const token = localStorage.getItem('adminAuthToken');
+            
+            try {
+                const response = await fetch('/api/admin/cleanup-sessions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.warn('清理过期会话失败');
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('清理过期会话出错:', error);
+                return { success: false };
+            }
+        }
+        
+        // 重置用户密码
+        async function resetUserPassword() {
+            const userId = document.getElementById('reset-password-user-id').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const passwordError = document.getElementById('password-error');
+            
+            // 验证密码
+            if (!newPassword) {
+                passwordError.textContent = '请输入新密码';
+                passwordError.classList.remove('hidden');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                passwordError.textContent = '密码长度至少6位';
+                passwordError.classList.remove('hidden');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                passwordError.textContent = '两次输入的密码不一致';
+                passwordError.classList.remove('hidden');
+                return;
+            }
+            
+            const token = localStorage.getItem('adminAuthToken');
+            
+            if (!token) {
+                window.location.href = '/admin-login.html';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ newPassword: newPassword })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('重置密码失败');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('密码重置成功');
+                    closeResetPasswordModal();
+                } else {
+                    throw new Error(result.message || '重置密码失败');
+                }
+            } catch (error) {
+                console.error('重置密码出错:', error);
+                passwordError.textContent = `重置密码失败: ${error.message}`;
+                passwordError.classList.remove('hidden');
             }
         }
     </script>

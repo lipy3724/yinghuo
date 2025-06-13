@@ -176,6 +176,62 @@
         .error-message i {
             margin-right: 8px;
         }
+        
+        .ban-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .ban-modal-content {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .ban-modal-header {
+            background-color: #ef4444;
+            color: white;
+            padding: 15px 20px;
+        }
+        .ban-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+        }
+        .ban-modal-header h3 i {
+            margin-right: 10px;
+        }
+        .ban-modal-body {
+            padding: 20px;
+            color: #1f2937;
+        }
+        .ban-modal-footer {
+            padding: 15px 20px;
+            text-align: right;
+            border-top: 1px solid #e5e7eb;
+        }
+        .ban-modal-footer button {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .ban-modal-footer button:hover {
+            background-color: #dc2626;
+        }
     </style>
 </head>
 <body>
@@ -226,6 +282,23 @@
         </div>
     </div>
 
+    <!-- 封禁提示模态框 -->
+    <div id="ban-modal" class="ban-modal" style="display: none;">
+        <div class="ban-modal-content">
+            <div class="ban-modal-header">
+                <h3><i class="fas fa-ban"></i> 账号已被封禁</h3>
+            </div>
+            <div class="ban-modal-body">
+                <p><strong>封禁原因：</strong><span id="ban-reason">违反用户协议</span></p>
+                <p><strong>封禁状态：</strong><span id="ban-expire">永久封禁</span></p>
+                <p>如有疑问，请联系客服。</p>
+            </div>
+            <div class="ban-modal-footer">
+                <button id="ban-modal-close">我知道了</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -265,6 +338,25 @@
                 } catch (parseError) {
                     console.error('JSON解析错误:', parseError);
                     throw new Error('服务器返回了无效的JSON: ' + responseText.substring(0, 100));
+                }
+                
+                // 检查是否被封禁
+                if (response.status === 403 && data.data && data.data.isBanned) {
+                    // 恢复按钮状态
+                    button.innerHTML = '<i class="fas fa-sign-in-alt"></i>&nbsp; 登录';
+                    button.disabled = false;
+                    
+                    // 显示封禁模态框
+                    document.getElementById('ban-reason').textContent = data.data.reason || '违反用户协议';
+                    document.getElementById('ban-expire').textContent = data.data.expireMessage || '永久封禁';
+                    document.getElementById('ban-modal').style.display = 'flex';
+                    
+                    // 添加关闭模态框的事件
+                    document.getElementById('ban-modal-close').addEventListener('click', function() {
+                        document.getElementById('ban-modal').style.display = 'none';
+                    });
+                    
+                    return;
                 }
                 
                 if (response.ok) {

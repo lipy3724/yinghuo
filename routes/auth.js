@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const { generateToken, protect } = require('../middleware/auth');
+const { protect, invalidateAllSessions } = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 const { Op } = require('sequelize');
 const { sendSmsCode } = require('../utils/aliyunSmsUtil');
 const jwt = require('jsonwebtoken');
+const UserSession = require('../models/UserSession');
+const sequelize = require('../config/db');
+const { generateToken, JWT_EXPIRE } = require('../utils/jwt');
+require('dotenv').config();
 
 /**
  * @route   POST /api/auth/register
@@ -254,6 +258,29 @@ router.post('/phone/login', async (req, res) => {
     user.smsCodeExpires = null;
     await user.save();
 
+    // 检查用户是否被封禁
+    const banStatus = user.checkBanStatus();
+    if (banStatus) {
+      console.log(`手机登录失败: 用户已被封禁 - 用户=${user.username}`);
+      
+      // 格式化过期时间
+      let expireMessage = '永久封禁';
+      if (banStatus.expireAt) {
+        const expireDate = new Date(banStatus.expireAt);
+        expireMessage = `封禁至 ${expireDate.getFullYear()}-${(expireDate.getMonth() + 1).toString().padStart(2, '0')}-${expireDate.getDate().toString().padStart(2, '0')}`;
+      }
+      
+      return res.status(403).json({
+        success: false,
+        message: '账号已被封禁',
+        data: {
+          isBanned: true,
+          reason: banStatus.reason,
+          expireMessage: expireMessage
+        }
+      });
+    }
+
     // 生成JWT令牌
     const token = generateToken(user.id);
 
@@ -385,12 +412,42 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // 检查用户是否被封禁
+    const banStatus = user.checkBanStatus();
+    if (banStatus) {
+      console.log(`登录失败: 用户已被封禁 - 用户=${user.username}`);
+      
+      // 格式化过期时间
+      let expireMessage = '永久封禁';
+      if (banStatus.expireAt) {
+        const expireDate = new Date(banStatus.expireAt);
+        expireMessage = `封禁至 ${expireDate.getFullYear()}-${(expireDate.getMonth() + 1).toString().padStart(2, '0')}-${expireDate.getDate().toString().padStart(2, '0')}`;
+      }
+      
+      return res.status(403).json({
+        success: false,
+        message: '账号已被封禁',
+        data: {
+          isBanned: true,
+          reason: banStatus.reason,
+          expireMessage: expireMessage
+        }
+      });
+    }
+
     console.log(`密码验证成功，正在生成JWT令牌，用户=${user.username}`);
     
-    // 生成JWT令牌
-    const token = generateToken(user.id);
+    // 生成JWT令牌并记录会话，指定为普通用户会话
+    const { token, expiresAt } = await generateToken(user.id, req, JWT_EXPIRE, false);
 
-    console.log(`登录成功: 用户=${user.username}, id=${user.id}`);
+    // 更新用户的最后活跃时间
+    user.lastActiveAt = new Date();
+    await user.save();
+
+    // 获取当前用户的活跃会话数
+    const activeSessionCount = await UserSession.getActiveSessionCount(user.id);
+
+    console.log(`登录成功: 用户=${user.username}, id=${user.id}, 活跃会话数=${activeSessionCount}`);
     
     // 返回用户信息和令牌，不包含密码
     res.json({
@@ -400,7 +457,9 @@ router.post('/login', async (req, res) => {
         username: user.username,
         phone: user.phone,
         createdAt: user.createdAt,
-        token
+        token,
+        expiresAt,
+        activeSessionCount
       }
     });
   } catch (error) {
@@ -1197,6 +1256,54 @@ router.get('/verify', async (req, res) => {
         });
       }
       
+      // 添加会话有效性检查
+      const session = await UserSession.findOne({
+        where: {
+          token: token
+        }
+      });
+      
+      // 如果会话不存在，返回401
+      if (!session) {
+        console.log(`令牌 ${token.substring(0, 10)}... 没有对应的会话记录`);
+        return res.status(401).json({ 
+          success: false, 
+          message: '会话不存在，请重新登录' 
+        });
+      }
+      
+      // 检查会话是否已被标记为无效
+      if (!session.isActive) {
+        console.log(`用户 ${user.id} 的会话已被管理员禁用`);
+        return res.status(401).json({ 
+          success: false, 
+          message: '您的会话已被管理员终止，请重新登录',
+          data: {
+            userSessionTerminated: true,
+            code: 'ADMIN_TERMINATED_SESSION'
+          }
+        });
+      }
+      
+      // 检查会话是否已过期
+      if (session.expiresAt < new Date()) {
+        console.log(`用户 ${user.id} 的会话已过期`);
+        return res.status(401).json({ 
+          success: false, 
+          message: '会话已过期，请重新登录' 
+        });
+      }
+      
+      // 会话有效，更新最后活动时间
+      session.lastActiveAt = new Date();
+      await session.save();
+      
+      // 同时更新用户的最后活跃时间
+      await User.update(
+        { lastActiveAt: new Date() },
+        { where: { id: user.id } }
+      );
+      
       res.json({
         success: true,
         user: {
@@ -1218,6 +1325,200 @@ router.get('/verify', async (req, res) => {
     res.status(500).json({
       success: false,
       message: '服务器错误，无法验证用户'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/auth/sessions
+ * @desc    获取当前用户的所有活跃会话
+ * @access  私有
+ */
+router.get('/sessions', protect, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // 获取当前用户的所有活跃会话
+    const sessions = await UserSession.getActiveSessions(userId);
+    
+    // 获取当前会话的令牌
+    const currentToken = req.headers.authorization.split(' ')[1];
+    
+    // 标记当前会话
+    const formattedSessions = sessions.map(session => {
+      const isCurrentSession = session.token === currentToken;
+      
+      return {
+        id: session.id,
+        deviceInfo: session.deviceInfo,
+        ipAddress: session.ipAddress,
+        lastActiveAt: session.lastActiveAt,
+        createdAt: session.createdAt,
+        isCurrentSession
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        sessions: formattedSessions,
+        activeSessionCount: sessions.length
+      }
+    });
+  } catch (error) {
+    console.error('获取会话列表错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，获取会话列表失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/sessions/logout-all
+ * @desc    登出所有其他设备
+ * @access  私有
+ */
+router.post('/sessions/logout-all', protect, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // 获取当前会话的令牌
+    const currentToken = req.headers.authorization.split(' ')[1];
+    
+    // 使所有其他会话失效
+    const invalidatedCount = await invalidateAllSessions(userId, currentToken);
+    
+    res.json({
+      success: true,
+      message: `成功登出其他 ${invalidatedCount} 个设备`,
+      data: {
+        invalidatedCount
+      }
+    });
+  } catch (error) {
+    console.error('登出其他设备错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登出其他设备失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/sessions/:id/logout
+ * @desc    登出指定会话
+ * @access  私有
+ */
+router.post('/sessions/:id/logout', protect, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const sessionId = req.params.id;
+    
+    // 获取当前会话的令牌
+    const currentToken = req.headers.authorization.split(' ')[1];
+    
+    // 查找要登出的会话
+    const session = await UserSession.findOne({
+      where: {
+        id: sessionId,
+        userId: userId
+      }
+    });
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: '会话不存在或不属于当前用户'
+      });
+    }
+    
+    // 检查是否是当前会话
+    if (session.token === currentToken) {
+      return res.status(400).json({
+        success: false,
+        message: '不能登出当前会话，请使用登出功能'
+      });
+    }
+    
+    // 在使会话失效前，先保存最后活跃时间到用户记录
+    await User.update(
+      { lastActiveAt: session.lastActiveAt || new Date() },
+      { where: { id: userId } }
+    );
+    
+    // 使会话失效
+    await session.invalidate();
+    
+    res.json({
+      success: true,
+      message: '成功登出指定设备',
+      data: {
+        sessionId
+      }
+    });
+  } catch (error) {
+    console.error('登出指定设备错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登出指定设备失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    使当前会话失效
+ * @access  私有
+ */
+router.post('/logout', protect, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // 获取当前会话的令牌
+    const currentToken = req.headers.authorization.split(' ')[1];
+    
+    // 查找当前会话
+    const session = await UserSession.findOne({
+      where: {
+        token: currentToken,
+        userId: userId
+      }
+    });
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: '会话不存在'
+      });
+    }
+    
+    // 在使会话失效前，先保存最后活跃时间到用户记录
+    await User.update(
+      { lastActiveAt: session.lastActiveAt || new Date() },
+      { where: { id: userId } }
+    );
+    
+    // 使会话失效
+    session.isActive = false;
+    session.expiresAt = new Date(); // 立即过期
+    await session.save();
+    
+    console.log(`用户 ${userId} 主动登出了会话 ${session.id}`);
+    
+    res.json({
+      success: true,
+      message: '登出成功'
+    });
+  } catch (error) {
+    console.error('登出错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登出失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

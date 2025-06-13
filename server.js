@@ -797,17 +797,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// 添加用户认证路由
-app.use('/api/auth', authRoutes);
-app.use('/api/credits', creditsRoutes);
-app.use('/api/admin', adminRoutes);
-// 添加文生视频路由
-app.use('/api/text-to-video', textToVideoRoutes);
-// 添加图像编辑路由
-app.use('/api/image-edit', imageEditRoutes);
-// 添加文生图片路由
-app.use('/api/text-to-image', textToImageRoutes);
-
 // 添加日志中间件，记录所有请求路径
 app.use((req, res, next) => {
   console.log(`接收请求: ${req.method} ${req.url}`);
@@ -827,7 +816,7 @@ app.post('/api/digital-human/upload', protect, async (req, res) => {
   try {
     // 获取用户ID
     const userId = req.user.id;
-    
+  
     // 检查用户是否有权限使用数字人视频功能
     const user = await User.findByPk(userId);
     if (!user) {
@@ -1177,17 +1166,6 @@ app.get('/api/digital-human/task/:taskId', async (req, res) => {
                     
                     console.log(`成功创建用户ID ${userId} 的数字人视频功能使用记录`);
                   }
-                  
-                  // 标记为已扣除积分，并添加更多信息用于统计
-                  global.digitalHumanTasks[taskId].hasChargedCredits = true;
-                  global.digitalHumanTasks[taskId].creditCost = isFree ? 0 : creditCost;
-                  global.digitalHumanTasks[taskId].videoDuration = videoDuration;
-                  global.digitalHumanTasks[taskId].timestamp = new Date();
-                  global.digitalHumanTasks[taskId].isFree = isFree;
-                  
-                  // 任务信息已经在上面的代码中保存到数据库了，不需要重复保存
-                  // 记录日志以便调试
-                  console.log(`视频数字人任务ID ${taskId} 处理完成，积分 ${isFree ? 0 : creditCost} (${isFree ? '免费' : '付费'})，时长 ${videoDuration}秒`);
                 } catch (dbError) {
                   console.error('保存数字人视频功能使用记录到数据库失败:', dbError);
                 }
@@ -3799,18 +3777,18 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
           try {
             console.log('======= 开始处理视频风格重绘积分扣除 =======');
             
-            // 先打印完整的API响应，便于调试
-            console.log('完整API响应结构:', JSON.stringify(response.data));
-            
-            // 获取视频时长和分辨率
-            let duration = 0;
-            let resolution = 540; // 默认值
-            
-            // 直接访问顶层的usage对象
-            if (response.data && response.data.usage) {
-              duration = response.data.usage.duration || 0;
-              resolution = response.data.usage.SR || 540;
-              console.log(`直接从response.data.usage获取 - 时长: ${duration}秒, 分辨率: ${resolution}P`);
+                          // 先打印完整的API响应，便于调试
+              console.log('完整API响应结构:', JSON.stringify(response.data));
+              
+              // 获取视频时长和分辨率
+              let duration = 0;
+              let resolution = 540; // 默认值
+              
+              // 直接访问顶层的usage对象
+              if (response.data && response.data.usage) {
+                duration = response.data.usage.duration || 0;
+                resolution = response.data.usage.SR || 540;
+                console.log(`直接从response.data.usage获取 - 时长: ${duration}秒, 分辨率: ${resolution}P`);
             
               // 保存任务信息到全局变量，用于积分统计
               try {
@@ -3862,10 +3840,10 @@ app.get('/api/video-style-repaint/task-status', protect, async (req, res) => {
               } catch (error) {
                 console.error('保存视频风格重绘任务信息到全局变量失败:', error);
               }
-            } else {
-              console.error('未在API响应中找到usage字段，使用默认值');
-            }
-            
+              } else {
+                console.error('未在API响应中找到usage字段，使用默认值');
+              }
+              
             try {
               // 确保分辨率是数字
               resolution = parseInt(resolution);
@@ -4488,7 +4466,7 @@ const loadTasksFromDatabase = async () => {
               }
             }
           }
-        } catch (error) {
+    } catch (error) {
           console.error(`解析用户ID ${usage.userId} 的视频数字人功能使用记录详情失败:`, error);
           
           // 尝试修复损坏的JSON
@@ -4552,7 +4530,7 @@ const loadTasksFromDatabase = async () => {
     console.error('从数据库加载任务信息失败:', error);
   }
 };
-
+  
 // 启动服务器后立即加载任务数据
 startServer().then(() => {
   // 确保在服务器启动后执行加载任务
@@ -4587,7 +4565,7 @@ async function syncDigitalHumanTasksWithDatabase() {
     for (const usage of usages) {
       const userId = usage.userId;
       let tasksFromDB = [];
-      
+    
       // 解析数据库中的任务记录
       if (usage.details) {
         try {
@@ -4595,7 +4573,7 @@ async function syncDigitalHumanTasksWithDatabase() {
           if (details && details.tasks && Array.isArray(details.tasks)) {
             tasksFromDB = details.tasks;
           }
-        } catch (error) {
+  } catch (error) {
           console.error(`解析用户ID ${userId} 的任务记录失败:`, error);
           continue;
         }
@@ -4632,7 +4610,7 @@ async function syncDigitalHumanTasksWithDatabase() {
             creditCost: task.creditCost || 0,
             timestamp: task.timestamp || new Date()
           });
-        }
+  }
         
         // 更新数据库记录
         usage.details = JSON.stringify({ tasks: newTasks });

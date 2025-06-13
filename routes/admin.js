@@ -3,10 +3,12 @@ const router = express.Router();
 const User = require('../models/User');
 const { FeatureUsage } = require('../models/FeatureUsage');
 const PaymentOrder = require('../models/PaymentOrder');
-const { protect, checkAdmin } = require('../middleware/auth');
+const { protect, checkAdmin, invalidateAllSessions } = require('../middleware/auth');
 const { FEATURES } = require('../middleware/featureAccess');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
+const UserSession = require('../models/UserSession');
+const { generateToken, JWT_EXPIRE } = require('../utils/jwt');
 
 /**
  * @route   GET /api/admin/users
@@ -35,10 +37,42 @@ router.get('/users', protect, checkAdmin, async (req, res) => {
     // 查询用户列表
     const { count, rows: users } = await User.findAndCountAll({
       where: whereCondition,
-      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'isInternal', 'remark', 'createdAt', 'lastRechargeTime'],
+      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'isInternal', 'remark', 'createdAt', 'lastRechargeTime', 'isBanned', 'banReason', 'banExpireAt'],
       order: [['createdAt', 'DESC']],
       limit,
       offset
+    });
+    
+    // 获取每个用户的活跃会话数
+    const now = new Date();
+    const userIds = users.map(user => user.id);
+    
+    // 查询每个用户的活跃会话数
+    const sessionCounts = await UserSession.findAll({
+      attributes: [
+        'userId',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'sessionCount']
+      ],
+      where: {
+        userId: { [Op.in]: userIds },
+        isActive: true,
+        expiresAt: { [Op.gt]: now }
+      },
+      group: ['userId']
+    });
+    
+    // 将会话数添加到用户数据中
+    const sessionCountMap = {};
+    sessionCounts.forEach(session => {
+      sessionCountMap[session.userId] = parseInt(session.getDataValue('sessionCount'));
+    });
+    
+    const usersWithSessionCounts = users.map(user => {
+      const userData = user.toJSON();
+      userData.activeSessionCount = sessionCountMap[user.id] || 0;
+      // 确保备注字段存在并正确传递
+      console.log(`用户 ${userData.id} ${userData.username} 的备注:`, userData.remark);
+      return userData;
     });
     
     // 计算总页数
@@ -47,7 +81,7 @@ router.get('/users', protect, checkAdmin, async (req, res) => {
     res.json({
       success: true,
       data: {
-        users,
+        users: usersWithSessionCounts,
         pagination: {
           total: count,
           page,
@@ -77,7 +111,7 @@ router.get('/users/:id', protect, checkAdmin, async (req, res) => {
     
     // 查询用户信息
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'isInternal', 'remark', 'createdAt', 'lastRechargeTime']
+      attributes: ['id', 'username', 'phone', 'credits', 'isAdmin', 'isInternal', 'remark', 'createdAt', 'lastRechargeTime', 'isBanned', 'banReason', 'banExpireAt', 'lastActiveAt']
     });
     
     if (!user) {
@@ -85,6 +119,25 @@ router.get('/users/:id', protect, checkAdmin, async (req, res) => {
         success: false,
         message: '用户不存在'
       });
+    }
+    
+    // 添加最后活动时间到用户数据
+    const userData = user.toJSON();
+    
+    // 如果用户本身没有记录最后活动时间，则尝试从会话中获取
+    if (!userData.lastActiveAt) {
+      const lastActiveSession = await UserSession.findOne({
+        where: {
+          userId: userId,
+          isActive: true,
+          expiresAt: { [Op.gt]: new Date() }
+        },
+        order: [['lastActiveAt', 'DESC']]
+      });
+      
+      if (lastActiveSession) {
+        userData.lastActiveAt = lastActiveSession.lastActiveAt;
+      }
     }
     
     // 查询用户功能使用情况
@@ -96,7 +149,7 @@ router.get('/users/:id', protect, checkAdmin, async (req, res) => {
     res.json({
       success: true,
       data: {
-        user,
+        user: userData,
         usages
       }
     });
@@ -992,6 +1045,438 @@ router.post('/users', protect, checkAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '服务器错误，创建用户失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/users/:id/ban
+ * @desc    封禁用户
+ * @access  私有 (仅管理员)
+ */
+router.post('/users/:id/ban', protect, checkAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { reason, expireDays } = req.body;
+    
+    // 查询用户
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    
+    // 不允许封禁管理员
+    if (user.isAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: '不能封禁管理员账号'
+      });
+    }
+    
+    // 设置封禁信息
+    user.isBanned = true;
+    user.banReason = reason || '违反用户协议';
+    
+    // 如果指定了过期天数，计算过期时间
+    if (expireDays) {
+      const expireAt = new Date();
+      expireAt.setDate(expireAt.getDate() + parseInt(expireDays));
+      user.banExpireAt = expireAt;
+    } else {
+      // 不指定则为永久封禁
+      user.banExpireAt = null;
+    }
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: '用户已被封禁',
+      data: {
+        id: user.id,
+        username: user.username,
+        isBanned: user.isBanned,
+        banReason: user.banReason,
+        banExpireAt: user.banExpireAt
+      }
+    });
+  } catch (error) {
+    console.error('封禁用户错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，封禁用户失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/users/:id/unban
+ * @desc    解封用户
+ * @access  私有 (仅管理员)
+ */
+router.post('/users/:id/unban', protect, checkAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // 查询用户
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    
+    // 如果用户未被封禁
+    if (!user.isBanned) {
+      return res.status(400).json({
+        success: false,
+        message: '该用户未被封禁'
+      });
+    }
+    
+    // 解除封禁
+    user.isBanned = false;
+    user.banReason = null;
+    user.banExpireAt = null;
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: '用户已解除封禁',
+      data: {
+        id: user.id,
+        username: user.username,
+        isBanned: user.isBanned
+      }
+    });
+  } catch (error) {
+    console.error('解除封禁错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，解除封禁失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/users/:id/reset-password
+ * @desc    管理员重置用户密码
+ * @access  私有 (仅管理员)
+ */
+router.post('/users/:id/reset-password', protect, checkAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { newPassword } = req.body;
+    
+    // 验证新密码
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: '新密码不能为空且长度至少为6位'
+      });
+    }
+    
+    // 查询用户
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    
+    // 更新密码 (模型钩子会自动加密密码)
+    user.password = newPassword;
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: '用户密码重置成功'
+    });
+  } catch (error) {
+    console.error('重置用户密码错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，重置用户密码失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   GET /api/admin/users/:id/sessions
+ * @desc    获取指定用户的活跃会话
+ * @access  私有 (仅管理员)
+ */
+router.get('/users/:id/sessions', protect, checkAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // 查询用户
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+    
+    // 获取用户的所有活跃会话
+    const sessions = await UserSession.findAll({
+      where: {
+        userId: userId,
+        isActive: true,
+        expiresAt: { [Op.gt]: new Date() }
+      },
+      order: [['lastActiveAt', 'DESC']]
+    });
+    
+    // 格式化会话信息
+    const formattedSessions = sessions.map(session => ({
+      id: session.id,
+      deviceInfo: session.deviceInfo,
+      ipAddress: session.ipAddress,
+      userAgent: session.userAgent,
+      lastActiveAt: session.lastActiveAt,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt
+    }));
+    
+    res.json({
+      success: true,
+      data: {
+        sessions: formattedSessions,
+        activeSessionCount: sessions.length
+      }
+    });
+  } catch (error) {
+    console.error('获取用户会话错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，获取用户会话失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/cleanup-sessions
+ * @desc    清理所有过期会话
+ * @access  私有 (仅管理员)
+ */
+router.post('/cleanup-sessions', protect, checkAdmin, async (req, res) => {
+  try {
+    // 清理过期会话
+    const count = await UserSession.cleanupExpiredSessions();
+    
+    res.json({
+      success: true,
+      message: `已清理 ${count} 个过期会话`,
+      data: {
+        cleanedCount: count
+      }
+    });
+  } catch (error) {
+    console.error('清理过期会话错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，清理过期会话失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/users/:id/logout-all
+ * @desc    登出用户的所有设备
+ * @access  私有 (仅管理员)
+ */
+router.post('/users/:id/logout-all', protect, checkAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    // 获取管理员的当前令牌 - 确保不会登出管理员自己
+    const adminToken = req.headers.authorization.split(' ')[1];
+    
+    // 在使会话失效前，先获取用户的最后活跃时间
+    const lastActiveSession = await UserSession.findOne({
+      where: {
+        userId: userId,
+        isActive: true,
+        sessionType: 'user'  // 只查找普通用户会话
+      },
+      order: [['lastActiveAt', 'DESC']]
+    });
+    
+    // 如果找到活跃会话，保存最后活跃时间到用户记录
+    if (lastActiveSession) {
+      await User.update(
+        { lastActiveAt: lastActiveSession.lastActiveAt },
+        { where: { id: userId } }
+      );
+    }
+    
+    // 使所有普通用户会话失效，不影响管理员会话
+    const result = await UserSession.update(
+      {
+        isActive: false,
+        expiresAt: new Date() // 立即过期
+      },
+      {
+        where: {
+          userId: userId,
+          isActive: true,
+          sessionType: 'user'  // 只使普通用户会话失效
+        }
+      }
+    );
+    
+    console.log(`管理员使用户 ${userId} 的 ${result[0]} 个普通会话失效`);
+    
+    res.json({
+      success: true,
+      message: `已成功登出用户的所有设备 (${result[0]}个)`
+    });
+  } catch (error) {
+    console.error('登出用户所有设备错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，操作失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/login
+ * @desc    管理员登录
+ * @access  公开
+ */
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    // 验证必要字段
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: '用户名和密码为必填项'
+      });
+    }
+    
+    // 查询用户
+    const user = await User.findOne({ where: { username } });
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: '用户名或密码错误'
+      });
+    }
+    
+    // 验证密码
+    const isMatch = await user.matchPassword(password);
+    
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: '用户名或密码错误'
+      });
+    }
+    
+    // 检查用户是否为管理员
+    if (!user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: '没有管理员权限'
+      });
+    }
+    
+    // 生成JWT令牌，指定为管理员会话
+    const { token, expiresAt } = await generateToken(user.id, req, JWT_EXPIRE, true);
+    
+    res.json({
+      success: true,
+      data: {
+        id: user.id,
+        username: user.username,
+        isAdmin: user.isAdmin,
+        token,
+        expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('管理员登录错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登录失败',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * @route   POST /api/admin/logout
+ * @desc    管理员登出
+ * @access  私有 (需要管理员认证)
+ */
+router.post('/logout', protect, checkAdmin, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // 获取当前会话的令牌
+    const currentToken = req.headers.authorization.split(' ')[1];
+    
+    // 查找当前会话
+    const session = await UserSession.findOne({
+      where: {
+        token: currentToken,
+        userId: userId,
+        sessionType: 'admin'
+      }
+    });
+    
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: '管理员会话不存在'
+      });
+    }
+    
+    // 在使会话失效前，先保存最后活跃时间到用户记录
+    await User.update(
+      { lastActiveAt: session.lastActiveAt || new Date() },
+      { where: { id: userId } }
+    );
+    
+    // 使会话失效
+    session.isActive = false;
+    session.expiresAt = new Date(); // 立即过期
+    await session.save();
+    
+    console.log(`管理员 ${userId} 主动登出了会话 ${session.id}`);
+    
+    res.json({
+      success: true,
+      message: '管理员已成功登出'
+    });
+  } catch (error) {
+    console.error('管理员登出错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误，登出失败',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

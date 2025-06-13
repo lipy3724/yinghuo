@@ -123,14 +123,14 @@
             loadingSpinner.classList.remove('hidden');
             
             try {
-                // 调用登录API
-                const response = await fetch('/api/auth/login', {
+                // 调用管理员登录API
+                const response = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        account: username,
+                        username: username,
                         password: password
                     })
                 });
@@ -138,37 +138,19 @@
                 const result = await response.json();
                 
                 if (result.success && result.data) {
-                    // 验证是否为管理员
+                    // 获取用户信息
                     const user = result.data;
                     
-                    // 获取用户详情以检查是否为管理员
-                    const userResponse = await fetch(`/api/admin/users/${user.id}`, {
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`
-                        }
-                    });
+                    // 保存管理员认证信息
+                    localStorage.setItem('adminAuthToken', user.token);
+                    localStorage.setItem('adminUser', JSON.stringify({
+                        id: user.id,
+                        username: user.username,
+                        isAdmin: true
+                    }));
                     
-                    if (userResponse.ok) {
-                        const userData = await userResponse.json();
-                        
-                        if (userData.success && userData.data.user.isAdmin) {
-                            // 是管理员，保存认证信息
-                            localStorage.setItem('adminAuthToken', user.token);
-                            localStorage.setItem('adminUser', JSON.stringify({
-                                id: user.id,
-                                username: user.username,
-                                isAdmin: true
-                            }));
-                            
-                            // 跳转到管理员仪表盘
-                            window.location.href = '/admin-dashboard.html';
-                        } else {
-                            showError('您没有管理员权限');
-                        }
-                    } else {
-                        // 如果获取用户详情失败，可能是因为不是管理员
-                        showError('您没有管理员权限');
-                    }
+                    // 跳转到管理员仪表盘
+                    window.location.href = '/admin-dashboard.html';
                 } else {
                     showError(result.message || '登录失败，请检查用户名和密码');
                 }
